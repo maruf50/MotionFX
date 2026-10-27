@@ -662,33 +662,101 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Initialize with Bento Grid Template on first mount
+  // Initialize scene layers: restore from localStorage if present, or load Bento Grid on first visit
   useEffect(() => {
-    loadTemplate('bento-grid');
-    // Check if user designed and exported a shape from /builder
-    if (typeof window !== 'undefined') {
-      const raw = localStorage.getItem('motionfx_import_shape');
-      if (raw) {
-        try {
-          const item = JSON.parse(raw);
-          if (item && item.pathData) {
-            addCustomShape(
-              item.name || 'Custom Vector',
-              item.pathData,
-              item.width || 180,
-              item.height || 180,
-              item.fill || '#6366f1',
-              item.stroke || '#ffffff'
-            );
-            localStorage.removeItem('motionfx_import_shape');
-          }
-        } catch (err) {
-          console.error('Failed to parse imported custom shape:', err);
+    if (typeof window === 'undefined') return;
+
+    let initialLayers: Layer[] = [];
+    const savedScene = localStorage.getItem('motionfx_scene_layers');
+
+    if (savedScene) {
+      try {
+        const parsed = JSON.parse(savedScene);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          initialLayers = parsed;
         }
+      } catch (err) {
+        console.error('Failed to parse saved scene layers:', err);
       }
     }
+
+    // Default to Bento Grid if no saved scene
+    if (initialLayers.length === 0) {
+      const defaultTemplate = TEMPLATES[0];
+      initialLayers = defaultTemplate.createLayers();
+      setDurationState(defaultTemplate.duration);
+      setCanvasBg(defaultTemplate.canvasBg);
+    }
+
+    // Check if user exported a custom shape from /builder
+    let selectedId = initialLayers[0]?.id || null;
+    const importedRaw = localStorage.getItem('motionfx_import_shape');
+
+    if (importedRaw) {
+      try {
+        const item = JSON.parse(importedRaw);
+        if (item && item.pathData) {
+          const customLayer: Layer = {
+            id: uid('custom_shape'),
+            name: item.name || 'Merged Custom Vector',
+            type: 'shape',
+            shapeType: 'custom',
+            pathData: item.pathData,
+            visible: true,
+            width: Math.max(40, item.width || 180),
+            height: Math.max(40, item.height || 180),
+            fill: item.fill || '#6366f1',
+            stroke: item.stroke || '#ffffff',
+            borderWidth: 3,
+            borderRadius: 0,
+            borderStyle: 'solid',
+            animateDash: false,
+            easing: 'backOut',
+            keyframes: {
+              x: [{ time: 0, value: 400 }],
+              y: [{ time: 0, value: 225 }],
+              scaleX: [
+                { time: 0, value: 0.1 },
+                { time: 0.6, value: 1 },
+              ],
+              scaleY: [
+                { time: 0, value: 0.1 },
+                { time: 0.6, value: 1 },
+              ],
+              rotation: [
+                { time: 0, value: -15 },
+                { time: 0.6, value: 0 },
+              ],
+              opacity: [
+                { time: 0, value: 0 },
+                { time: 0.4, value: 1 },
+              ],
+            },
+          };
+
+          initialLayers = [customLayer, ...initialLayers];
+          selectedId = customLayer.id;
+          localStorage.removeItem('motionfx_import_shape');
+        }
+      } catch (err) {
+        console.error('Failed to parse imported custom shape:', err);
+      }
+    }
+
+    setLayers(initialLayers);
+    setSelectedLayerId(selectedId);
+    setSelectedKeyframe(null);
+    setCurrentTimeState(0);
+    localStorage.setItem('motionfx_scene_layers', JSON.stringify(initialLayers));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Save layers whenever changed
+  useEffect(() => {
+    if (typeof window !== 'undefined' && layers.length > 0) {
+      localStorage.setItem('motionfx_scene_layers', JSON.stringify(layers));
+    }
+  }, [layers]);
 
   return (
     <MotionContext.Provider

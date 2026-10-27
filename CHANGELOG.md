@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.0] - 2026-10-27
+
+### Added
+- **Move, Scale, and Rotate Controls in Shape Builder**:
+  - Independent 2D transformation controls per vector shape layer.
+  - **Move**: Direct on-canvas dragging with selection tool plus numeric Position X and Y precision inputs.
+  - **Scale**: Interactive slider ($0.2\times$ to $3.0\times$) for instantaneous shape resizing.
+  - **Rotate**: Rotation slider ($0^\circ$ to $360^\circ$) and quick $+90^\circ$ rotation button.
+  - **Alignment & Transforms**: One-click Center in Canvas (`Crosshair`) and Flip Horizontal / Vertical buttons.
+
+### Fixed
+- **Circle & Primitive Shapes Geometry**:
+  - Completely re-engineered the Bézier curve point generator for Circle primitives using exact quadrant-matched cubic Bézier control points and Kappa ($0.5522847$). Circles now spawn perfectly round, symmetrical, and smooth without any distortion.
+  - Corrected rectangle, star, polygon, and heart primitive point sequences.
+- **Scene Layers & Timeline Persistence for Merged Shapes**:
+  - Resolved an issue where merged shapes from `/builder` did not persist or appear in the timeline upon returning to the studio.
+  - Custom merged shapes are now prepended to the scene layers, auto-saved to persistent storage, rendered on the canvas, and immediately assigned keyframe diamonds on the bottom timeline tracks ready for animation.
+
+---
+
 ## [1.2.0] - 2026-10-27
 
 ### Added
