@@ -31,13 +31,38 @@ export function TimeRuler() {
     window.addEventListener('mouseup', onMouseUp);
   };
 
-  const steps = Math.round(duration * 2); // 0.5s ticks
-  const ticks = [];
-  for (let i = 0; i <= steps; i++) {
-    const sec = i * 0.5;
+  let minorTick = 0.5;
+  let majorTick = 1.0;
+  if (duration > 60) {
+    minorTick = 5.0;
+    majorTick = 10.0;
+  } else if (duration > 30) {
+    minorTick = 2.0;
+    majorTick = 5.0;
+  } else if (duration > 15) {
+    minorTick = 1.0;
+    majorTick = 2.0;
+  } else if (duration > 6) {
+    minorTick = 0.5;
+    majorTick = 1.0;
+  } else {
+    minorTick = 0.25;
+    majorTick = 0.5;
+  }
+
+  const ticks: { sec: number; pct: number; isWhole: boolean }[] = [];
+  const count = Math.floor(duration / minorTick);
+  for (let i = 0; i <= count; i++) {
+    const sec = Math.round(i * minorTick * 100) / 100;
+    if (sec > duration) break;
     const pct = (sec / duration) * 100;
-    const isWhole = i % 2 === 0;
+    const isWhole =
+      Math.abs(sec % majorTick) < 0.01 || Math.abs((sec % majorTick) - majorTick) < 0.01;
     ticks.push({ sec, pct, isWhole });
+  }
+
+  if (ticks.length > 0 && Math.abs(ticks[ticks.length - 1].sec - duration) > 0.05) {
+    ticks.push({ sec: duration, pct: 100, isWhole: true });
   }
 
   return (

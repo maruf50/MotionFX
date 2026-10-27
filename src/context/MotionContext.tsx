@@ -267,7 +267,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
             'motionfx_canvas_resolution',
             JSON.stringify(targetSnapshot.canvasResolution)
           );
-        } catch {}
+        } catch { }
       }
       setSelectedKeyframe(null);
 
@@ -316,7 +316,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
             'motionfx_canvas_resolution',
             JSON.stringify(targetSnapshot.canvasResolution)
           );
-        } catch {}
+        } catch { }
       }
       setSelectedKeyframe(null);
 
@@ -423,10 +423,15 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
 
   const setDuration = useCallback(
     (d: number) => {
-      setDurationState(d);
-      if (currentTime > d) setCurrentTimeState(d);
+      const valid = Math.max(0.5, Math.min(300, Math.round(d * 100) / 100 || 5.0));
+      pushUndo(true);
+      setDurationState(valid);
+      if (currentTime > valid) setCurrentTimeState(valid);
+      try {
+        localStorage.setItem('motionfx_duration', valid.toString());
+      } catch {}
     },
-    [currentTime]
+    [currentTime, pushUndo]
   );
 
   // Animation Loop for Smooth Playback
@@ -931,10 +936,10 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         layerIds && layerIds.length > 0
           ? layerIds
           : selectedLayerIdsRef.current.length > 0
-          ? selectedLayerIdsRef.current
-          : selectedLayerIdRef.current
-          ? [selectedLayerIdRef.current]
-          : [];
+            ? selectedLayerIdsRef.current
+            : selectedLayerIdRef.current
+              ? [selectedLayerIdRef.current]
+              : [];
 
       if (ids.length > 0) {
         const members = layersRef.current.filter((l) => ids.includes(l.id));
@@ -1010,10 +1015,10 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         layerIds && layerIds.length > 0
           ? layerIds
           : selectedLayerIdsRef.current.length > 0
-          ? selectedLayerIdsRef.current
-          : selectedLayerIdRef.current
-          ? [selectedLayerIdRef.current]
-          : [];
+            ? selectedLayerIdsRef.current
+            : selectedLayerIdRef.current
+              ? [selectedLayerIdRef.current]
+              : [];
 
       if (ids.length === 0) return;
 
@@ -1088,10 +1093,10 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         layerIds && layerIds.length > 0
           ? layerIds
           : selectedLayerIdsRef.current.length > 0
-          ? selectedLayerIdsRef.current
-          : selectedLayerIdRef.current
-          ? [selectedLayerIdRef.current]
-          : [];
+            ? selectedLayerIdsRef.current
+            : selectedLayerIdRef.current
+              ? [selectedLayerIdRef.current]
+              : [];
 
       if (ids.length === 0) return;
 
@@ -1465,6 +1470,15 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (err) {
         console.warn('Failed to parse saved canvas resolution:', err);
+      }
+    }
+
+    // Restore saved duration if available
+    const savedDur = localStorage.getItem('motionfx_duration');
+    if (savedDur) {
+      const parsedDur = parseFloat(savedDur);
+      if (!isNaN(parsedDur) && parsedDur >= 0.5 && parsedDur <= 300) {
+        setDurationState(parsedDur);
       }
     }
 

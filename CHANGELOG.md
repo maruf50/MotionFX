@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.8.0] - 2026-10-27
+
+### Added
+- **Customizable Animation Duration Controller**:
+  - Ability to set arbitrary custom durations from `0.5s` up to `300.0s` (5 minutes) directly in the timeline transport toolbar.
+  - **Direct Numeric Input**: Type any custom duration (e.g., `2.5s`, `4.2s`, `12s`, `45s`) with real-time blur/Enter validation and auto-clamping.
+  - **Quick Steppers (`-` / `+`)**: Increment or decrement timeline duration by ±0.5s with single clicks.
+  - **Duration Presets Dropdown**: Fast one-click selection of 9 popular animation timings (`1.0s`, `2.5s`, `3.0s`, `5.0s`, `8.0s`, `10.0s`, `15.0s`, `30.0s`, `60.0s`) plus custom input trigger.
+  - **Adaptive Timeline Ruler (`TimeRuler`)**:
+    - Dynamically calculates major and minor tick intervals based on total duration:
+      - `<= 6s`: 0.5s minor ticks, 1.0s labeled major ticks.
+      - `<= 15s`: 1.0s minor ticks, 2.0s labeled major ticks.
+      - `<= 30s`: 2.0s minor ticks, 5.0s labeled major ticks.
+      - `<= 60s`: 5.0s minor ticks, 10.0s labeled major ticks.
+      - `> 60s`: 10.0s minor ticks, 30.0s labeled major ticks.
+    - Guarantees the final end-of-timeline tick always renders cleanly at 100%.
+  - **Undo / Redo & Local Storage Integration**:
+    - Duration adjustments automatically push to the 50-step undo/redo stack.
+    - Custom duration is persisted to `localStorage` (`motionfx_duration`) and restored across sessions.
+    - Synchronized with video exporter so custom durations render accurately to WebM/MP4.
+
+---
+
 ## [1.7.0] - 2026-10-27
 
 ### Added
