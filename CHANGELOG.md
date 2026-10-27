@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.5.0] - 2026-10-27
+
+### Added
+- **Hierarchical Layer Parenting Mechanism**:
+  - Implemented 2D affine hierarchical world transform calculation (`getLayerWorldTransformAtTime`).
+  - Child layers inherit parent transforms: movement, rotation, scale, and opacity.
+  - Smooth coordinate conversion prevents positional jumps when assigning or clearing parents.
+  - Cycle detection (`isDescendantOf`) prevents circular parenting loops.
+  - Inspector **Hierarchy & Parenting** section with parent layer dropdown and clear button.
+  - Visual parent badge (`↳ Parent Name`) in the Scene Layers list.
+- **Drag-and-Drop Scene Layer Reordering**:
+  - Native HTML5 drag-and-drop handles (`GripVertical`) in the layer stack for effortless reordering.
+  - Realtime drop indicator lines with batch index reordering (`reorderLayersBatch`).
+- **Drag-and-Drop Layers from Templates to Main Scene**:
+  - New **Templates Library** panel in the Left Sidebar.
+  - Browse all built-in templates (Bento Grid, Kinetic Type, Logo Reveal, Dynamic Toast) and expand to inspect their constituent animatable layers.
+  - Drag any template layer directly onto the **Canvas Stage** (spawns at exact drop coordinates) or onto the **Timeline** (spawns at dropped timestamp).
+  - Quick `+ Add to Scene` button on each template layer.
+- **Layer Grouping System**:
+  - One-click **Group Layer** button (`FolderPlus`) to encapsulate selected layers into an organizational group.
+  - Group container with customizable name, collapse/expand toggle (`FolderOpen`/`Folder`), and child indentation.
+  - Moving or animating the group moves all child layers simultaneously.
+  - One-click **Ungroup** button (`FolderMinus`) restores layers to independent canvas coordinates without shifting position.
+- **Delete All Keyframes Option**:
+  - Dedicated **Clear Keyframes** button (`RotateCcw`) in the inspector and layer stack.
+  - Freezes current evaluated pose at playhead into a clean static keyframe and deletes all other keyframes.
+- **Line Shape in Add Elements**:
+  - Added **Line** primitive (`shapeType: 'line'`) to the elements palette with custom stroke, width, color, and animated dashed/dotted marching ants styling.
+
+---
+
 ## [1.4.0] - 2026-10-27
 
 ### Added

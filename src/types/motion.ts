@@ -13,7 +13,7 @@ export type EasingType =
   | 'elastic'
   | 'bounce';
 
-export type ShapeType = 'rect' | 'circle' | 'star' | 'polygon' | 'pill' | 'custom';
+export type ShapeType = 'rect' | 'circle' | 'star' | 'polygon' | 'pill' | 'custom' | 'line';
 
 export type BorderStyle = 'solid' | 'dashed' | 'dotted' | 'none';
 
@@ -25,7 +25,7 @@ export type TextEffect =
   | 'cascade'
   | 'neonPulse';
 
-export type LayerType = 'shape' | 'text' | 'image';
+export type LayerType = 'shape' | 'text' | 'image' | 'group';
 
 export interface Layer {
   id: string;
@@ -44,6 +44,12 @@ export interface Layer {
   borderStyle: BorderStyle; // solid, dashed, dotted
   animateDash: boolean; // marching ants flow
   easing: EasingType;
+  // Parenting & Grouping hierarchy
+  parentId?: string | null;
+  groupId?: string | null;
+  groupName?: string;
+  isGroup?: boolean;
+  expanded?: boolean;
   // Custom vector path
   pathData?: string;
   // Text specific

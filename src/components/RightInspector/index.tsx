@@ -4,6 +4,7 @@ import React from 'react';
 import { Sliders, MousePointer } from 'lucide-react';
 import { useMotion } from '@/context/MotionContext';
 import { TransformSection } from './TransformSection';
+import { ParentHierarchySection } from './ParentHierarchySection';
 import { ShapeStyleSection } from './ShapeStyleSection';
 import { TextEffectSection } from './TextEffectSection';
 
@@ -49,6 +50,9 @@ export function RightInspector() {
               className="w-full bg-[#090a0f] border border-[#2b2f44] focus:border-indigo-500 rounded-md px-2 py-1 text-xs font-sans text-white outline-none text-right"
             />
           </div>
+
+          {/* Hierarchy & Parenting */}
+          <ParentHierarchySection />
 
           {/* Transform & Keyframable Props */}
           <TransformSection />

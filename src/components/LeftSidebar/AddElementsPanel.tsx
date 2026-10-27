@@ -76,50 +76,59 @@ export function AddElementsPanel() {
       </Link>
 
       {/* Shapes Grid */}
-      <div className="grid grid-cols-5 gap-1.5 mb-2.5">
+      <div className="grid grid-cols-6 gap-1 mb-2.5">
+        <button
+          onClick={() => addShape('line')}
+          className="flex flex-col items-center justify-center p-1.5 rounded-lg bg-[#171925] hover:bg-[#1e2130] border border-[#2b2f44]/70 hover:border-cyan-500/50 transition group cursor-pointer"
+          title="Add Line Shape"
+        >
+          <Minus className="w-4 h-4 text-cyan-400 group-hover:scale-110 transition mb-1" />
+          <span className="text-[9px] text-slate-300">Line</span>
+        </button>
+
         <button
           onClick={() => addShape('rect')}
-          className="flex flex-col items-center justify-center p-2 rounded-lg bg-[#171925] hover:bg-[#1e2130] border border-[#2b2f44]/70 hover:border-indigo-500/50 transition group cursor-pointer"
+          className="flex flex-col items-center justify-center p-1.5 rounded-lg bg-[#171925] hover:bg-[#1e2130] border border-[#2b2f44]/70 hover:border-indigo-500/50 transition group cursor-pointer"
           title="Add Rectangle"
         >
           <Square className="w-4 h-4 text-indigo-400 group-hover:scale-110 transition mb-1" />
-          <span className="text-[10px] text-slate-300">Rect</span>
+          <span className="text-[9px] text-slate-300">Rect</span>
         </button>
 
         <button
           onClick={() => addShape('circle')}
-          className="flex flex-col items-center justify-center p-2 rounded-lg bg-[#171925] hover:bg-[#1e2130] border border-[#2b2f44]/70 hover:border-pink-500/50 transition group cursor-pointer"
+          className="flex flex-col items-center justify-center p-1.5 rounded-lg bg-[#171925] hover:bg-[#1e2130] border border-[#2b2f44]/70 hover:border-pink-500/50 transition group cursor-pointer"
           title="Add Circle"
         >
           <Circle className="w-4 h-4 text-pink-400 group-hover:scale-110 transition mb-1" />
-          <span className="text-[10px] text-slate-300">Circle</span>
+          <span className="text-[9px] text-slate-300">Circle</span>
         </button>
 
         <button
           onClick={() => addShape('star')}
-          className="flex flex-col items-center justify-center p-2 rounded-lg bg-[#171925] hover:bg-[#1e2130] border border-[#2b2f44]/70 hover:border-amber-500/50 transition group cursor-pointer"
+          className="flex flex-col items-center justify-center p-1.5 rounded-lg bg-[#171925] hover:bg-[#1e2130] border border-[#2b2f44]/70 hover:border-amber-500/50 transition group cursor-pointer"
           title="Add Star"
         >
           <Star className="w-4 h-4 text-amber-400 group-hover:scale-110 transition mb-1" />
-          <span className="text-[10px] text-slate-300">Star</span>
+          <span className="text-[9px] text-slate-300">Star</span>
         </button>
 
         <button
           onClick={() => addShape('polygon')}
-          className="flex flex-col items-center justify-center p-2 rounded-lg bg-[#171925] hover:bg-[#1e2130] border border-[#2b2f44]/70 hover:border-emerald-500/50 transition group cursor-pointer"
+          className="flex flex-col items-center justify-center p-1.5 rounded-lg bg-[#171925] hover:bg-[#1e2130] border border-[#2b2f44]/70 hover:border-emerald-500/50 transition group cursor-pointer"
           title="Add Polygon"
         >
           <Hexagon className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition mb-1" />
-          <span className="text-[10px] text-slate-300">Poly</span>
+          <span className="text-[9px] text-slate-300">Poly</span>
         </button>
 
         <button
           onClick={() => addShape('pill')}
-          className="flex flex-col items-center justify-center p-2 rounded-lg bg-[#171925] hover:bg-[#1e2130] border border-[#2b2f44]/70 hover:border-violet-500/50 transition group cursor-pointer"
+          className="flex flex-col items-center justify-center p-1.5 rounded-lg bg-[#171925] hover:bg-[#1e2130] border border-[#2b2f44]/70 hover:border-violet-500/50 transition group cursor-pointer"
           title="Add Capsule / Pill"
         >
           <Minus className="w-4 h-4 text-violet-400 group-hover:scale-110 transition mb-1 rotate-45" />
-          <span className="text-[10px] text-slate-300">Pill</span>
+          <span className="text-[9px] text-slate-300">Pill</span>
         </button>
       </div>
 

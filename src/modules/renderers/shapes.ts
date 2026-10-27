@@ -139,6 +139,18 @@ export function renderShapeLayer(
     }
   }
 
+  if (shape === 'line') {
+    ctx.beginPath();
+    ctx.moveTo(-hw, 0);
+    ctx.lineTo(hw, 0);
+    const strokeW = Math.max(1, layer.borderWidth || 3);
+    ctx.lineWidth = strokeW;
+    ctx.strokeStyle = layer.stroke || layer.fill || '#ffffff';
+    ctx.lineCap = 'round';
+    ctx.stroke();
+    return;
+  }
+
   if (shape === 'rect') {
     drawRoundedRect(ctx, -hw, -hh, layer.width, layer.height, layer.borderRadius);
   } else if (shape === 'circle') {

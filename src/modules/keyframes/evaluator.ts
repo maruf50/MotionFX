@@ -46,6 +46,74 @@ export function getLayerTransformAtTime(layer: Layer, t: number): TransformState
 }
 
 /**
+ * Checks whether candidateParentId is a descendant of layerId (to prevent cycles).
+ */
+export function isDescendantOf(
+  candidateParentId: string,
+  layerId: string,
+  allLayers: Layer[]
+): boolean {
+  if (candidateParentId === layerId) return true;
+  let current = allLayers.find((l) => l.id === candidateParentId);
+  const visited = new Set<string>();
+  while (current && current.parentId) {
+    if (current.parentId === layerId) return true;
+    if (visited.has(current.parentId)) break;
+    visited.add(current.parentId);
+    current = allLayers.find((l) => l.id === current?.parentId);
+  }
+  return false;
+}
+
+/**
+ * Returns the hierarchical World 2D transform for a layer at timestamp `t`,
+ * composing through all ancestor parents up the chain.
+ */
+export function getLayerWorldTransformAtTime(
+  layer: Layer,
+  allLayers: Layer[],
+  t: number,
+  visited: Set<string> = new Set()
+): TransformState {
+  const localTr = getLayerTransformAtTime(layer, t);
+  if (!layer.parentId || visited.has(layer.id)) {
+    return localTr;
+  }
+
+  const parent = allLayers.find((l) => l.id === layer.parentId);
+  if (!parent || parent.id === layer.id) {
+    return localTr;
+  }
+
+  visited.add(layer.id);
+  const parentWorldTr = getLayerWorldTransformAtTime(parent, allLayers, t, visited);
+
+  // Compose transforms: ParentWorld * ChildLocal
+  const rad = (parentWorldTr.rotation * Math.PI) / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+
+  const scaledX = localTr.x * parentWorldTr.scaleX;
+  const scaledY = localTr.y * parentWorldTr.scaleY;
+
+  const worldX = parentWorldTr.x + (scaledX * cos - scaledY * sin);
+  const worldY = parentWorldTr.y + (scaledX * sin + scaledY * cos);
+  const worldScaleX = parentWorldTr.scaleX * localTr.scaleX;
+  const worldScaleY = parentWorldTr.scaleY * localTr.scaleY;
+  const worldRotation = parentWorldTr.rotation + localTr.rotation;
+  const worldOpacity = Math.max(0, Math.min(1, parentWorldTr.opacity * localTr.opacity));
+
+  return {
+    x: worldX,
+    y: worldY,
+    scaleX: worldScaleX,
+    scaleY: worldScaleY,
+    rotation: worldRotation,
+    opacity: worldOpacity,
+  };
+}
+
+/**
  * Sets or updates a keyframe at time `t` with snapping (0.05s increments).
  */
 export function setOrUpdateKeyframe(

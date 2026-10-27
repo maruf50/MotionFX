@@ -21,6 +21,8 @@ import {
   uid,
   getInterpolatedValue,
   getLayerTransformAtTime,
+  getLayerWorldTransformAtTime,
+  isDescendantOf,
   setOrUpdateKeyframe,
   removeKeyframeAtIndex,
 } from '@/modules/keyframes/evaluator';
@@ -60,6 +62,13 @@ interface MotionContextType {
   duplicateLayer: (id: string) => void;
   reorderLayer: (id: string, direction: 'up' | 'down') => void;
   toggleLayerVisibility: (id: string) => void;
+  // Parenting & Grouping hierarchy
+  setLayerParent: (layerId: string, parentId: string | null) => void;
+  createGroup: (name?: string, layerIds?: string[]) => string;
+  ungroupLayer: (groupId: string) => void;
+  toggleGroupExpand: (groupId: string) => void;
+  // Drag-and-drop layer reordering
+  reorderLayersBatch: (sourceIndex: number, targetIndex: number) => void;
   // Keyframes
   setAnimPropValue: (
     layerId: string,
@@ -71,6 +80,7 @@ interface MotionContextType {
   keyAllTransformProps: (layerId: string) => void;
   selectKeyframe: (ref: SelectedKeyframeRef | null) => void;
   deleteSelectedKeyframe: () => void;
+  deleteAllKeyframes: (layerId: string) => void;
   moveKeyframeTime: (
     layerId: string,
     prop: AnimatableProp,
@@ -90,6 +100,11 @@ interface MotionContextType {
   setShowGuides: (v: boolean) => void;
   // Templates & Scene
   loadTemplate: (templateId: string) => void;
+  importTemplateLayer: (
+    templateLayer: Layer,
+    atTime?: number,
+    atPos?: { x: number; y: number }
+  ) => void;
   clearScene: () => void;
   // Export
   startExport: () => void;
@@ -370,12 +385,12 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         type: 'shape',
         shapeType,
         visible: true,
-        width: shapeType === 'rect' ? 160 : shapeType === 'pill' ? 180 : 130,
-        height: shapeType === 'rect' ? 120 : shapeType === 'pill' ? 90 : 130,
+        width: shapeType === 'line' ? 220 : shapeType === 'rect' ? 160 : shapeType === 'pill' ? 180 : 130,
+        height: shapeType === 'line' ? 24 : shapeType === 'rect' ? 120 : shapeType === 'pill' ? 90 : 130,
         sides: shapeType === 'star' ? 5 : shapeType === 'polygon' ? 6 : undefined,
-        fill: color,
-        stroke: '#ffffff',
-        borderWidth: 3,
+        fill: shapeType === 'line' ? 'transparent' : color,
+        stroke: shapeType === 'line' ? color : '#ffffff',
+        borderWidth: shapeType === 'line' ? 4 : 3,
         borderRadius: shapeType === 'rect' ? 24 : 8,
         borderStyle: 'solid',
         animateDash: false,
@@ -629,6 +644,220 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
     [pushUndo]
   );
 
+  // Parenting & Grouping hierarchy
+  const setLayerParent = useCallback(
+    (layerId: string, parentId: string | null) => {
+      pushUndo(true);
+      setLayers((prev) => {
+        const child = prev.find((l) => l.id === layerId);
+        if (!child) return prev;
+        if (parentId && (parentId === layerId || isDescendantOf(parentId, layerId, prev))) {
+          return prev;
+        }
+
+        const childWorldTr = getLayerWorldTransformAtTime(child, prev, currentTime);
+
+        if (!parentId) {
+          // Unparent: local becomes world transform so position remains identical
+          return prev.map((l) => {
+            if (l.id !== layerId) return l;
+            return {
+              ...l,
+              parentId: null,
+              keyframes: {
+                ...l.keyframes,
+                x: [{ time: 0, value: Math.round(childWorldTr.x) }],
+                y: [{ time: 0, value: Math.round(childWorldTr.y) }],
+                scaleX: [{ time: 0, value: Math.round(childWorldTr.scaleX * 100) / 100 }],
+                scaleY: [{ time: 0, value: Math.round(childWorldTr.scaleY * 100) / 100 }],
+                rotation: [{ time: 0, value: Math.round(childWorldTr.rotation) }],
+                opacity: [{ time: 0, value: Math.round(childWorldTr.opacity * 100) / 100 }],
+              },
+            };
+          });
+        }
+
+        const parent = prev.find((l) => l.id === parentId);
+        if (!parent) return prev;
+        const parentWorldTr = getLayerWorldTransformAtTime(parent, prev, currentTime);
+
+        // Convert child world to local coords relative to parent
+        const dx = childWorldTr.x - parentWorldTr.x;
+        const dy = childWorldTr.y - parentWorldTr.y;
+        const rad = (-parentWorldTr.rotation * Math.PI) / 180;
+        const cos = Math.cos(rad);
+        const sin = Math.sin(rad);
+
+        const localX = Math.round((dx * cos - dy * sin) / Math.max(0.001, parentWorldTr.scaleX));
+        const localY = Math.round((dx * sin + dy * cos) / Math.max(0.001, parentWorldTr.scaleY));
+        const localScaleX =
+          Math.round((childWorldTr.scaleX / Math.max(0.001, parentWorldTr.scaleX)) * 100) / 100;
+        const localScaleY =
+          Math.round((childWorldTr.scaleY / Math.max(0.001, parentWorldTr.scaleY)) * 100) / 100;
+        const localRotation = Math.round(childWorldTr.rotation - parentWorldTr.rotation);
+        const localOpacity =
+          parentWorldTr.opacity > 0
+            ? Math.round((childWorldTr.opacity / parentWorldTr.opacity) * 100) / 100
+            : 1;
+
+        return prev.map((l) => {
+          if (l.id !== layerId) return l;
+          return {
+            ...l,
+            parentId,
+            keyframes: {
+              ...l.keyframes,
+              x: [{ time: 0, value: localX }],
+              y: [{ time: 0, value: localY }],
+              scaleX: [{ time: 0, value: localScaleX }],
+              scaleY: [{ time: 0, value: localScaleY }],
+              rotation: [{ time: 0, value: localRotation }],
+              opacity: [{ time: 0, value: localOpacity }],
+            },
+          };
+        });
+      });
+    },
+    [currentTime, pushUndo]
+  );
+
+  const createGroup = useCallback(
+    (name: string = 'Group', layerIds: string[] = []): string => {
+      pushUndo(true);
+      const groupId = uid('grp');
+      let cx = 400;
+      let cy = 225;
+
+      if (layerIds.length > 0) {
+        const members = layersRef.current.filter((l) => layerIds.includes(l.id));
+        if (members.length > 0) {
+          let sumX = 0;
+          let sumY = 0;
+          members.forEach((m) => {
+            const tr = getLayerWorldTransformAtTime(m, layersRef.current, currentTime);
+            sumX += tr.x;
+            sumY += tr.y;
+          });
+          cx = Math.round(sumX / members.length);
+          cy = Math.round(sumY / members.length);
+        }
+      }
+
+      const groupLayer: Layer = {
+        id: groupId,
+        name: name || `Group ${layersRef.current.filter((l) => l.isGroup).length + 1}`,
+        type: 'group',
+        isGroup: true,
+        expanded: true,
+        visible: true,
+        width: 160,
+        height: 120,
+        fill: 'transparent',
+        stroke: '#6366f1',
+        borderWidth: 1,
+        borderRadius: 8,
+        borderStyle: 'none',
+        animateDash: false,
+        easing: 'easeOutCubic',
+        keyframes: {
+          x: [{ time: 0, value: cx }],
+          y: [{ time: 0, value: cy }],
+          scaleX: [{ time: 0, value: 1 }],
+          scaleY: [{ time: 0, value: 1 }],
+          rotation: [{ time: 0, value: 0 }],
+          opacity: [{ time: 0, value: 1 }],
+        },
+      };
+
+      setLayers((prev) => {
+        const updated = prev.map((l) => {
+          if (layerIds.includes(l.id)) {
+            const curWorld = getLayerWorldTransformAtTime(l, prev, currentTime);
+            return {
+              ...l,
+              parentId: groupId,
+              groupId: groupId,
+              keyframes: {
+                ...l.keyframes,
+                x: [{ time: 0, value: Math.round(curWorld.x - cx) }],
+                y: [{ time: 0, value: Math.round(curWorld.y - cy) }],
+              },
+            };
+          }
+          return l;
+        });
+        return [groupLayer, ...updated];
+      });
+
+      setSelectedLayerId(groupId);
+      return groupId;
+    },
+    [currentTime, pushUndo]
+  );
+
+  const ungroupLayer = useCallback(
+    (groupId: string) => {
+      pushUndo(true);
+      setLayers((prev) => {
+        return prev
+          .filter((l) => l.id !== groupId)
+          .map((l) => {
+            if (l.parentId === groupId || l.groupId === groupId) {
+              const worldTr = getLayerWorldTransformAtTime(l, prev, currentTime);
+              return {
+                ...l,
+                parentId: null,
+                groupId: null,
+                keyframes: {
+                  ...l.keyframes,
+                  x: [{ time: 0, value: Math.round(worldTr.x) }],
+                  y: [{ time: 0, value: Math.round(worldTr.y) }],
+                  scaleX: [{ time: 0, value: Math.round(worldTr.scaleX * 100) / 100 }],
+                  scaleY: [{ time: 0, value: Math.round(worldTr.scaleY * 100) / 100 }],
+                  rotation: [{ time: 0, value: Math.round(worldTr.rotation) }],
+                },
+              };
+            }
+            return l;
+          });
+      });
+      if (selectedLayerIdRef.current === groupId) {
+        setSelectedLayerId(null);
+      }
+    },
+    [currentTime, pushUndo]
+  );
+
+  const toggleGroupExpand = useCallback((groupId: string) => {
+    setLayers((prev) =>
+      prev.map((l) =>
+        l.id === groupId ? { ...l, expanded: l.expanded === false ? true : false } : l
+      )
+    );
+  }, []);
+
+  const reorderLayersBatch = useCallback(
+    (sourceIndex: number, targetIndex: number) => {
+      if (sourceIndex === targetIndex) return;
+      pushUndo(true);
+      setLayers((prev) => {
+        if (
+          sourceIndex < 0 ||
+          sourceIndex >= prev.length ||
+          targetIndex < 0 ||
+          targetIndex >= prev.length
+        ) {
+          return prev;
+        }
+        const next = [...prev];
+        const [moved] = next.splice(sourceIndex, 1);
+        next.splice(targetIndex, 0, moved);
+        return next;
+      });
+    },
+    [pushUndo]
+  );
+
   // Keyframe Actions
   const setAnimPropValue = useCallback(
     (layerId: string, prop: AnimatableProp, value: number, skipSnapshot: boolean = false) => {
@@ -699,6 +928,31 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
     setSelectedKeyframe(null);
   }, [selectedKeyframe, pushUndo]);
 
+  const deleteAllKeyframes = useCallback(
+    (layerId: string) => {
+      pushUndo(true);
+      setLayers((prev) =>
+        prev.map((l) => {
+          if (l.id !== layerId) return l;
+          const cur = getLayerTransformAtTime(l, currentTime);
+          return {
+            ...l,
+            keyframes: {
+              x: [{ time: 0, value: Math.round(cur.x) }],
+              y: [{ time: 0, value: Math.round(cur.y) }],
+              scaleX: [{ time: 0, value: Math.round(cur.scaleX * 100) / 100 }],
+              scaleY: [{ time: 0, value: Math.round(cur.scaleY * 100) / 100 }],
+              rotation: [{ time: 0, value: Math.round(cur.rotation) }],
+              opacity: [{ time: 0, value: Math.round(cur.opacity * 100) / 100 }],
+            },
+          };
+        })
+      );
+      setSelectedKeyframe(null);
+    },
+    [currentTime, pushUndo]
+  );
+
   const moveKeyframeTime = useCallback(
     (
       layerId: string,
@@ -746,6 +1000,45 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
       setCurrentTimeState(0);
     },
     [pausePlay, pushUndo]
+  );
+
+  const importTemplateLayer = useCallback(
+    (templateLayer: Layer, atTime?: number, atPos?: { x: number; y: number }) => {
+      pushUndo(true);
+      const clone: Layer = JSON.parse(JSON.stringify(templateLayer));
+      clone.id = uid(templateLayer.type || 'tmpl');
+      clone.name = `${templateLayer.name} (Template)`;
+      clone.parentId = null;
+      clone.groupId = null;
+
+      if (atPos) {
+        const origX = clone.keyframes.x[0]?.value ?? 400;
+        const origY = clone.keyframes.y[0]?.value ?? 225;
+        const dx = atPos.x - origX;
+        const dy = atPos.y - origY;
+        clone.keyframes.x.forEach((k) => (k.value += dx));
+        clone.keyframes.y.forEach((k) => (k.value += dy));
+      }
+
+      if (atTime !== undefined && atTime > 0) {
+        const minT = Math.min(
+          ...(['x', 'y', 'scaleX', 'scaleY', 'rotation', 'opacity'] as AnimatableProp[]).flatMap(
+            (p) => clone.keyframes[p].map((k) => k.time)
+          )
+        );
+        const dt = atTime - minT;
+        if (dt > 0) {
+          (['x', 'y', 'scaleX', 'scaleY', 'rotation', 'opacity'] as AnimatableProp[]).forEach((p) => {
+            clone.keyframes[p].forEach((k) => (k.time = Math.round((k.time + dt) * 20) / 20));
+          });
+        }
+      }
+
+      setLayers((prev) => [clone, ...prev]);
+      setSelectedLayerId(clone.id);
+      setSelectedKeyframe(null);
+    },
+    [pushUndo]
   );
 
   const clearScene = useCallback(() => {
@@ -951,11 +1244,17 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         duplicateLayer,
         reorderLayer,
         toggleLayerVisibility,
+        setLayerParent,
+        createGroup,
+        ungroupLayer,
+        toggleGroupExpand,
+        reorderLayersBatch,
         setAnimPropValue,
         toggleKeyframe,
         keyAllTransformProps,
         selectKeyframe,
         deleteSelectedKeyframe,
+        deleteAllKeyframes,
         moveKeyframeTime,
         setCurrentTime,
         setDuration,
@@ -967,6 +1266,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         setCanvasBg,
         setShowGuides,
         loadTemplate,
+        importTemplateLayer,
         clearScene,
         startExport,
         cancelExport,

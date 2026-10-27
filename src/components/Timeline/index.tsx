@@ -19,6 +19,7 @@ export function Timeline() {
     deleteLayer,
     undo,
     redo,
+    importTemplateLayer,
   } = useMotion();
 
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -104,7 +105,37 @@ export function Timeline() {
     <section className="h-64 bg-[#11131c] border-t border-[#1e2130] flex flex-col shrink-0 z-30 select-none">
       <TransportControls />
 
-      <div ref={containerRef} className="flex-1 flex min-h-0 overflow-hidden relative">
+      <div
+        ref={containerRef}
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'copy';
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          const templateData =
+            e.dataTransfer.getData('motionfx-template-layer') ||
+            e.dataTransfer.getData('application/json');
+          if (templateData && containerRef.current) {
+            try {
+              const parsed = JSON.parse(templateData);
+              if (parsed) {
+                const rect = containerRef.current.getBoundingClientRect();
+                const leftOffset = 256;
+                const tracksWidth = rect.width - leftOffset;
+                const clickX = e.clientX - rect.left - leftOffset;
+                const ratio = Math.max(0, Math.min(1, clickX / Math.max(1, tracksWidth)));
+                const dropTime = Math.round(ratio * duration * 20) / 20;
+                importTemplateLayer(parsed, dropTime);
+                setCurrentTime(dropTime);
+              }
+            } catch (err) {
+              console.error('Failed to parse dropped template layer onto timeline:', err);
+            }
+          }
+        }}
+        className="flex-1 flex min-h-0 overflow-hidden relative"
+      >
         <div className="flex-1 flex flex-col min-w-0 relative">
           <div className="flex flex-1 min-h-0">
             {/* Left track names spacer alignment with TimeRuler */}

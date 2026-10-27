@@ -2,7 +2,7 @@
 
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { useMotion } from '@/context/MotionContext';
-import { getLayerTransformAtTime } from '@/modules/keyframes/evaluator';
+import { getLayerWorldTransformAtTime } from '@/modules/keyframes/evaluator';
 import { getLayerDimensions } from '@/modules/renderers/engine';
 
 export function CanvasStage() {
@@ -15,39 +15,41 @@ export function CanvasStage() {
     setAnimPropValue,
     duration,
     recordSnapshot,
+    importTemplateLayer,
   } = useMotion();
 
   const isDraggingRef = useRef<boolean>(false);
   const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isDropTarget, setIsDropTarget] = useState<boolean>(false);
 
   const getCanvasCoords = useCallback(
-    (e: React.MouseEvent<HTMLCanvasElement>) => {
+    (clientX: number, clientY: number) => {
       const canvas = canvasRef.current;
       if (!canvas) return { x: 0, y: 0 };
       const rect = canvas.getBoundingClientRect();
       const scaleX = canvas.width / rect.width;
       const scaleY = canvas.height / rect.height;
       return {
-        x: (e.clientX - rect.left) * scaleX,
-        y: (e.clientY - rect.top) * scaleY,
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY,
       };
     },
     [canvasRef]
   );
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const pt = getCanvasCoords(e);
+    const pt = getCanvasCoords(e.clientX, e.clientY);
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Hit test layers from foreground to background
+    // Hit test layers from foreground to background using world transform
     for (let i = 0; i < layers.length; i++) {
       const layer = layers[i];
       if (!layer.visible) continue;
 
-      const tr = getLayerTransformAtTime(layer, currentTime);
+      const tr = getLayerWorldTransformAtTime(layer, layers, currentTime);
       const dims = getLayerDimensions(ctx, layer);
       const hw = (dims.width * Math.abs(tr.scaleX)) / 2 + 12;
       const hh = (dims.height * Math.abs(tr.scaleY)) / 2 + 12;
@@ -70,20 +72,35 @@ export function CanvasStage() {
       if (!isDraggingRef.current || !selectedLayerId) return;
       const canvas = canvasRef.current;
       if (!canvas) return;
-      const rect = canvas.getBoundingClientRect();
-      const scaleX = canvas.width / rect.width;
-      const scaleY = canvas.height / rect.height;
 
-      const pt = {
-        x: (e.clientX - rect.left) * scaleX,
-        y: (e.clientY - rect.top) * scaleY,
-      };
+      const pt = getCanvasCoords(e.clientX, e.clientY);
+      const targetLayer = layers.find((l) => l.id === selectedLayerId);
+      if (!targetLayer) return;
 
-      const newX = Math.round(pt.x - dragOffsetRef.current.x);
-      const newY = Math.round(pt.y - dragOffsetRef.current.y);
+      const targetWorldX = pt.x - dragOffsetRef.current.x;
+      const targetWorldY = pt.y - dragOffsetRef.current.y;
 
-      setAnimPropValue(selectedLayerId, 'x', newX, true);
-      setAnimPropValue(selectedLayerId, 'y', newY, true);
+      let localX = Math.round(targetWorldX);
+      let localY = Math.round(targetWorldY);
+
+      // If parented, convert world position into local coordinates relative to parent
+      if (targetLayer.parentId) {
+        const parent = layers.find((l) => l.id === targetLayer.parentId);
+        if (parent) {
+          const parentWorldTr = getLayerWorldTransformAtTime(parent, layers, currentTime);
+          const dx = targetWorldX - parentWorldTr.x;
+          const dy = targetWorldY - parentWorldTr.y;
+          const rad = (-parentWorldTr.rotation * Math.PI) / 180;
+          const cos = Math.cos(rad);
+          const sin = Math.sin(rad);
+
+          localX = Math.round((dx * cos - dy * sin) / Math.max(0.001, parentWorldTr.scaleX));
+          localY = Math.round((dx * sin + dy * cos) / Math.max(0.001, parentWorldTr.scaleY));
+        }
+      }
+
+      setAnimPropValue(selectedLayerId, 'x', localX, true);
+      setAnimPropValue(selectedLayerId, 'y', localY, true);
     };
 
     const handleGlobalMouseUp = () => {
@@ -97,18 +114,61 @@ export function CanvasStage() {
       window.removeEventListener('mousemove', handleGlobalMouseMove);
       window.removeEventListener('mouseup', handleGlobalMouseUp);
     };
-  }, [selectedLayerId, setAnimPropValue, canvasRef]);
+  }, [selectedLayerId, setAnimPropValue, canvasRef, layers, currentTime, getCanvasCoords]);
+
+  // Handle Drag & Drop from Template Library onto Canvas
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    setIsDropTarget(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDropTarget(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDropTarget(false);
+    const templateData =
+      e.dataTransfer.getData('motionfx-template-layer') ||
+      e.dataTransfer.getData('application/json');
+
+    if (templateData) {
+      try {
+        const parsed = JSON.parse(templateData);
+        if (parsed) {
+          const pt = getCanvasCoords(e.clientX, e.clientY);
+          importTemplateLayer(parsed, currentTime, {
+            x: Math.round(pt.x),
+            y: Math.round(pt.y),
+          });
+        }
+      } catch (err) {
+        console.error('Failed to parse dropped template layer onto canvas:', err);
+      }
+    }
+  };
 
   return (
-    <main className="flex-1 bg-[#090a0f] flex flex-col items-center justify-center relative overflow-hidden p-4 select-none">
+    <main
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={`flex-1 bg-[#090a0f] flex flex-col items-center justify-center relative overflow-hidden p-4 select-none ${
+        isDropTarget ? 'ring-4 ring-indigo-500/30' : ''
+      }`}
+    >
       {/* Floating Status & Helper Bar */}
       <div className="absolute top-3 left-4 right-4 flex items-center justify-between pointer-events-none z-10">
         <div className="bg-[#11131c]/90 backdrop-blur border border-[#1e2130] px-3 py-1.5 rounded-lg text-xs text-slate-300 flex items-center gap-2 pointer-events-auto shadow-lg">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
           <span>
-            {selectedLayerId
-              ? 'Drag element to reposition • Changes update keyframe at playhead'
-              : 'Click any element to select, transform, or keyframe'}
+            {isDropTarget
+              ? 'Release to drop template element here onto canvas'
+              : selectedLayerId
+              ? 'Drag element to reposition • Parented elements follow their parent'
+              : 'Click any element to select, transform, or keyframe • Drag template layers here'}
           </span>
         </div>
 

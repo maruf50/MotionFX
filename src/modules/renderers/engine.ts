@@ -1,5 +1,5 @@
 import { Layer } from '@/types/motion';
-import { getLayerTransformAtTime } from '../keyframes/evaluator';
+import { getLayerTransformAtTime, getLayerWorldTransformAtTime } from '../keyframes/evaluator';
 import { renderShapeLayer } from './shapes';
 import { renderTextLayer } from './text';
 import { renderImageLayer } from './media';
@@ -26,6 +26,12 @@ export function getLayerDimensions(
     return {
       width: Math.max(80, metrics.width),
       height: fontSize * 1.25,
+    };
+  }
+  if (layer.shapeType === 'line') {
+    return {
+      width: layer.width || 200,
+      height: Math.max(16, layer.borderWidth * 2),
     };
   }
   return {
@@ -88,7 +94,8 @@ export function renderSceneAtTime(
     const layer = layers[i];
     if (!layer.visible) continue;
 
-    const tr = getLayerTransformAtTime(layer, time);
+    // Use hierarchical world transform
+    const tr = getLayerWorldTransformAtTime(layer, layers, time);
     if (tr.opacity <= 0.001) continue;
 
     ctx.save();
@@ -112,7 +119,7 @@ export function renderSceneAtTime(
   if (!options.hideSelectionGizmo && options.selectedLayerId) {
     const selected = layers.find(l => l.id === options.selectedLayerId);
     if (selected && selected.visible) {
-      const tr = getLayerTransformAtTime(selected, time);
+      const tr = getLayerWorldTransformAtTime(selected, layers, time);
       const dims = getLayerDimensions(ctx, selected);
       const hw = dims.width / 2 + 8;
       const hh = dims.height / 2 + 8;
