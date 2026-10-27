@@ -29,29 +29,45 @@ export function TextEffectSection() {
       </div>
 
       {/* Font Size & Text Color */}
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className="text-[11px] text-slate-400 block mb-1">Font Size</label>
-          <input
-            type="number"
-            min="12"
-            max="180"
-            step="2"
-            value={selectedLayer.fontSize || 48}
-            onChange={(e) =>
-              updateLayer(selectedLayer.id, { fontSize: parseInt(e.target.value, 10) || 36 })
-            }
-            className="w-full bg-[#090a0f] border border-[#2b2f44] focus:border-indigo-500 rounded-md px-2 py-1 text-xs font-mono text-white outline-none"
-          />
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <label className="text-[11px] text-slate-400">Font Size</label>
+          <div className="flex items-center gap-1.5">
+            <input
+              type="number"
+              min="12"
+              max="200"
+              step="2"
+              value={selectedLayer.fontSize || 48}
+              onChange={(e) =>
+                updateLayer(selectedLayer.id, { fontSize: parseInt(e.target.value, 10) || 36 })
+              }
+              className="w-16 bg-[#090a0f] border border-[#2b2f44] focus:border-indigo-500 rounded px-2 py-0.5 text-xs font-mono text-white outline-none text-right"
+            />
+            <span className="text-[11px] text-slate-400">px</span>
+          </div>
         </div>
 
-        <div>
-          <label className="text-[11px] text-slate-400 block mb-1">Text Color</label>
+        <input
+          type="range"
+          min="12"
+          max="180"
+          step="2"
+          value={selectedLayer.fontSize || 48}
+          onChange={(e) =>
+            updateLayer(selectedLayer.id, { fontSize: parseInt(e.target.value, 10) || 36 })
+          }
+          className="w-full accent-indigo-500 cursor-pointer"
+        />
+
+        {/* Text Color */}
+        <div className="flex items-center justify-between pt-1">
+          <label className="text-[11px] text-slate-400">Text Color</label>
           <input
             type="color"
             value={selectedLayer.fill || '#ffffff'}
             onChange={(e) => updateLayer(selectedLayer.id, { fill: e.target.value })}
-            className="w-full h-7 rounded cursor-pointer bg-[#090a0f] border border-[#2b2f44] px-1"
+            className="w-7 h-7 rounded cursor-pointer bg-[#090a0f] border border-[#2b2f44] p-0.5"
           />
         </div>
       </div>

@@ -21,7 +21,7 @@ export function getLayerDimensions(
 ): { width: number; height: number } {
   if (layer.type === 'text') {
     const fontSize = layer.fontSize || 48;
-    ctx.font = `800 ${fontSize}px var(--font-geist-sans), "Space Grotesk", sans-serif`;
+    ctx.font = `bold ${fontSize}px "Geist", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
     const metrics = ctx.measureText(layer.text || 'TEXT');
     return {
       width: Math.max(80, metrics.width),

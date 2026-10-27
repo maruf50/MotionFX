@@ -16,7 +16,7 @@ export function renderTextLayer(
   const str = layer.text || 'TEXT';
   const effect = layer.textEffect || 'none';
 
-  ctx.font = `800 ${fontSize}px var(--font-geist-sans), "Space Grotesk", "Inter", -apple-system, sans-serif`;
+  ctx.font = `bold ${fontSize}px "Geist", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = layer.fill || '#ffffff';

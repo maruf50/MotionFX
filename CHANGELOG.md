@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.1] - 2026-10-27
+
+### Fixed
+- **Canvas Text Font Size Rendering**:
+  - Fixed an issue where changing font size in the inspector only expanded the selection bounding box without resizing the text on the canvas.
+  - Root cause was the use of CSS custom variable `var(--font-geist-sans)` inside HTML5 Canvas `ctx.font`, which is rejected by browser canvas 2D parsers and caused font assignments to silently fall back to default $10\text{px}$.
+  - Replaced with a valid canvas font stack (`bold ${fontSize}px "Geist", "Inter", -apple-system, sans-serif`).
+  - Added a smooth dual slider and numeric input in the Inspector for continuous font size adjustment ($12\text{px}$ to $200\text{px}$).
+
+---
+
 ## [1.3.0] - 2026-10-27
 
 ### Added
