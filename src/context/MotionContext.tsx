@@ -43,6 +43,14 @@ interface MotionContextType {
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   // Layer creation
   addShape: (shapeType: ShapeType) => void;
+  addCustomShape: (
+    name: string,
+    pathData: string,
+    width: number,
+    height: number,
+    fill?: string,
+    stroke?: string
+  ) => void;
   addText: (textEffect?: TextEffect) => void;
   addImage: (src: string, name?: string, w?: number, h?: number) => void;
   // Layer management
@@ -246,6 +254,60 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         keyframes: {
           x: [{ time: 0, value: 400 + offset - 40 }],
           y: [{ time: 0, value: 225 + offset - 40 }],
+          scaleX: [
+            { time: 0, value: 0.1 },
+            { time: 0.6, value: 1 },
+          ],
+          scaleY: [
+            { time: 0, value: 0.1 },
+            { time: 0.6, value: 1 },
+          ],
+          rotation: [
+            { time: 0, value: -15 },
+            { time: 0.6, value: 0 },
+          ],
+          opacity: [
+            { time: 0, value: 0 },
+            { time: 0.4, value: 1 },
+          ],
+        },
+      };
+
+      setLayers((prev) => [newLayer, ...prev]);
+      setSelectedLayerId(newLayer.id);
+    },
+    [layers.length]
+  );
+
+  const addCustomShape = useCallback(
+    (
+      name: string,
+      pathData: string,
+      width: number,
+      height: number,
+      fill: string = '#6366f1',
+      stroke: string = '#ffffff'
+    ) => {
+      const offset = (layers.length % 5) * 20;
+      const newLayer: Layer = {
+        id: uid('custom_shape'),
+        name: name || `Custom Shape ${layers.length + 1}`,
+        type: 'shape',
+        shapeType: 'custom',
+        pathData,
+        visible: true,
+        width: Math.max(40, width),
+        height: Math.max(40, height),
+        fill,
+        stroke,
+        borderWidth: 3,
+        borderRadius: 0,
+        borderStyle: 'solid',
+        animateDash: false,
+        easing: 'backOut',
+        keyframes: {
+          x: [{ time: 0, value: 400 + offset - 30 }],
+          y: [{ time: 0, value: 225 + offset - 30 }],
           scaleX: [
             { time: 0, value: 0.1 },
             { time: 0.6, value: 1 },
@@ -603,6 +665,28 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
   // Initialize with Bento Grid Template on first mount
   useEffect(() => {
     loadTemplate('bento-grid');
+    // Check if user designed and exported a shape from /builder
+    if (typeof window !== 'undefined') {
+      const raw = localStorage.getItem('motionfx_import_shape');
+      if (raw) {
+        try {
+          const item = JSON.parse(raw);
+          if (item && item.pathData) {
+            addCustomShape(
+              item.name || 'Custom Vector',
+              item.pathData,
+              item.width || 180,
+              item.height || 180,
+              item.fill || '#6366f1',
+              item.stroke || '#ffffff'
+            );
+            localStorage.removeItem('motionfx_import_shape');
+          }
+        } catch (err) {
+          console.error('Failed to parse imported custom shape:', err);
+        }
+      }
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -622,6 +706,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         exportProgress,
         canvasRef,
         addShape,
+        addCustomShape,
         addText,
         addImage,
         selectLayer,

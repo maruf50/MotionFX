@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useRef } from 'react';
+import Link from 'next/link';
 import {
   Square,
   Circle,
@@ -8,11 +9,12 @@ import {
   Hexagon,
   Minus,
   Type,
-  Image as ImageIcon,
   Upload,
+  PenTool,
+  ArrowRight,
+  Sparkles,
 } from 'lucide-react';
 import { useMotion } from '@/context/MotionContext';
-import { ShapeType } from '@/types/motion';
 import { STICKER_PRESETS } from '@/modules/assets/stickers';
 
 export function AddElementsPanel() {
@@ -47,6 +49,31 @@ export function AddElementsPanel() {
         <span>Add Elements</span>
         <span className="text-[10px] text-indigo-400 font-normal">Click to spawn</span>
       </div>
+
+      {/* Build Shape Studio Option */}
+      <Link
+        href="/builder"
+        className="w-full mb-3 py-2 px-2.5 rounded-lg bg-gradient-to-r from-amber-500/15 via-purple-500/15 to-indigo-500/15 hover:from-amber-500/25 hover:via-purple-500/25 hover:to-indigo-500/25 border border-amber-500/35 hover:border-amber-400 text-slate-100 flex items-center justify-between group transition shadow-sm cursor-pointer"
+        title="Open Vector Pen, Eraser & Shape Builder Studio"
+      >
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-md bg-amber-500/20 flex items-center justify-center text-amber-300 group-hover:scale-110 transition">
+            <PenTool className="w-3.5 h-3.5" />
+          </div>
+          <div className="text-left">
+            <div className="text-xs font-semibold text-white group-hover:text-amber-300 transition flex items-center gap-1.5">
+              <span>Build Shape</span>
+              <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                PRO
+              </span>
+            </div>
+            <div className="text-[10px] text-slate-400">
+              Pen tool, eraser & vector canvas
+            </div>
+          </div>
+        </div>
+        <ArrowRight className="w-3.5 h-3.5 text-amber-400 group-hover:translate-x-0.5 transition" />
+      </Link>
 
       {/* Shapes Grid */}
       <div className="grid grid-cols-5 gap-1.5 mb-2.5">

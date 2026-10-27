@@ -121,6 +121,24 @@ export function renderShapeLayer(
 
   applyStrokeStyle(ctx, layer, time);
 
+  if (shape === 'custom' && layer.pathData) {
+    try {
+      const path = new Path2D(layer.pathData);
+      if (layer.fill && layer.fill !== 'transparent') {
+        ctx.fillStyle = layer.fill;
+        ctx.fill(path);
+      }
+      if (layer.borderWidth > 0 && layer.borderStyle !== 'none' && layer.stroke) {
+        ctx.lineWidth = layer.borderWidth;
+        ctx.strokeStyle = layer.stroke;
+        ctx.stroke(path);
+      }
+      return;
+    } catch (e) {
+      console.warn('Error rendering custom Path2D shape:', e);
+    }
+  }
+
   if (shape === 'rect') {
     drawRoundedRect(ctx, -hw, -hh, layer.width, layer.height, layer.borderRadius);
   } else if (shape === 'circle') {

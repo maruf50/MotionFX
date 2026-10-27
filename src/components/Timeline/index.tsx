@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useMotion } from '@/context/MotionContext';
 import { TransportControls } from './TransportControls';
 import { TimeRuler } from './TimeRuler';
@@ -11,11 +11,42 @@ export function Timeline() {
     currentTime,
     duration,
     togglePlay,
+    pausePlay,
+    setCurrentTime,
     selectedKeyframe,
     deleteSelectedKeyframe,
     selectedLayerId,
     deleteLayer,
   } = useMotion();
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // Playhead scrubber handle drag
+  const handlePlayheadMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    pausePlay();
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      if (!containerRef.current) return;
+      // The right timeline area starts after the 16rem (256px) left track names
+      const rect = containerRef.current.getBoundingClientRect();
+      const leftOffset = 256; // 16rem
+      const tracksWidth = rect.width - leftOffset;
+      if (tracksWidth <= 0) return;
+
+      const clickX = moveEvent.clientX - rect.left - leftOffset;
+      const ratio = Math.max(0, Math.min(1, clickX / tracksWidth));
+      setCurrentTime(ratio * duration);
+    };
+
+    const onMouseUp = () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
 
   // Keyboard Shortcuts (Space to play/pause, Delete to remove keyframe/layer)
   useEffect(() => {
@@ -47,7 +78,7 @@ export function Timeline() {
     <section className="h-64 bg-[#11131c] border-t border-[#1e2130] flex flex-col shrink-0 z-30 select-none">
       <TransportControls />
 
-      <div className="flex-1 flex min-h-0 overflow-hidden relative">
+      <div ref={containerRef} className="flex-1 flex min-h-0 overflow-hidden relative">
         <div className="flex-1 flex flex-col min-w-0 relative">
           <div className="flex flex-1 min-h-0">
             {/* Left track names spacer alignment with TimeRuler */}
@@ -67,16 +98,20 @@ export function Timeline() {
           {/* Timeline Tracks Lane area */}
           <TimelineTracks />
 
-          {/* Red Playhead Indicator Line */}
+          {/* Red Playhead Indicator Line (NO lag transition, realtime cursor follow) */}
           <div
-            className="absolute top-0 bottom-0 w-[2px] bg-rose-500 pointer-events-none z-40 transition-transform duration-75"
+            className="absolute top-0 bottom-0 w-[2px] bg-rose-500 z-40 pointer-events-none"
             style={{
               left: `calc(16rem + (100% - 16rem) * ${playheadPct / 100})`,
             }}
           >
             {/* Playhead Scrubber Top Handle */}
-            <div className="w-3.5 h-4 -ml-[6px] bg-rose-500 rounded-b-sm flex items-center justify-center shadow-lg shadow-rose-500/50">
-              <div className="w-1 h-2 bg-white/90 rounded-full"></div>
+            <div
+              onMouseDown={handlePlayheadMouseDown}
+              title="Drag playhead to scrub timeline in realtime"
+              className="w-4 h-5 -ml-[7px] bg-rose-500 rounded-b-sm flex items-center justify-center shadow-lg shadow-rose-500/50 cursor-ew-resize pointer-events-auto hover:scale-110 transition-transform"
+            >
+              <div className="w-1 h-2.5 bg-white/90 rounded-full pointer-events-none"></div>
             </div>
           </div>
         </div>

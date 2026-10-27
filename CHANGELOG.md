@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.0] - 2026-10-27
+
+### Added
+- **Build Shape Studio (`/builder`)**:
+  - Dedicated vector creation workstation inspired by Adobe Illustrator.
+  - **Vector Pen Tool (P)**: Click to place anchor vertices, click & drag to pull Bézier tangent handles, snap-to-grid alignment, and click start vertex to close path.
+  - **Freehand Brush / Pencil Tool (B)**: Smooth freehand vector stroke drawing.
+  - **Eraser Tool (E)**: Interactive circular eraser to delete anchor vertices and path segments with customizable radius.
+  - **Direct Node Selection Tool (A)**: Select and drag individual anchor points and curve control handles.
+  - **Geometric Presets**: Instant vector templates for Lightning Bolt ⚡, Shield Crest 🛡️, Heart ❤️, and Speech Bubble 💬.
+  - **Path Controls**: Fill and stroke color pickers, stroke width, open/close path toggle, millimetric grid snapping, and SVG path code preview.
+  - **1-Click "Add to Scene Layers"**: Automatically exports custom vector path into the MotionFX animation canvas as a custom shape layer with full keyframing capabilities.
+- **Add Elements Panel Integration**:
+  - Added high-visibility **"Build Shape"** studio navigation button in the left sidebar palette.
+- **Custom Vector Renderer**:
+  - Enhanced shape engine to natively render custom SVG paths (`Path2D`) supporting rounded borders, solid/dashed/dotted borders, and animated marching ants.
+
+### Fixed
+- **Timeline Dragging & Real-Time Cursor Tracking**:
+  - Resolved timeline playhead sticking issue by binding window-level mousemove and mouseup listeners to both the TimeRuler and TimelineTracks area.
+  - Enabled direct drag interaction on the top playhead scrubber handle.
+  - Eliminated CSS transition latency on the playhead element for 60 FPS real-time cursor tracking.
+
+---
+
 ## [1.0.0] - 2026-10-27
 
 ### Initial Release — MotionFX Studio v1.0

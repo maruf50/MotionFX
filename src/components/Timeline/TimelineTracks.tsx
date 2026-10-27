@@ -41,6 +41,7 @@ export function TimelineTracks() {
     setCurrentTime(time);
   };
 
+  // Continuous dragging of keyframe diamond
   useEffect(() => {
     const handleGlobalMouseMove = (e: MouseEvent) => {
       if (!draggingKf || !tracksPaneRef.current) return;
@@ -67,12 +68,31 @@ export function TimelineTracks() {
     };
   }, [draggingKf, duration, moveKeyframeTime, setCurrentTime]);
 
-  const handleTrackPaneClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!tracksPaneRef.current) return;
-    const rect = tracksPaneRef.current.getBoundingClientRect();
-    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  // Continuous dragging on the track lanes (empty space)
+  const handleTrackPaneMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest('.keyframe-diamond')) return;
     pausePlay();
-    setCurrentTime(ratio * duration);
+
+    const updateTime = (clientX: number) => {
+      if (!tracksPaneRef.current) return;
+      const rect = tracksPaneRef.current.getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      setCurrentTime(ratio * duration);
+    };
+
+    updateTime(e.clientX);
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      updateTime(moveEvent.clientX);
+    };
+
+    const onMouseUp = () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
   };
 
   return (
@@ -108,8 +128,8 @@ export function TimelineTracks() {
       {/* Right Lanes & Diamonds */}
       <div
         ref={tracksPaneRef}
-        onMouseDown={handleTrackPaneClick}
-        className="flex-1 overflow-y-auto relative divide-y divide-[#1e2130]/60 select-none"
+        onMouseDown={handleTrackPaneMouseDown}
+        className="flex-1 overflow-y-auto relative divide-y divide-[#1e2130]/60 select-none cursor-crosshair"
       >
         {layers.map((layer) => {
           const isSel = layer.id === selectedLayerId;
@@ -128,10 +148,6 @@ export function TimelineTracks() {
           return (
             <div
               key={layer.id}
-              onClick={(e) => {
-                e.stopPropagation();
-                selectLayer(layer.id);
-              }}
               className={`h-9 relative transition ${
                 isSel ? 'bg-indigo-950/20' : 'hover:bg-[#11131c]/50'
               }`}

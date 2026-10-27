@@ -7,12 +7,28 @@ export function TimeRuler() {
   const { duration, setCurrentTime, pausePlay } = useMotion();
   const rulerRef = useRef<HTMLDivElement | null>(null);
 
-  const handleRulerClickOrDrag = (e: React.MouseEvent<HTMLDivElement>) => {
+  const updateTimeFromMouse = (clientX: number) => {
     if (!rulerRef.current) return;
     const rect = rulerRef.current.getBoundingClientRect();
-    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    pausePlay();
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
     setCurrentTime(ratio * duration);
+  };
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    pausePlay();
+    updateTimeFromMouse(e.clientX);
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      updateTimeFromMouse(moveEvent.clientX);
+    };
+
+    const onMouseUp = () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
   };
 
   const steps = Math.round(duration * 2); // 0.5s ticks
@@ -27,7 +43,7 @@ export function TimeRuler() {
   return (
     <div
       ref={rulerRef}
-      onMouseDown={handleRulerClickOrDrag}
+      onMouseDown={handleMouseDown}
       className="h-7 border-b border-[#1e2130] relative cursor-ew-resize bg-[#11131c]/90 select-none overflow-hidden"
     >
       {ticks.map(({ sec, pct, isWhole }, idx) => (

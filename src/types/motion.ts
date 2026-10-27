@@ -13,7 +13,7 @@ export type EasingType =
   | 'elastic'
   | 'bounce';
 
-export type ShapeType = 'rect' | 'circle' | 'star' | 'polygon' | 'pill';
+export type ShapeType = 'rect' | 'circle' | 'star' | 'polygon' | 'pill' | 'custom';
 
 export type BorderStyle = 'solid' | 'dashed' | 'dotted' | 'none';
 
@@ -44,6 +44,8 @@ export interface Layer {
   borderStyle: BorderStyle; // solid, dashed, dotted
   animateDash: boolean; // marching ants flow
   easing: EasingType;
+  // Custom vector path
+  pathData?: string;
   // Text specific
   text?: string;
   morphTarget?: string;
