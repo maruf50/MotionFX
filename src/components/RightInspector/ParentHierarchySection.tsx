@@ -1,7 +1,15 @@
 'use client';
 
 import React from 'react';
-import { Link as LinkIcon, FolderPlus, FolderMinus, RotateCcw, GitBranch } from 'lucide-react';
+import {
+  Link as LinkIcon,
+  FolderPlus,
+  FolderMinus,
+  FolderInput,
+  Folder,
+  RotateCcw,
+  GitBranch,
+} from 'lucide-react';
 import { useMotion } from '@/context/MotionContext';
 import { isDescendantOf } from '@/modules/keyframes/evaluator';
 
@@ -11,6 +19,7 @@ export function ParentHierarchySection() {
     layers,
     setLayerParent,
     createGroup,
+    addLayersToGroup,
     ungroupLayer,
     deleteAllKeyframes,
   } = useMotion();
@@ -20,6 +29,13 @@ export function ParentHierarchySection() {
   // Eligible parents: exclude self and any of own descendants
   const eligibleParents = layers.filter(
     (l) => l.id !== selectedLayer.id && !isDescendantOf(l.id, selectedLayer.id, layers)
+  );
+
+  const existingGroups = layers.filter(
+    (l) =>
+      l.type === 'group' &&
+      l.id !== selectedLayer.id &&
+      !isDescendantOf(l.id, selectedLayer.id, layers)
   );
 
   const currentParent = selectedLayer.parentId
@@ -77,6 +93,32 @@ export function ParentHierarchySection() {
         </p>
       </div>
 
+      {/* Add to Existing Group (if not already a group) */}
+      {!isGroup && existingGroups.length > 0 && (
+        <div className="pt-2 border-t border-[#1e2130]/80 space-y-1.5">
+          <label className="text-[11px] text-slate-400 flex items-center gap-1">
+            <FolderInput className="w-3 h-3 text-amber-400" />
+            <span>Add to Group:</span>
+          </label>
+          <select
+            value={selectedLayer.groupId || ''}
+            onChange={(e) => {
+              if (e.target.value) {
+                addLayersToGroup(e.target.value, [selectedLayer.id]);
+              }
+            }}
+            className="w-full bg-[#090a0f] border border-[#2b2f44] focus:border-amber-500 rounded-md px-2.5 py-1.5 text-xs text-slate-300 outline-none cursor-pointer"
+          >
+            <option value="">Select group...</option>
+            {existingGroups.map((grp) => (
+              <option key={grp.id} value={grp.id}>
+                {grp.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* Group Actions */}
       <div className="pt-2 border-t border-[#1e2130]/80 flex items-center gap-2">
         {isGroup ? (
@@ -93,7 +135,7 @@ export function ParentHierarchySection() {
             className="flex-1 py-1.5 px-2 rounded-md bg-[#1e2130] hover:bg-[#282c40] border border-[#2b2f44] text-xs text-slate-300 flex items-center justify-center gap-1.5 transition cursor-pointer"
           >
             <FolderPlus className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Group Layer</span>
+            <span>New Group</span>
           </button>
         )}
 

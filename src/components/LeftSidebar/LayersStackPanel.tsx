@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   ArrowUp,
   ArrowDown,
@@ -9,6 +9,7 @@ import {
   Eye,
   EyeOff,
   Square,
+  CheckSquare,
   Circle,
   Star,
   Hexagon,
@@ -19,11 +20,14 @@ import {
   FolderOpen,
   FolderPlus,
   FolderMinus,
+  FolderInput,
   GripVertical,
   Link as LinkIcon,
   RotateCcw,
   ChevronRight,
   ChevronDown,
+  X,
+  Check,
 } from 'lucide-react';
 import { useMotion } from '@/context/MotionContext';
 import { Layer } from '@/types/motion';
@@ -33,13 +37,19 @@ export function LayersStackPanel() {
   const {
     layers,
     selectedLayerId,
+    selectedLayerIds,
     selectLayer,
+    selectAllLayers,
+    clearSelectedLayers,
+    deleteLayersBatch,
     reorderLayer,
     reorderLayersBatch,
     duplicateLayer,
     deleteLayer,
     toggleLayerVisibility,
     createGroup,
+    addLayersToGroup,
+    removeLayersFromGroup,
     ungroupLayer,
     toggleGroupExpand,
     deleteAllKeyframes,
@@ -49,9 +59,39 @@ export function LayersStackPanel() {
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   const [isDropTarget, setIsDropTarget] = useState<boolean>(false);
+  const [isAddToGroupOpen, setIsAddToGroupOpen] = useState<boolean>(false);
+  const [isNamingNewGroup, setIsNamingNewGroup] = useState<boolean>(false);
+  const [newGroupName, setNewGroupName] = useState<string>('');
+
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsAddToGroupOpen(false);
+      }
+    };
+    if (isAddToGroupOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isAddToGroupOpen]);
 
   const selectedLayer = layers.find((l) => l.id === selectedLayerId);
   const isSelectedGroup = selectedLayer?.type === 'group';
+  const existingGroups = layers.filter((l) => l.type === 'group');
+  const isMultiSelected = selectedLayerIds.length > 1;
+
+  // Active target layers for group actions: either multi-selected or single active layer
+  const activeSelectedIds =
+    selectedLayerIds.length > 0
+      ? selectedLayerIds
+      : selectedLayerId
+      ? [selectedLayerId]
+      : [];
 
   const getLayerIcon = (layer: Layer) => {
     if (layer.type === 'group') {
@@ -112,6 +152,20 @@ export function LayersStackPanel() {
     setDraggedIdx(null);
   };
 
+  const handleCreateGroupWithActive = (name?: string) => {
+    createGroup(name || 'Group', activeSelectedIds);
+    setIsAddToGroupOpen(false);
+    setIsNamingNewGroup(false);
+    setNewGroupName('');
+  };
+
+  const handleAddActiveToGroup = (groupId: string) => {
+    addLayersToGroup(groupId, activeSelectedIds);
+    setIsAddToGroupOpen(false);
+  };
+
+  const isAllSelected = layers.length > 0 && selectedLayerIds.length === layers.length;
+
   return (
     <div
       onDragOver={(e) => {
@@ -130,11 +184,95 @@ export function LayersStackPanel() {
     >
       {/* Header with Layer Actions */}
       <div className="px-3 py-2 bg-[#090a0f]/60 border-b border-[#1e2130] flex items-center justify-between">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-          Scene Layers ({layers.length})
-        </span>
+        <div className="flex items-center gap-1.5">
+          {layers.length > 0 && (
+            <button
+              onClick={() => {
+                if (isAllSelected) {
+                  clearSelectedLayers();
+                } else {
+                  selectAllLayers();
+                }
+              }}
+              className="text-slate-400 hover:text-white p-0.5 rounded cursor-pointer"
+              title={isAllSelected ? 'Deselect all layers' : 'Select all layers'}
+            >
+              {isAllSelected ? (
+                <CheckSquare className="w-3.5 h-3.5 text-indigo-400" />
+              ) : (
+                <Square className="w-3.5 h-3.5" />
+              )}
+            </button>
+          )}
+
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            Scene Layers ({layers.length})
+          </span>
+        </div>
 
         <div className="flex items-center gap-1">
+          {/* Add to Existing Group Dropdown */}
+          <div className="relative" ref={dropdownRef}>
+            <button
+              onClick={() => setIsAddToGroupOpen((prev) => !prev)}
+              disabled={activeSelectedIds.length === 0}
+              title="Add selected layers to group"
+              className="p-1 text-slate-400 hover:text-indigo-400 disabled:opacity-30 rounded hover:bg-[#1e2130] text-xs cursor-pointer flex items-center gap-0.5"
+            >
+              <FolderInput className="w-3.5 h-3.5" />
+            </button>
+
+            {isAddToGroupOpen && (
+              <div className="absolute right-0 top-full mt-1 w-52 bg-[#121420] border border-[#2b2f44] rounded-xl shadow-2xl py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
+                <div className="px-3 py-1 text-[10px] font-semibold text-slate-400 uppercase tracking-wider border-b border-[#1e2130] flex items-center justify-between">
+                  <span>Add to Group</span>
+                  <span className="font-mono text-indigo-300">
+                    ({activeSelectedIds.length} sel)
+                  </span>
+                </div>
+
+                {/* Existing Groups List */}
+                <div className="max-h-40 overflow-y-auto py-1">
+                  {existingGroups.length > 0 ? (
+                    existingGroups.map((grp) => {
+                      const count = layers.filter((l) => l.parentId === grp.id).length;
+                      return (
+                        <button
+                          key={grp.id}
+                          onClick={() => handleAddActiveToGroup(grp.id)}
+                          className="w-full px-3 py-1.5 text-left text-slate-200 hover:bg-[#1e2236] flex items-center justify-between transition cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2 truncate">
+                            <Folder className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                            <span className="truncate font-medium">{grp.name}</span>
+                          </div>
+                          <span className="text-[10px] text-slate-400 font-mono shrink-0 ml-2">
+                            {count} {count === 1 ? 'layer' : 'layers'}
+                          </span>
+                        </button>
+                      );
+                    })
+                  ) : (
+                    <div className="px-3 py-2 text-[11px] text-slate-500 italic">
+                      No groups in scene yet
+                    </div>
+                  )}
+                </div>
+
+                {/* Create New Group Option */}
+                <div className="pt-1 mt-1 border-t border-[#1e2130]">
+                  <button
+                    onClick={() => handleCreateGroupWithActive()}
+                    className="w-full px-3 py-1.5 text-left text-indigo-300 hover:bg-indigo-600/20 flex items-center gap-2 transition cursor-pointer font-medium"
+                  >
+                    <FolderPlus className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                    <span>+ New Group with Selected</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Group / Ungroup Action */}
           {isSelectedGroup ? (
             <button
@@ -146,9 +284,9 @@ export function LayersStackPanel() {
             </button>
           ) : (
             <button
-              onClick={() => selectedLayerId && createGroup('Group', [selectedLayerId])}
-              disabled={!selectedLayerId}
-              title="Group selected layer"
+              onClick={() => handleCreateGroupWithActive()}
+              disabled={activeSelectedIds.length === 0}
+              title="Group selected layer(s)"
               className="p-1 text-slate-400 hover:text-amber-400 disabled:opacity-30 rounded hover:bg-[#1e2130] text-xs cursor-pointer"
             >
               <FolderPlus className="w-3.5 h-3.5" />
@@ -193,15 +331,79 @@ export function LayersStackPanel() {
           </button>
 
           <button
-            onClick={() => selectedLayerId && deleteLayer(selectedLayerId)}
-            disabled={!selectedLayerId}
-            title="Delete Layer"
+            onClick={() => {
+              if (selectedLayerIds.length > 1) {
+                deleteLayersBatch(selectedLayerIds);
+              } else if (selectedLayerId) {
+                deleteLayer(selectedLayerId);
+              }
+            }}
+            disabled={activeSelectedIds.length === 0}
+            title={
+              selectedLayerIds.length > 1
+                ? `Delete ${selectedLayerIds.length} Selected Layers`
+                : 'Delete Layer'
+            }
             className="p-1 text-slate-400 hover:text-red-400 disabled:opacity-30 disabled:hover:text-slate-400 rounded hover:bg-[#1e2130] text-xs cursor-pointer"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
+
+      {/* Multi-Selection Action Toolbar Banner */}
+      {isMultiSelected && (
+        <div className="bg-gradient-to-r from-indigo-950/90 via-[#161828] to-indigo-950/90 px-3 py-1.5 border-b border-indigo-500/30 flex items-center justify-between text-xs animate-in fade-in duration-100">
+          <div className="flex items-center gap-1.5 text-indigo-300 font-semibold text-[11px]">
+            <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
+            <span>{selectedLayerIds.length} layers selected</span>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => handleCreateGroupWithActive()}
+              className="px-2 py-0.5 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[10px] font-semibold flex items-center gap-1 transition cursor-pointer"
+              title="Create new group containing selected layers"
+            >
+              <FolderPlus className="w-3 h-3 text-amber-400" />
+              <span>New Group</span>
+            </button>
+
+            <button
+              onClick={() => setIsAddToGroupOpen(true)}
+              className="px-2 py-0.5 rounded bg-indigo-600/30 hover:bg-indigo-600/40 text-indigo-200 border border-indigo-500/40 text-[10px] font-semibold flex items-center gap-1 transition cursor-pointer"
+              title="Add selected layers to existing group"
+            >
+              <FolderInput className="w-3 h-3 text-indigo-300" />
+              <span>Add to Group ▾</span>
+            </button>
+
+            <button
+              onClick={() => removeLayersFromGroup(selectedLayerIds)}
+              className="p-1 rounded text-slate-400 hover:text-amber-300 transition cursor-pointer"
+              title="Ungroup selected layers"
+            >
+              <FolderMinus className="w-3 h-3 text-amber-400" />
+            </button>
+
+            <button
+              onClick={() => deleteLayersBatch(selectedLayerIds)}
+              className="p-1 rounded text-slate-400 hover:text-red-300 transition cursor-pointer"
+              title="Delete all selected layers"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+
+            <button
+              onClick={clearSelectedLayers}
+              className="p-1 rounded text-slate-400 hover:text-white transition cursor-pointer"
+              title="Deselect all"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Layers List */}
       <div className="flex-1 overflow-y-auto p-2 space-y-1">
@@ -211,7 +413,7 @@ export function LayersStackPanel() {
           </div>
         ) : (
           layers.map((layer, idx) => {
-            const isSelected = layer.id === selectedLayerId;
+            const isSelected = selectedLayerIds.includes(layer.id) || layer.id === selectedLayerId;
             const kfCount = countTotalKeyframes(layer);
             const isGroup = layer.type === 'group';
 
@@ -235,14 +437,22 @@ export function LayersStackPanel() {
                 onDragStart={(e) => handleDragStart(e, idx, layer)}
                 onDragOver={(e) => handleDragOver(e, idx)}
                 onDrop={(e) => handleDrop(e, idx)}
-                onClick={() => selectLayer(layer.id)}
+                onClick={(e) => {
+                  if (e.ctrlKey || e.metaKey) {
+                    selectLayer(layer.id, true);
+                  } else if (e.shiftKey) {
+                    selectLayer(layer.id, false, true);
+                  } else {
+                    selectLayer(layer.id);
+                  }
+                }}
                 className={`group flex items-center justify-between px-2 py-1.5 rounded-lg cursor-pointer border transition relative ${
                   isChild ? 'ml-4' : ''
                 } ${
                   isOverThis ? 'border-t-2 border-t-indigo-400' : ''
                 } ${
                   isSelected
-                    ? 'bg-indigo-600/20 border-indigo-500/60 text-white shadow-sm shadow-indigo-500/10'
+                    ? 'bg-indigo-600/25 border-indigo-500/70 text-white shadow-sm shadow-indigo-500/10'
                     : isGroup
                     ? 'bg-[#1e1b2e]/60 border-amber-500/20 hover:border-amber-500/40 text-amber-200'
                     : 'bg-[#171925]/70 border-transparent hover:bg-[#1e2130] text-slate-300'
@@ -251,13 +461,34 @@ export function LayersStackPanel() {
                 <div className="flex items-center gap-1.5 min-w-0 pr-1">
                   <GripVertical className="w-3 h-3 text-slate-600 group-hover:text-slate-400 shrink-0 cursor-grab" />
 
+                  {/* Multi-Selection Checkbox */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      selectLayer(layer.id, true);
+                    }}
+                    className={`p-0.5 rounded transition shrink-0 ${
+                      isSelected
+                        ? 'text-indigo-400'
+                        : 'text-slate-600 hover:text-slate-400 opacity-40 group-hover:opacity-100'
+                    }`}
+                    title={isSelected ? 'Deselect layer' : 'Add to selection (Ctrl+Click)'}
+                  >
+                    {isSelected ? (
+                      <CheckSquare className="w-3.5 h-3.5 text-indigo-400" />
+                    ) : (
+                      <Square className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+
                   {isGroup && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         toggleGroupExpand(layer.id);
                       }}
-                      className="p-0.5 text-slate-400 hover:text-white"
+                      className="p-0.5 text-slate-400 hover:text-white shrink-0"
                       title={layer.expanded !== false ? 'Collapse group' : 'Expand group'}
                     >
                       {layer.expanded !== false ? (

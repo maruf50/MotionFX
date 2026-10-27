@@ -1,28 +1,37 @@
 'use client';
 
 import React from 'react';
-import { Sliders, MousePointer } from 'lucide-react';
+import { Sliders, MousePointer, Layers } from 'lucide-react';
 import { useMotion } from '@/context/MotionContext';
 import { TransformSection } from './TransformSection';
 import { ParentHierarchySection } from './ParentHierarchySection';
 import { ShapeStyleSection } from './ShapeStyleSection';
 import { TextEffectSection } from './TextEffectSection';
+import { MultiSelectSection } from './MultiSelectSection';
 
 export function RightInspector() {
-  const { selectedLayer, updateLayer } = useMotion();
+  const { selectedLayer, selectedLayerIds, updateLayer } = useMotion();
+
+  const isMultiSelect = selectedLayerIds.length > 1;
 
   return (
     <aside className="w-80 bg-[#11131c] border-l border-[#1e2130] flex flex-col shrink-0 z-20 overflow-hidden">
       {/* Inspector Header */}
       <div className="px-4 py-2.5 border-b border-[#1e2130] flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Sliders className="w-3.5 h-3.5 text-indigo-400" />
+          {isMultiSelect ? (
+            <Layers className="w-3.5 h-3.5 text-indigo-400" />
+          ) : (
+            <Sliders className="w-3.5 h-3.5 text-indigo-400" />
+          )}
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-            Inspector
+            {isMultiSelect ? `Selection (${selectedLayerIds.length})` : 'Inspector'}
           </span>
         </div>
         <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-[#1e2130] text-slate-400">
-          {selectedLayer
+          {isMultiSelect
+            ? `${selectedLayerIds.length} ITEMS`
+            : selectedLayer
             ? selectedLayer.type === 'shape'
               ? selectedLayer.shapeType?.toUpperCase() || 'SHAPE'
               : selectedLayer.type.toUpperCase()
@@ -30,8 +39,12 @@ export function RightInspector() {
         </span>
       </div>
 
-      {/* Empty State */}
-      {!selectedLayer ? (
+      {/* Content */}
+      {isMultiSelect ? (
+        <div className="flex-1 overflow-y-auto p-3.5">
+          <MultiSelectSection />
+        </div>
+      ) : !selectedLayer ? (
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-slate-500">
           <MousePointer className="w-8 h-8 mb-2 text-[#2b2f44]" />
           <p className="text-xs">

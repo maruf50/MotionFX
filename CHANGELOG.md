@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.7.0] - 2026-10-27
+
+### Added
+- **Multi-Layer Selection System**:
+  - Select multiple layers simultaneously via:
+    - **Interactive checkboxes** (`[✓]` / `[ ]`) directly on each layer row in the Scene Layers list.
+    - **`Ctrl`/`Cmd` + Click** to toggle individual layers into or out of selection.
+    - **`Shift` + Click** to select a continuous range of layers between two items.
+    - **Select All / Deselect All** toggle button (`CheckSquare`) in the panel header.
+  - Active multi-selection highlighting with glowing selection badges across all selected items.
+- **Add Multiple Layers to Existing or New Groups**:
+  - **New Group from Selected**: Group multiple selected layers into a new organizational group with one click (`FolderPlus`).
+  - **Add to Existing Group (`FolderInput`)**:
+    - Dropdown menu in the Layers Stack and the Right Inspector displaying all existing groups in the scene with their current member counts.
+    - Seamlessly moves all selected layers into the chosen group while maintaining exact world space positioning and keyframe coordinates using 2D affine parent transforms.
+    - Automatically expands the target group so newly inserted layers are immediately visible.
+  - **Multi-Selection Action Banner**:
+    - Appears when multiple layers are selected, offering fast access to **New Group**, **Add to Group ▾**, **Ungroup**, **Batch Delete**, and **Deselect All**.
+- **Dedicated Multi-Select Inspector (`MultiSelectSection`)**:
+  - When multiple layers are selected, the Right Inspector switches to a focused multi-selection dashboard.
+  - Displays interactive chip badges for each selected layer with quick removal (`x`).
+  - Group management panel with custom group naming input and existing group assignment selector.
+  - One-click batch delete for all selected layers.
+
+---
+
 ## [1.6.0] - 2026-10-27
 
 ### Added

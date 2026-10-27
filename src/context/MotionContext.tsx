@@ -34,6 +34,7 @@ import { renderSceneAtTime } from '@/modules/renderers/engine';
 interface MotionContextType {
   layers: Layer[];
   selectedLayerId: string | null;
+  selectedLayerIds: string[];
   selectedLayer: Layer | null;
   selectedKeyframe: SelectedKeyframeRef | null;
   currentTime: number;
@@ -61,16 +62,22 @@ interface MotionContextType {
   ) => void;
   addText: (textEffect?: TextEffect) => void;
   addImage: (src: string, name?: string, w?: number, h?: number) => void;
-  // Layer management
-  selectLayer: (id: string | null) => void;
+  // Layer management & Multi-selection
+  selectLayer: (id: string | null, isMulti?: boolean, isRange?: boolean) => void;
+  selectMultipleLayers: (ids: string[]) => void;
+  selectAllLayers: () => void;
+  clearSelectedLayers: () => void;
   updateLayer: (id: string, updates: Partial<Layer>, skipSnapshot?: boolean) => void;
   deleteLayer: (id: string) => void;
+  deleteLayersBatch: (ids: string[]) => void;
   duplicateLayer: (id: string) => void;
   reorderLayer: (id: string, direction: 'up' | 'down') => void;
   toggleLayerVisibility: (id: string) => void;
   // Parenting & Grouping hierarchy
   setLayerParent: (layerId: string, parentId: string | null) => void;
   createGroup: (name?: string, layerIds?: string[]) => string;
+  addLayersToGroup: (groupId: string, layerIds?: string[]) => void;
+  removeLayersFromGroup: (layerIds?: string[]) => void;
   ungroupLayer: (groupId: string) => void;
   toggleGroupExpand: (groupId: string) => void;
   // Drag-and-drop layer reordering
@@ -133,6 +140,7 @@ const MAX_HISTORY_STEPS = 50;
 interface HistorySnapshot {
   layers: Layer[];
   selectedLayerId: string | null;
+  selectedLayerIds?: string[];
   duration?: number;
   canvasBg?: string;
   canvasResolution?: CanvasResolution;
@@ -143,6 +151,7 @@ const PALETTE = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#06b6d4', '#8b5cf6
 export function MotionProvider({ children }: { children: React.ReactNode }) {
   const [layers, setLayers] = useState<Layer[]>([]);
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
+  const [selectedLayerIds, setSelectedLayerIdsState] = useState<string[]>([]);
   const [selectedKeyframe, setSelectedKeyframe] = useState<SelectedKeyframeRef | null>(null);
   const [currentTime, setCurrentTimeState] = useState<number>(0);
   const [duration, setDurationState] = useState<number>(5.0);
@@ -171,6 +180,8 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
   layersRef.current = layers;
   const selectedLayerIdRef = useRef<string | null>(selectedLayerId);
   selectedLayerIdRef.current = selectedLayerId;
+  const selectedLayerIdsRef = useRef<string[]>(selectedLayerIds);
+  selectedLayerIdsRef.current = selectedLayerIds;
   const durationRef = useRef<number>(duration);
   durationRef.current = duration;
   const canvasBgRef = useRef<string>(canvasBg);
@@ -195,6 +206,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
     const snapshot: HistorySnapshot = {
       layers: JSON.parse(JSON.stringify(layersRef.current)),
       selectedLayerId: selectedLayerIdRef.current,
+      selectedLayerIds: [...selectedLayerIdsRef.current],
       duration: durationRef.current,
       canvasBg: canvasBgRef.current,
       canvasResolution: { ...canvasResolutionRef.current },
@@ -223,6 +235,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
       const currentSnapshot: HistorySnapshot = {
         layers: JSON.parse(JSON.stringify(layersRef.current)),
         selectedLayerId: selectedLayerIdRef.current,
+        selectedLayerIds: [...selectedLayerIdsRef.current],
         duration: durationRef.current,
         canvasBg: canvasBgRef.current,
         canvasResolution: { ...canvasResolutionRef.current },
@@ -238,6 +251,13 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
 
       setLayers(targetSnapshot.layers);
       setSelectedLayerId(targetSnapshot.selectedLayerId);
+      if (targetSnapshot.selectedLayerIds) {
+        setSelectedLayerIdsState(targetSnapshot.selectedLayerIds);
+      } else {
+        setSelectedLayerIdsState(
+          targetSnapshot.selectedLayerId ? [targetSnapshot.selectedLayerId] : []
+        );
+      }
       if (targetSnapshot.duration !== undefined) setDurationState(targetSnapshot.duration);
       if (targetSnapshot.canvasBg !== undefined) setCanvasBg(targetSnapshot.canvasBg);
       if (targetSnapshot.canvasResolution) {
@@ -264,6 +284,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
       const currentSnapshot: HistorySnapshot = {
         layers: JSON.parse(JSON.stringify(layersRef.current)),
         selectedLayerId: selectedLayerIdRef.current,
+        selectedLayerIds: [...selectedLayerIdsRef.current],
         duration: durationRef.current,
         canvasBg: canvasBgRef.current,
         canvasResolution: { ...canvasResolutionRef.current },
@@ -279,6 +300,13 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
 
       setLayers(targetSnapshot.layers);
       setSelectedLayerId(targetSnapshot.selectedLayerId);
+      if (targetSnapshot.selectedLayerIds) {
+        setSelectedLayerIdsState(targetSnapshot.selectedLayerIds);
+      } else {
+        setSelectedLayerIdsState(
+          targetSnapshot.selectedLayerId ? [targetSnapshot.selectedLayerId] : []
+        );
+      }
       if (targetSnapshot.duration !== undefined) setDurationState(targetSnapshot.duration);
       if (targetSnapshot.canvasBg !== undefined) setCanvasBg(targetSnapshot.canvasBg);
       if (targetSnapshot.canvasResolution) {
@@ -663,8 +691,66 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
   );
 
   // Layer Update & Management
-  const selectLayer = useCallback((id: string | null) => {
-    setSelectedLayerId(id);
+  const selectLayer = useCallback(
+    (id: string | null, isMulti?: boolean, isRange?: boolean) => {
+      if (!id) {
+        setSelectedLayerId(null);
+        setSelectedLayerIdsState([]);
+        setSelectedKeyframe(null);
+        return;
+      }
+
+      if (isMulti) {
+        setSelectedLayerIdsState((prev) => {
+          const exists = prev.includes(id);
+          const next = exists ? prev.filter((x) => x !== id) : [id, ...prev];
+          setSelectedLayerId(next[0] || null);
+          return next;
+        });
+        setSelectedKeyframe(null);
+        return;
+      }
+
+      if (isRange && selectedLayerIdsRef.current.length > 0) {
+        const allLayers = layersRef.current;
+        const lastId = selectedLayerIdsRef.current[0];
+        const idx1 = allLayers.findIndex((l) => l.id === lastId);
+        const idx2 = allLayers.findIndex((l) => l.id === id);
+
+        if (idx1 !== -1 && idx2 !== -1) {
+          const start = Math.min(idx1, idx2);
+          const end = Math.max(idx1, idx2);
+          const rangeIds = allLayers.slice(start, end + 1).map((l) => l.id);
+          setSelectedLayerIdsState(rangeIds);
+          setSelectedLayerId(id);
+          setSelectedKeyframe(null);
+          return;
+        }
+      }
+
+      setSelectedLayerId(id);
+      setSelectedLayerIdsState([id]);
+      setSelectedKeyframe(null);
+    },
+    []
+  );
+
+  const selectMultipleLayers = useCallback((ids: string[]) => {
+    setSelectedLayerIdsState(ids);
+    setSelectedLayerId(ids[0] || null);
+    setSelectedKeyframe(null);
+  }, []);
+
+  const selectAllLayers = useCallback(() => {
+    const allIds = layersRef.current.map((l) => l.id);
+    setSelectedLayerIdsState(allIds);
+    setSelectedLayerId(allIds[0] || null);
+    setSelectedKeyframe(null);
+  }, []);
+
+  const clearSelectedLayers = useCallback(() => {
+    setSelectedLayerIdsState([]);
+    setSelectedLayerId(null);
     setSelectedKeyframe(null);
   }, []);
 
@@ -684,9 +770,30 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
       setLayers((prev) => {
         const next = prev.filter((l) => l.id !== id);
         if (selectedLayerIdRef.current === id) {
-          setSelectedLayerId(next[0]?.id || null);
+          const newId = next[0]?.id || null;
+          setSelectedLayerId(newId);
+          setSelectedLayerIdsState(newId ? [newId] : []);
           setSelectedKeyframe(null);
+        } else {
+          setSelectedLayerIdsState((prevIds) => prevIds.filter((x) => x !== id));
         }
+        return next;
+      });
+    },
+    [pushUndo]
+  );
+
+  const deleteLayersBatch = useCallback(
+    (ids: string[]) => {
+      if (ids.length === 0) return;
+      pushUndo(true);
+      setLayers((prev) => {
+        const next = prev.filter((l) => !ids.includes(l.id));
+        const remaining = selectedLayerIdsRef.current.filter((x) => !ids.includes(x));
+        const newId = remaining[0] || next[0]?.id || null;
+        setSelectedLayerId(newId);
+        setSelectedLayerIdsState(newId ? [newId] : []);
+        setSelectedKeyframe(null);
         return next;
       });
     },
@@ -814,14 +921,23 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
   );
 
   const createGroup = useCallback(
-    (name: string = 'Group', layerIds: string[] = []): string => {
+    (name: string = 'Group', layerIds?: string[]): string => {
       pushUndo(true);
       const groupId = uid('grp');
       let cx = 400;
       let cy = 225;
 
-      if (layerIds.length > 0) {
-        const members = layersRef.current.filter((l) => layerIds.includes(l.id));
+      const ids =
+        layerIds && layerIds.length > 0
+          ? layerIds
+          : selectedLayerIdsRef.current.length > 0
+          ? selectedLayerIdsRef.current
+          : selectedLayerIdRef.current
+          ? [selectedLayerIdRef.current]
+          : [];
+
+      if (ids.length > 0) {
+        const members = layersRef.current.filter((l) => ids.includes(l.id));
         if (members.length > 0) {
           let sumX = 0;
           let sumY = 0;
@@ -863,7 +979,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
 
       setLayers((prev) => {
         const updated = prev.map((l) => {
-          if (layerIds.includes(l.id)) {
+          if (ids.includes(l.id)) {
             const curWorld = getLayerWorldTransformAtTime(l, prev, currentTime);
             return {
               ...l,
@@ -882,7 +998,127 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
       });
 
       setSelectedLayerId(groupId);
+      setSelectedLayerIdsState([groupId]);
       return groupId;
+    },
+    [currentTime, pushUndo]
+  );
+
+  const addLayersToGroup = useCallback(
+    (groupId: string, layerIds?: string[]) => {
+      const ids =
+        layerIds && layerIds.length > 0
+          ? layerIds
+          : selectedLayerIdsRef.current.length > 0
+          ? selectedLayerIdsRef.current
+          : selectedLayerIdRef.current
+          ? [selectedLayerIdRef.current]
+          : [];
+
+      if (ids.length === 0) return;
+
+      const group = layersRef.current.find((l) => l.id === groupId && l.type === 'group');
+      if (!group) return;
+
+      pushUndo(true);
+
+      setLayers((prev) => {
+        const targetGroup = prev.find((l) => l.id === groupId && l.type === 'group');
+        if (!targetGroup) return prev;
+
+        const groupWorldTr = getLayerWorldTransformAtTime(targetGroup, prev, currentTime);
+
+        const updated = prev.map((l) => {
+          // Do not group the group into itself, or if not in ids, or if circular loop
+          if (!ids.includes(l.id) || l.id === groupId || isDescendantOf(groupId, l.id, prev)) {
+            return l;
+          }
+
+          if (l.parentId === groupId) return l;
+
+          const childWorldTr = getLayerWorldTransformAtTime(l, prev, currentTime);
+
+          const dx = childWorldTr.x - groupWorldTr.x;
+          const dy = childWorldTr.y - groupWorldTr.y;
+          const rad = (-groupWorldTr.rotation * Math.PI) / 180;
+          const cos = Math.cos(rad);
+          const sin = Math.sin(rad);
+
+          const localX = Math.round((dx * cos - dy * sin) / Math.max(0.001, groupWorldTr.scaleX));
+          const localY = Math.round((dx * sin + dy * cos) / Math.max(0.001, groupWorldTr.scaleY));
+          const localScaleX =
+            Math.round((childWorldTr.scaleX / Math.max(0.001, groupWorldTr.scaleX)) * 100) / 100;
+          const localScaleY =
+            Math.round((childWorldTr.scaleY / Math.max(0.001, groupWorldTr.scaleY)) * 100) / 100;
+          const localRotation = Math.round(childWorldTr.rotation - groupWorldTr.rotation);
+          const localOpacity =
+            groupWorldTr.opacity > 0
+              ? Math.round((childWorldTr.opacity / groupWorldTr.opacity) * 100) / 100
+              : 1;
+
+          return {
+            ...l,
+            parentId: groupId,
+            groupId: groupId,
+            keyframes: {
+              ...l.keyframes,
+              x: [{ time: 0, value: localX }],
+              y: [{ time: 0, value: localY }],
+              scaleX: [{ time: 0, value: localScaleX }],
+              scaleY: [{ time: 0, value: localScaleY }],
+              rotation: [{ time: 0, value: localRotation }],
+              opacity: [{ time: 0, value: localOpacity }],
+            },
+          };
+        });
+
+        // Ensure group is expanded
+        return updated.map((l) => (l.id === groupId ? { ...l, expanded: true } : l));
+      });
+
+      setSelectedLayerId(groupId);
+      setSelectedLayerIdsState([groupId]);
+    },
+    [currentTime, pushUndo]
+  );
+
+  const removeLayersFromGroup = useCallback(
+    (layerIds?: string[]) => {
+      const ids =
+        layerIds && layerIds.length > 0
+          ? layerIds
+          : selectedLayerIdsRef.current.length > 0
+          ? selectedLayerIdsRef.current
+          : selectedLayerIdRef.current
+          ? [selectedLayerIdRef.current]
+          : [];
+
+      if (ids.length === 0) return;
+
+      pushUndo(true);
+
+      setLayers((prev) => {
+        return prev.map((l) => {
+          if (!ids.includes(l.id) || !l.parentId) return l;
+
+          const childWorldTr = getLayerWorldTransformAtTime(l, prev, currentTime);
+
+          return {
+            ...l,
+            parentId: null,
+            groupId: null,
+            keyframes: {
+              ...l.keyframes,
+              x: [{ time: 0, value: Math.round(childWorldTr.x) }],
+              y: [{ time: 0, value: Math.round(childWorldTr.y) }],
+              scaleX: [{ time: 0, value: Math.round(childWorldTr.scaleX * 100) / 100 }],
+              scaleY: [{ time: 0, value: Math.round(childWorldTr.scaleY * 100) / 100 }],
+              rotation: [{ time: 0, value: Math.round(childWorldTr.rotation) }],
+              opacity: [{ time: 0, value: Math.round(childWorldTr.opacity * 100) / 100 }],
+            },
+          };
+        });
+      });
     },
     [currentTime, pushUndo]
   );
@@ -1329,6 +1565,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
       value={{
         layers,
         selectedLayerId,
+        selectedLayerIds,
         selectedLayer,
         selectedKeyframe,
         currentTime,
@@ -1348,13 +1585,19 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         addText,
         addImage,
         selectLayer,
+        selectMultipleLayers,
+        selectAllLayers,
+        clearSelectedLayers,
         updateLayer,
         deleteLayer,
+        deleteLayersBatch,
         duplicateLayer,
         reorderLayer,
         toggleLayerVisibility,
         setLayerParent,
         createGroup,
+        addLayersToGroup,
+        removeLayersFromGroup,
         ungroupLayer,
         toggleGroupExpand,
         reorderLayersBatch,
