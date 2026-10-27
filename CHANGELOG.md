@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.4.0] - 2026-10-27
+
+### Added
+- **50-Step Undo / Redo Mechanism**:
+  - Full bidirectional history stack preserving up to 50 granular mutation snapshots (`MAX_HISTORY_STEPS = 50`).
+  - Supports undoing and redoing across all scene actions:
+    - Layer creations (Shapes, Custom Vector Shapes, Kinetic Text, PNG Assets).
+    - Layer deletions, duplicates, and reordering.
+    - Transform adjustments and property updates.
+    - Keyframe actions (inserting, toggling, moving keyframe times, and deleting keyframes).
+    - Scene clearance and template switching.
+  - Smart transaction snapshotting with drag-start capture and mutation coalescing to prevent rapid dragging or slider adjustments from exhausting the 50-step buffer.
+- **Top Header Undo / Redo Controls**:
+  - Dedicated **Undo** and **Redo** button group in the top studio bar with `Undo2` and `Redo2` icons.
+  - Active step count badge indicating current history depth (e.g. `1` up to `50` steps).
+  - Contextual tooltips displaying hotkeys and current recorded step counts.
+- **Global Keyboard Shortcuts**:
+  - `Ctrl+Z` / `Cmd+Z`: Undo previous step.
+  - `Ctrl+Y` / `Ctrl+Shift+Z` / `Cmd+Shift+Z`: Redo step.
+  - Native protection to ignore shortcuts when typing inside text inputs, textareas, or selects.
+
+---
+
 ## [1.3.1] - 2026-10-27
 
 ### Fixed

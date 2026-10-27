@@ -14,6 +14,7 @@ export function CanvasStage() {
     currentTime,
     setAnimPropValue,
     duration,
+    recordSnapshot,
   } = useMotion();
 
   const isDraggingRef = useRef<boolean>(false);
@@ -55,6 +56,7 @@ export function CanvasStage() {
         selectLayer(layer.id);
         isDraggingRef.current = true;
         dragOffsetRef.current = { x: pt.x - tr.x, y: pt.y - tr.y };
+        recordSnapshot();
         return;
       }
     }
@@ -80,8 +82,8 @@ export function CanvasStage() {
       const newX = Math.round(pt.x - dragOffsetRef.current.x);
       const newY = Math.round(pt.y - dragOffsetRef.current.y);
 
-      setAnimPropValue(selectedLayerId, 'x', newX);
-      setAnimPropValue(selectedLayerId, 'y', newY);
+      setAnimPropValue(selectedLayerId, 'x', newX, true);
+      setAnimPropValue(selectedLayerId, 'y', newY, true);
     };
 
     const handleGlobalMouseUp = () => {

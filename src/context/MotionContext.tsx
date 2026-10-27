@@ -55,13 +55,18 @@ interface MotionContextType {
   addImage: (src: string, name?: string, w?: number, h?: number) => void;
   // Layer management
   selectLayer: (id: string | null) => void;
-  updateLayer: (id: string, updates: Partial<Layer>) => void;
+  updateLayer: (id: string, updates: Partial<Layer>, skipSnapshot?: boolean) => void;
   deleteLayer: (id: string) => void;
   duplicateLayer: (id: string) => void;
   reorderLayer: (id: string, direction: 'up' | 'down') => void;
   toggleLayerVisibility: (id: string) => void;
   // Keyframes
-  setAnimPropValue: (layerId: string, prop: AnimatableProp, value: number) => void;
+  setAnimPropValue: (
+    layerId: string,
+    prop: AnimatableProp,
+    value: number,
+    skipSnapshot?: boolean
+  ) => void;
   toggleKeyframe: (layerId: string, prop: AnimatableProp) => void;
   keyAllTransformProps: (layerId: string) => void;
   selectKeyframe: (ref: SelectedKeyframeRef | null) => void;
@@ -70,7 +75,8 @@ interface MotionContextType {
     layerId: string,
     prop: AnimatableProp,
     index: number,
-    newTime: number
+    newTime: number,
+    skipSnapshot?: boolean
   ) => void;
   // Transport & playback
   setCurrentTime: (t: number) => void;
@@ -88,11 +94,27 @@ interface MotionContextType {
   // Export
   startExport: () => void;
   cancelExport: () => void;
+  // 50-step Undo / Redo Mechanism
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  historyStepCount: number;
+  recordSnapshot: () => void;
   // Manual trigger for canvas re-render
   requestRender: () => void;
 }
 
 const MotionContext = createContext<MotionContextType | null>(null);
+
+const MAX_HISTORY_STEPS = 50;
+
+interface HistorySnapshot {
+  layers: Layer[];
+  selectedLayerId: string | null;
+  duration?: number;
+  canvasBg?: string;
+}
 
 const PALETTE = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#06b6d4', '#8b5cf6', '#f43f5e'];
 
@@ -113,10 +135,116 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
     totalSec: 0,
   });
 
+  // 50-step Undo / Redo History Stacks
+  const [undoStack, setUndoStack] = useState<HistorySnapshot[]>([]);
+  const [redoStack, setRedoStack] = useState<HistorySnapshot[]>([]);
+
+  // Refs for tracking synchronous state without stale closures
+  const layersRef = useRef<Layer[]>(layers);
+  layersRef.current = layers;
+  const selectedLayerIdRef = useRef<string | null>(selectedLayerId);
+  selectedLayerIdRef.current = selectedLayerId;
+  const durationRef = useRef<number>(duration);
+  durationRef.current = duration;
+  const canvasBgRef = useRef<string>(canvasBg);
+  canvasBgRef.current = canvasBg;
+  const lastSnapshotTimeRef = useRef<number>(0);
+
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const exporterRef = useRef<VideoExporter | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(0);
+
+  // Push snapshot to undo stack
+  const pushUndo = useCallback((force: boolean = true) => {
+    const now = Date.now();
+    if (!force && now - lastSnapshotTimeRef.current < 400) {
+      return;
+    }
+    lastSnapshotTimeRef.current = now;
+
+    const snapshot: HistorySnapshot = {
+      layers: JSON.parse(JSON.stringify(layersRef.current)),
+      selectedLayerId: selectedLayerIdRef.current,
+      duration: durationRef.current,
+      canvasBg: canvasBgRef.current,
+    };
+
+    setUndoStack((prev) => {
+      const next = [...prev, snapshot];
+      if (next.length > MAX_HISTORY_STEPS) {
+        return next.slice(next.length - MAX_HISTORY_STEPS);
+      }
+      return next;
+    });
+    setRedoStack([]);
+  }, []);
+
+  const recordSnapshot = useCallback(() => {
+    pushUndo(true);
+  }, [pushUndo]);
+
+  const undo = useCallback(() => {
+    setUndoStack((prevUndo) => {
+      if (prevUndo.length === 0) return prevUndo;
+      const nextUndo = [...prevUndo];
+      const targetSnapshot = nextUndo.pop()!;
+
+      const currentSnapshot: HistorySnapshot = {
+        layers: JSON.parse(JSON.stringify(layersRef.current)),
+        selectedLayerId: selectedLayerIdRef.current,
+        duration: durationRef.current,
+        canvasBg: canvasBgRef.current,
+      };
+
+      setRedoStack((prevRedo) => {
+        const next = [...prevRedo, currentSnapshot];
+        if (next.length > MAX_HISTORY_STEPS) {
+          return next.slice(next.length - MAX_HISTORY_STEPS);
+        }
+        return next;
+      });
+
+      setLayers(targetSnapshot.layers);
+      setSelectedLayerId(targetSnapshot.selectedLayerId);
+      if (targetSnapshot.duration !== undefined) setDurationState(targetSnapshot.duration);
+      if (targetSnapshot.canvasBg !== undefined) setCanvasBg(targetSnapshot.canvasBg);
+      setSelectedKeyframe(null);
+
+      return nextUndo;
+    });
+  }, []);
+
+  const redo = useCallback(() => {
+    setRedoStack((prevRedo) => {
+      if (prevRedo.length === 0) return prevRedo;
+      const nextRedo = [...prevRedo];
+      const targetSnapshot = nextRedo.pop()!;
+
+      const currentSnapshot: HistorySnapshot = {
+        layers: JSON.parse(JSON.stringify(layersRef.current)),
+        selectedLayerId: selectedLayerIdRef.current,
+        duration: durationRef.current,
+        canvasBg: canvasBgRef.current,
+      };
+
+      setUndoStack((prevUndo) => {
+        const next = [...prevUndo, currentSnapshot];
+        if (next.length > MAX_HISTORY_STEPS) {
+          return next.slice(next.length - MAX_HISTORY_STEPS);
+        }
+        return next;
+      });
+
+      setLayers(targetSnapshot.layers);
+      setSelectedLayerId(targetSnapshot.selectedLayerId);
+      if (targetSnapshot.duration !== undefined) setDurationState(targetSnapshot.duration);
+      if (targetSnapshot.canvasBg !== undefined) setCanvasBg(targetSnapshot.canvasBg);
+      setSelectedKeyframe(null);
+
+      return nextRedo;
+    });
+  }, []);
 
   // Selected layer derived
   const selectedLayer = useMemo(() => {
@@ -233,6 +361,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
   // Layer Creation Functions
   const addShape = useCallback(
     (shapeType: ShapeType) => {
+      pushUndo(true);
       const offset = (layers.length % 5) * 20;
       const color = PALETTE[layers.length % PALETTE.length];
       const newLayer: Layer = {
@@ -276,7 +405,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
       setLayers((prev) => [newLayer, ...prev]);
       setSelectedLayerId(newLayer.id);
     },
-    [layers.length]
+    [layers.length, pushUndo]
   );
 
   const addCustomShape = useCallback(
@@ -288,6 +417,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
       fill: string = '#6366f1',
       stroke: string = '#ffffff'
     ) => {
+      pushUndo(true);
       const offset = (layers.length % 5) * 20;
       const newLayer: Layer = {
         id: uid('custom_shape'),
@@ -330,11 +460,12 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
       setLayers((prev) => [newLayer, ...prev]);
       setSelectedLayerId(newLayer.id);
     },
-    [layers.length]
+    [layers.length, pushUndo]
   );
 
   const addText = useCallback(
     (textEffect: TextEffect = 'cascade') => {
+      pushUndo(true);
       const newLayer: Layer = {
         id: uid('text'),
         name: `Kinetic Text ${layers.length + 1}`,
@@ -372,11 +503,12 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
       setLayers((prev) => [newLayer, ...prev]);
       setSelectedLayerId(newLayer.id);
     },
-    [layers.length]
+    [layers.length, pushUndo]
   );
 
   const addImage = useCallback(
     (src: string, name: string = 'PNG Asset', w = 150, h = 150) => {
+      pushUndo(true);
       const newLayer: Layer = {
         id: uid('img'),
         name,
@@ -420,7 +552,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
       setLayers((prev) => [newLayer, ...prev]);
       setSelectedLayerId(newLayer.id);
     },
-    []
+    [pushUndo]
   );
 
   // Layer Update & Management
@@ -429,67 +561,90 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
     setSelectedKeyframe(null);
   }, []);
 
-  const updateLayer = useCallback((id: string, updates: Partial<Layer>) => {
-    setLayers((prev) => prev.map((l) => (l.id === id ? { ...l, ...updates } : l)));
-  }, []);
+  const updateLayer = useCallback(
+    (id: string, updates: Partial<Layer>, skipSnapshot: boolean = false) => {
+      if (!skipSnapshot) {
+        pushUndo(false);
+      }
+      setLayers((prev) => prev.map((l) => (l.id === id ? { ...l, ...updates } : l)));
+    },
+    [pushUndo]
+  );
 
   const deleteLayer = useCallback(
     (id: string) => {
+      pushUndo(true);
       setLayers((prev) => {
         const next = prev.filter((l) => l.id !== id);
-        if (selectedLayerId === id) {
+        if (selectedLayerIdRef.current === id) {
           setSelectedLayerId(next[0]?.id || null);
           setSelectedKeyframe(null);
         }
         return next;
       });
     },
-    [selectedLayerId]
+    [pushUndo]
   );
 
-  const duplicateLayer = useCallback((id: string) => {
-    setLayers((prev) => {
-      const target = prev.find((l) => l.id === id);
-      if (!target) return prev;
-      const clone: Layer = JSON.parse(JSON.stringify(target));
-      clone.id = uid(target.type);
-      clone.name = `${target.name} Copy`;
-      clone.keyframes.x.forEach((k) => (k.value += 20));
-      clone.keyframes.y.forEach((k) => (k.value += 20));
-      return [clone, ...prev];
-    });
-  }, []);
+  const duplicateLayer = useCallback(
+    (id: string) => {
+      pushUndo(true);
+      setLayers((prev) => {
+        const target = prev.find((l) => l.id === id);
+        if (!target) return prev;
+        const clone: Layer = JSON.parse(JSON.stringify(target));
+        clone.id = uid(target.type);
+        clone.name = `${target.name} Copy`;
+        clone.keyframes.x.forEach((k) => (k.value += 20));
+        clone.keyframes.y.forEach((k) => (k.value += 20));
+        return [clone, ...prev];
+      });
+    },
+    [pushUndo]
+  );
 
-  const reorderLayer = useCallback((id: string, direction: 'up' | 'down') => {
-    setLayers((prev) => {
-      const idx = prev.findIndex((l) => l.id === id);
-      if (idx === -1) return prev;
-      const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
-      if (targetIdx < 0 || targetIdx >= prev.length) return prev;
+  const reorderLayer = useCallback(
+    (id: string, direction: 'up' | 'down') => {
+      pushUndo(true);
+      setLayers((prev) => {
+        const idx = prev.findIndex((l) => l.id === id);
+        if (idx === -1) return prev;
+        const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+        if (targetIdx < 0 || targetIdx >= prev.length) return prev;
 
-      const updated = [...prev];
-      const item = updated.splice(idx, 1)[0];
-      updated.splice(targetIdx, 0, item);
-      return updated;
-    });
-  }, []);
+        const updated = [...prev];
+        const item = updated.splice(idx, 1)[0];
+        updated.splice(targetIdx, 0, item);
+        return updated;
+      });
+    },
+    [pushUndo]
+  );
 
-  const toggleLayerVisibility = useCallback((id: string) => {
-    setLayers((prev) => prev.map((l) => (l.id === id ? { ...l, visible: !l.visible } : l)));
-  }, []);
+  const toggleLayerVisibility = useCallback(
+    (id: string) => {
+      pushUndo(true);
+      setLayers((prev) => prev.map((l) => (l.id === id ? { ...l, visible: !l.visible } : l)));
+    },
+    [pushUndo]
+  );
 
   // Keyframe Actions
   const setAnimPropValue = useCallback(
-    (layerId: string, prop: AnimatableProp, value: number) => {
+    (layerId: string, prop: AnimatableProp, value: number, skipSnapshot: boolean = false) => {
+      if (!skipSnapshot) {
+        pushUndo(false);
+      }
       setLayers((prev) =>
         prev.map((l) => (l.id === layerId ? setOrUpdateKeyframe(l, prop, currentTime, value) : l))
       );
     },
-    [currentTime]
+    [currentTime, pushUndo]
   );
 
   const toggleKeyframe = useCallback(
     (layerId: string, prop: AnimatableProp) => {
+      pushUndo(true);
       setLayers((prev) =>
         prev.map((layer) => {
           if (layer.id !== layerId) return layer;
@@ -504,11 +659,12 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         })
       );
     },
-    [currentTime]
+    [currentTime, pushUndo]
   );
 
   const keyAllTransformProps = useCallback(
     (layerId: string) => {
+      pushUndo(true);
       setLayers((prev) =>
         prev.map((layer) => {
           if (layer.id !== layerId) return layer;
@@ -523,7 +679,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         })
       );
     },
-    [currentTime]
+    [currentTime, pushUndo]
   );
 
   const selectKeyframe = useCallback((ref: SelectedKeyframeRef | null) => {
@@ -532,6 +688,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
 
   const deleteSelectedKeyframe = useCallback(() => {
     if (!selectedKeyframe) return;
+    pushUndo(true);
     const { layerId, prop, index } = selectedKeyframe;
     setLayers((prev) =>
       prev.map((l) => {
@@ -540,10 +697,19 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
       })
     );
     setSelectedKeyframe(null);
-  }, [selectedKeyframe]);
+  }, [selectedKeyframe, pushUndo]);
 
   const moveKeyframeTime = useCallback(
-    (layerId: string, prop: AnimatableProp, index: number, newTime: number) => {
+    (
+      layerId: string,
+      prop: AnimatableProp,
+      index: number,
+      newTime: number,
+      skipSnapshot: boolean = false
+    ) => {
+      if (!skipSnapshot) {
+        pushUndo(false);
+      }
       const rounded = Math.round(newTime * 20) / 20;
       setLayers((prev) =>
         prev.map((layer) => {
@@ -562,12 +728,13 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         })
       );
     },
-    []
+    [pushUndo]
   );
 
   // Template Loading
   const loadTemplate = useCallback(
     (templateId: string) => {
+      pushUndo(true);
       const t = TEMPLATES.find((item) => item.id === templateId) || TEMPLATES[0];
       pausePlay();
       setDurationState(t.duration);
@@ -578,16 +745,17 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
       setSelectedKeyframe(null);
       setCurrentTimeState(0);
     },
-    [pausePlay]
+    [pausePlay, pushUndo]
   );
 
   const clearScene = useCallback(() => {
+    pushUndo(true);
     pausePlay();
     setLayers([]);
     setSelectedLayerId(null);
     setSelectedKeyframe(null);
     setCurrentTimeState(0);
-  }, [pausePlay]);
+  }, [pausePlay, pushUndo]);
 
   // Video Export
   const startExport = useCallback(async () => {
@@ -802,6 +970,12 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         clearScene,
         startExport,
         cancelExport,
+        undo,
+        redo,
+        canUndo: undoStack.length > 0,
+        canRedo: redoStack.length > 0,
+        historyStepCount: undoStack.length,
+        recordSnapshot,
         requestRender,
       }}
     >

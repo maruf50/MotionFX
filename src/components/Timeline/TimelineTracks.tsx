@@ -21,6 +21,7 @@ export function TimelineTracks() {
     setCurrentTime,
     moveKeyframeTime,
     pausePlay,
+    recordSnapshot,
   } = useMotion();
 
   const [draggingKf, setDraggingKf] = useState<DraggingKeyframeState | null>(null);
@@ -35,6 +36,7 @@ export function TimelineTracks() {
   ) => {
     e.stopPropagation();
     pausePlay();
+    recordSnapshot();
     selectLayer(layerId);
     selectKeyframe({ layerId, prop, index });
     setDraggingKf({ layerId, prop, index });
@@ -49,7 +51,7 @@ export function TimelineTracks() {
       const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
       const newTime = ratio * duration;
 
-      moveKeyframeTime(draggingKf.layerId, draggingKf.prop, draggingKf.index, newTime);
+      moveKeyframeTime(draggingKf.layerId, draggingKf.prop, draggingKf.index, newTime, true);
       setCurrentTime(newTime);
     };
 

@@ -17,6 +17,8 @@ export function Timeline() {
     deleteSelectedKeyframe,
     selectedLayerId,
     deleteLayer,
+    undo,
+    redo,
   } = useMotion();
 
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -48,11 +50,27 @@ export function Timeline() {
     window.addEventListener('mouseup', onMouseUp);
   };
 
-  // Keyboard Shortcuts (Space to play/pause, Delete to remove keyframe/layer)
+  // Keyboard Shortcuts (Undo/Redo, Space to play/pause, Delete to remove keyframe/layer)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const activeTag = document.activeElement?.tagName;
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(activeTag || '')) return;
+
+      // Undo / Redo
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          redo();
+        } else {
+          undo();
+        }
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        redo();
+        return;
+      }
 
       if (e.code === 'Space') {
         e.preventDefault();
@@ -70,7 +88,15 @@ export function Timeline() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [togglePlay, selectedKeyframe, deleteSelectedKeyframe, selectedLayerId, deleteLayer]);
+  }, [
+    togglePlay,
+    selectedKeyframe,
+    deleteSelectedKeyframe,
+    selectedLayerId,
+    deleteLayer,
+    undo,
+    redo,
+  ]);
 
   const playheadPct = Math.min(100, Math.max(0, (currentTime / duration) * 100));
 

@@ -10,6 +10,8 @@ import {
   Award,
   Bell,
   SlidersHorizontal,
+  Undo2,
+  Redo2,
 } from 'lucide-react';
 import { useMotion } from '@/context/MotionContext';
 import { TEMPLATES } from '@/modules/templates';
@@ -25,6 +27,11 @@ export function Header() {
     startExport,
     exportProgress,
     layers,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    historyStepCount,
   } = useMotion();
 
   return (
@@ -112,8 +119,36 @@ export function Header() {
         </label>
       </div>
 
-      {/* Right Actions & Video Export */}
+      {/* Right Actions, History & Video Export */}
       <div className="flex items-center gap-2.5">
+        {/* 50-Step Undo / Redo Controls */}
+        <div className="flex items-center gap-1 bg-[#090a0f] p-1 rounded-lg border border-[#1e2130]">
+          <button
+            onClick={undo}
+            disabled={!canUndo}
+            className="px-2 py-1.5 rounded-md hover:bg-[#1e2130] text-slate-200 disabled:opacity-30 disabled:hover:bg-transparent transition cursor-pointer disabled:cursor-not-allowed flex items-center gap-1.5 text-xs"
+            title={`Undo (Ctrl+Z) • ${historyStepCount}/50 steps recorded`}
+          >
+            <Undo2 className="w-3.5 h-3.5 text-indigo-400" />
+            <span className="hidden sm:inline font-medium">Undo</span>
+            {canUndo && (
+              <span className="text-[10px] px-1 py-0.2 bg-indigo-500/20 text-indigo-300 rounded border border-indigo-500/30 font-mono">
+                {historyStepCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={redo}
+            disabled={!canRedo}
+            className="px-2 py-1.5 rounded-md hover:bg-[#1e2130] text-slate-200 disabled:opacity-30 disabled:hover:bg-transparent transition cursor-pointer disabled:cursor-not-allowed flex items-center gap-1.5 text-xs"
+            title="Redo (Ctrl+Y or Ctrl+Shift+Z)"
+          >
+            <Redo2 className="w-3.5 h-3.5 text-pink-400" />
+            <span className="hidden sm:inline font-medium">Redo</span>
+          </button>
+        </div>
+
         <button
           onClick={clearScene}
           className="text-xs px-2.5 py-1.5 rounded-lg bg-[#1e2130] hover:bg-red-950/60 hover:text-red-300 hover:border-red-800/50 text-slate-300 border border-[#2b2f44] transition flex items-center gap-1.5 cursor-pointer"
