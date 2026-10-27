@@ -69,7 +69,7 @@ export function TimeRuler() {
     <div
       ref={rulerRef}
       onMouseDown={handleMouseDown}
-      className="h-7 border-b border-[#1e2130] relative cursor-ew-resize bg-[#11131c]/90 select-none overflow-hidden"
+      className="h-7 border-b border-[#242428] relative cursor-ew-resize bg-[#141417] select-none overflow-hidden"
     >
       {ticks.map(({ sec, pct, isWhole }, idx) => (
         <div
@@ -78,13 +78,13 @@ export function TimeRuler() {
           style={{ left: `${pct}%` }}
         >
           {isWhole && (
-            <span className="text-[10px] font-mono text-slate-400 -ml-2 mb-1">
+            <span className="text-[10px] font-mono text-zinc-400 -ml-2 mb-1">
               {sec.toFixed(1)}s
             </span>
           )}
           <div
             className={`w-[1px] ${
-              isWhole ? 'h-2.5 bg-slate-500' : 'h-1.5 bg-[#2b2f44]'
+              isWhole ? 'h-2.5 bg-zinc-500' : 'h-1.5 bg-[#2c2c34]'
             }`}
           />
         </div>

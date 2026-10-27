@@ -1,10 +1,11 @@
 {
   "name": "motionfx-studio",
-  "version": "1.9.0",
+  "version": "2.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:docs": "next build && node -e \"require('fs').cpSync('out', 'docs', { recursive: true })\"",
     "start": "next start",
     "lint": "eslint"
   },

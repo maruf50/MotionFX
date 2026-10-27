@@ -45,14 +45,14 @@ export function ParentHierarchySection() {
   const isGroup = selectedLayer.type === 'group';
 
   return (
-    <div className="bg-[#171925] p-3 rounded-xl border border-[#1e2130] space-y-3">
+    <div className="bg-[#1a1a1e] p-2.5 rounded border border-[#28282e] space-y-2.5">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-300">
-          <GitBranch className="w-3.5 h-3.5 text-indigo-400" />
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-300">
+          <GitBranch className="w-3.5 h-3.5 text-purple-400" />
           <span>Hierarchy & Parenting</span>
         </div>
         {selectedLayer.parentId && (
-          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-purple-950/60 text-purple-300 border border-purple-700/50">
             Parented
           </span>
         )}
@@ -60,12 +60,12 @@ export function ParentHierarchySection() {
 
       {/* Parent Layer Selector */}
       <div className="space-y-1.5">
-        <label className="text-[11px] text-slate-400 flex items-center justify-between">
+        <label className="text-[11px] text-zinc-400 flex items-center justify-between">
           <span>Parent Layer:</span>
           {currentParent && (
             <button
               onClick={() => setLayerParent(selectedLayer.id, null)}
-              className="text-[10px] text-red-400 hover:text-red-300 underline cursor-pointer"
+              className="text-[10px] text-rose-400 hover:text-rose-300 underline cursor-pointer"
             >
               Clear Parent
             </button>
@@ -76,7 +76,7 @@ export function ParentHierarchySection() {
           <select
             value={selectedLayer.parentId || ''}
             onChange={(e) => setLayerParent(selectedLayer.id, e.target.value || null)}
-            className="w-full bg-[#090a0f] border border-[#2b2f44] focus:border-indigo-500 rounded-md px-2.5 py-1.5 text-xs text-white outline-none cursor-pointer"
+            className="w-full bg-[#121214] border border-[#2c2c32] focus:border-purple-500 rounded px-2.5 py-1.5 text-xs text-white outline-none cursor-pointer"
           >
             <option value="">None (Canvas Root)</option>
             {eligibleParents.map((l) => (
@@ -86,7 +86,7 @@ export function ParentHierarchySection() {
             ))}
           </select>
         </div>
-        <p className="text-[10px] text-slate-500">
+        <p className="text-[10px] text-zinc-500">
           {currentParent
             ? `Follows ${currentParent.name}'s position, rotation & scale.`
             : 'Moves independently in canvas world coordinates.'}
@@ -95,9 +95,9 @@ export function ParentHierarchySection() {
 
       {/* Add to Existing Group (if not already a group) */}
       {!isGroup && existingGroups.length > 0 && (
-        <div className="pt-2 border-t border-[#1e2130]/80 space-y-1.5">
-          <label className="text-[11px] text-slate-400 flex items-center gap-1">
-            <FolderInput className="w-3 h-3 text-amber-400" />
+        <div className="pt-2 border-t border-[#242428] space-y-1.5">
+          <label className="text-[11px] text-zinc-400 flex items-center gap-1">
+            <FolderInput className="w-3 h-3 text-purple-400" />
             <span>Add to Group:</span>
           </label>
           <select
@@ -107,7 +107,7 @@ export function ParentHierarchySection() {
                 addLayersToGroup(e.target.value, [selectedLayer.id]);
               }
             }}
-            className="w-full bg-[#090a0f] border border-[#2b2f44] focus:border-amber-500 rounded-md px-2.5 py-1.5 text-xs text-slate-300 outline-none cursor-pointer"
+            className="w-full bg-[#121214] border border-[#2c2c32] focus:border-purple-500 rounded px-2.5 py-1.5 text-xs text-zinc-200 outline-none cursor-pointer"
           >
             <option value="">Select group...</option>
             {existingGroups.map((grp) => (
@@ -120,21 +120,21 @@ export function ParentHierarchySection() {
       )}
 
       {/* Group Actions */}
-      <div className="pt-2 border-t border-[#1e2130]/80 flex items-center gap-2">
+      <div className="pt-2 border-t border-[#242428] flex items-center gap-2">
         {isGroup ? (
           <button
             onClick={() => ungroupLayer(selectedLayer.id)}
-            className="flex-1 py-1.5 px-2 rounded-md bg-[#1e2130] hover:bg-amber-950/60 hover:text-amber-300 border border-[#2b2f44] text-xs text-slate-300 flex items-center justify-center gap-1.5 transition cursor-pointer"
+            className="flex-1 py-1.5 px-2 rounded bg-[#222227] hover:bg-rose-950/40 hover:text-rose-300 border border-[#2c2c32] text-xs text-zinc-300 flex items-center justify-center gap-1.5 transition cursor-pointer"
           >
-            <FolderMinus className="w-3.5 h-3.5 text-amber-400" />
+            <FolderMinus className="w-3.5 h-3.5 text-zinc-400" />
             <span>Ungroup</span>
           </button>
         ) : (
           <button
             onClick={() => createGroup('Group', [selectedLayer.id])}
-            className="flex-1 py-1.5 px-2 rounded-md bg-[#1e2130] hover:bg-[#282c40] border border-[#2b2f44] text-xs text-slate-300 flex items-center justify-center gap-1.5 transition cursor-pointer"
+            className="flex-1 py-1.5 px-2 rounded bg-[#222227] hover:bg-[#2c2c32] hover:text-white border border-[#2c2c32] hover:border-purple-500/40 text-xs text-zinc-300 flex items-center justify-center gap-1.5 transition cursor-pointer"
           >
-            <FolderPlus className="w-3.5 h-3.5 text-indigo-400" />
+            <FolderPlus className="w-3.5 h-3.5 text-purple-400" />
             <span>New Group</span>
           </button>
         )}
@@ -142,7 +142,7 @@ export function ParentHierarchySection() {
         {/* Delete All Keyframes */}
         <button
           onClick={() => deleteAllKeyframes(selectedLayer.id)}
-          className="flex-1 py-1.5 px-2 rounded-md bg-[#1e2130] hover:bg-red-950/50 hover:text-red-300 border border-[#2b2f44] hover:border-red-900/50 text-xs text-slate-300 flex items-center justify-center gap-1.5 transition cursor-pointer"
+          className="flex-1 py-1.5 px-2 rounded bg-[#222227] hover:bg-rose-950/40 hover:text-rose-300 border border-[#2c2c32] hover:border-rose-900/40 text-xs text-zinc-300 flex items-center justify-center gap-1.5 transition cursor-pointer"
           title="Delete all animation keyframes and freeze current pose"
         >
           <RotateCcw className="w-3.5 h-3.5 text-rose-400" />

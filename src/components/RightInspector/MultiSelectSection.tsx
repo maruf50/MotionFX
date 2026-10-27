@@ -50,17 +50,17 @@ export function MultiSelectSection() {
   const hasGroupedMember = selectedLayers.some((l) => !!l.parentId);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Selection Summary Card */}
-      <div className="bg-[#171925] p-3.5 rounded-xl border border-indigo-500/30 shadow-lg shadow-indigo-500/5">
-        <div className="flex items-center justify-between mb-3">
+      <div className="bg-[#1a1a1e] p-3 rounded border border-purple-500/40 shadow-lg shadow-purple-950/20">
+        <div className="flex items-center justify-between mb-2.5">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+            <div className="w-6 h-6 rounded bg-purple-600/20 text-purple-300 flex items-center justify-center">
               <Layers className="w-3.5 h-3.5" />
             </div>
             <div>
               <h3 className="text-xs font-bold text-white">Multi-Selection</h3>
-              <span className="text-[10px] text-slate-400">
+              <span className="text-[10px] text-zinc-400">
                 {selectedLayerIds.length} layers selected
               </span>
             </div>
@@ -68,7 +68,7 @@ export function MultiSelectSection() {
 
           <button
             onClick={clearSelectedLayers}
-            className="text-[11px] px-2 py-0.5 rounded text-slate-400 hover:text-white hover:bg-[#1e2130] transition flex items-center gap-1 cursor-pointer"
+            className="text-[11px] px-2 py-0.5 rounded text-zinc-400 hover:text-white hover:bg-[#24242a] transition flex items-center gap-1 cursor-pointer"
             title="Deselect all"
           >
             <X className="w-3 h-3" />
@@ -81,13 +81,13 @@ export function MultiSelectSection() {
           {selectedLayers.map((layer) => (
             <div
               key={layer.id}
-              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-[#0e1017] border border-[#2b2f44] text-[11px] text-slate-200"
+              className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-[#121214] border border-[#2c2c32] text-[11px] text-zinc-200"
             >
               <span className="truncate max-w-[110px] font-medium">{layer.name}</span>
               <button
                 type="button"
                 onClick={() => selectLayer(layer.id, true)}
-                className="text-slate-400 hover:text-rose-400 p-0.5 rounded"
+                className="text-zinc-400 hover:text-rose-400 p-0.5 rounded"
                 title="Remove from selection"
               >
                 <X className="w-2.5 h-2.5" />
@@ -98,16 +98,16 @@ export function MultiSelectSection() {
       </div>
 
       {/* Grouping Options Card */}
-      <div className="bg-[#171925] p-3.5 rounded-xl border border-[#1e2130] space-y-3">
+      <div className="bg-[#1a1a1e] p-3 rounded border border-[#28282e] space-y-2.5">
         <div className="flex items-center gap-1.5 text-xs font-semibold text-white">
-          <Folder className="w-3.5 h-3.5 text-amber-400" />
+          <Folder className="w-3.5 h-3.5 text-purple-400" />
           <span>Group Management</span>
         </div>
 
         {/* 1. Add to Existing Group */}
-        <div className="space-y-1.5 pt-1">
-          <label className="text-[11px] font-medium text-slate-400 flex items-center gap-1">
-            <FolderInput className="w-3 h-3 text-indigo-400" />
+        <div className="space-y-1.5 pt-0.5">
+          <label className="text-[11px] font-medium text-zinc-400 flex items-center gap-1">
+            <FolderInput className="w-3 h-3 text-purple-400" />
             <span>Add to Existing Group:</span>
           </label>
 
@@ -116,7 +116,7 @@ export function MultiSelectSection() {
               <select
                 value={selectedTargetGroupId}
                 onChange={(e) => setSelectedTargetGroupId(e.target.value)}
-                className="flex-1 bg-[#090a0f] border border-[#2b2f44] focus:border-indigo-500 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none cursor-pointer"
+                className="flex-1 bg-[#121214] border border-[#2c2c32] focus:border-purple-500 rounded px-2.5 py-1.5 text-xs text-white outline-none cursor-pointer"
               >
                 <option value="">Select target group...</option>
                 {existingGroups.map((grp) => {
@@ -133,21 +133,21 @@ export function MultiSelectSection() {
                 type="button"
                 onClick={handleAddToExistingGroup}
                 disabled={!selectedTargetGroupId}
-                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:hover:bg-indigo-600 text-white rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1 shrink-0"
+                className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 disabled:opacity-30 disabled:hover:bg-purple-600 text-white rounded text-xs font-medium transition cursor-pointer flex items-center gap-1 shrink-0"
               >
                 <Check className="w-3 h-3" />
                 <span>Add</span>
               </button>
             </div>
           ) : (
-            <div className="text-[10px] text-slate-500 italic p-1.5 bg-[#090a0f] rounded-lg border border-[#202336]">
+            <div className="text-[10px] text-zinc-500 italic p-1.5 bg-[#121214] rounded border border-[#242428]">
               No other groups in scene yet. Create a new group below!
             </div>
           )}
         </div>
 
         {/* 2. Create New Group with Selected */}
-        <div className="pt-2 border-t border-[#1e2130] space-y-2">
+        <div className="pt-2 border-t border-[#242428] space-y-2">
           {isNamingGroup ? (
             <div className="flex items-center gap-2">
               <input
@@ -157,19 +157,19 @@ export function MultiSelectSection() {
                 value={newGroupName}
                 onChange={(e) => setNewGroupName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleCreateNewGroup()}
-                className="flex-1 bg-[#090a0f] border border-indigo-500 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none"
+                className="flex-1 bg-[#121214] border border-purple-500 rounded px-2.5 py-1.5 text-xs text-white outline-none"
               />
               <button
                 type="button"
                 onClick={handleCreateNewGroup}
-                className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-lg text-xs font-bold transition cursor-pointer"
+                className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded text-xs font-medium transition cursor-pointer"
               >
                 Create
               </button>
               <button
                 type="button"
                 onClick={() => setIsNamingGroup(false)}
-                className="p-1.5 text-slate-400 hover:text-white rounded"
+                className="p-1.5 text-zinc-400 hover:text-white rounded"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -178,9 +178,9 @@ export function MultiSelectSection() {
             <button
               type="button"
               onClick={() => setIsNamingGroup(true)}
-              className="w-full py-2 px-3 rounded-lg bg-gradient-to-r from-amber-500/20 via-amber-500/15 to-indigo-500/15 hover:from-amber-500/25 hover:to-indigo-500/25 border border-amber-500/30 text-amber-300 text-xs font-semibold flex items-center justify-center gap-2 transition cursor-pointer"
+              className="w-full py-1.5 px-3 rounded bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/40 text-purple-300 text-xs font-medium flex items-center justify-center gap-2 transition cursor-pointer"
             >
-              <FolderPlus className="w-3.5 h-3.5 text-amber-400" />
+              <FolderPlus className="w-3.5 h-3.5 text-purple-400" />
               <span>Create New Group with {selectedLayerIds.length} Layers</span>
             </button>
           )}
@@ -188,13 +188,13 @@ export function MultiSelectSection() {
 
         {/* 3. Ungroup if any are grouped */}
         {hasGroupedMember && (
-          <div className="pt-2 border-t border-[#1e2130]">
+          <div className="pt-2 border-t border-[#242428]">
             <button
               type="button"
               onClick={() => removeLayersFromGroup(selectedLayerIds)}
-              className="w-full py-1.5 px-3 rounded-lg bg-[#1e2130] hover:bg-amber-950/50 hover:text-amber-300 border border-[#2b2f44] text-xs text-slate-300 flex items-center justify-center gap-1.5 transition cursor-pointer"
+              className="w-full py-1.5 px-3 rounded bg-[#222227] hover:bg-[#2c2c32] hover:text-white border border-[#2c2c32] text-xs text-zinc-300 flex items-center justify-center gap-1.5 transition cursor-pointer"
             >
-              <FolderMinus className="w-3.5 h-3.5 text-amber-400" />
+              <FolderMinus className="w-3.5 h-3.5 text-purple-400" />
               <span>Ungroup Selected Layers</span>
             </button>
           </div>
@@ -202,13 +202,13 @@ export function MultiSelectSection() {
       </div>
 
       {/* Batch Delete */}
-      <div className="bg-[#171925] p-3 rounded-xl border border-[#1e2130]">
+      <div className="bg-[#1a1a1e] p-3 rounded border border-[#28282e]">
         <button
           type="button"
           onClick={() => deleteLayersBatch(selectedLayerIds)}
-          className="w-full py-2 px-3 rounded-lg bg-[#1e2130] hover:bg-red-950/60 hover:text-red-300 hover:border-red-800/60 border border-[#2b2f44] text-xs text-slate-300 flex items-center justify-center gap-2 transition cursor-pointer"
+          className="w-full py-2 px-3 rounded bg-[#222227] hover:bg-rose-950/50 hover:text-rose-300 hover:border-rose-800/50 border border-[#2c2c32] text-xs text-zinc-300 flex items-center justify-center gap-2 transition cursor-pointer"
         >
-          <Trash2 className="w-3.5 h-3.5 text-red-400" />
+          <Trash2 className="w-3.5 h-3.5 text-rose-400" />
           <span>Delete All {selectedLayerIds.length} Selected Layers</span>
         </button>
       </div>

@@ -159,14 +159,14 @@ export function CanvasStage() {
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`flex-1 bg-[#090a0f] flex flex-col items-center justify-center relative overflow-hidden p-4 select-none ${
-        isDropTarget ? 'ring-4 ring-indigo-500/30' : ''
+      className={`flex-1 bg-[#0d0d0f] flex flex-col items-center justify-center relative overflow-hidden p-4 select-none ${
+        isDropTarget ? 'ring-4 ring-purple-500/30' : ''
       }`}
     >
       {/* Floating Status & Helper Bar */}
       <div className="absolute top-3 left-4 right-4 flex items-center justify-between pointer-events-none z-10">
-        <div className="bg-[#11131c]/90 backdrop-blur border border-[#1e2130] px-3 py-1.5 rounded-lg text-xs text-slate-300 flex items-center gap-2 pointer-events-auto shadow-lg">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <div className="bg-[#161619]/90 backdrop-blur border border-[#242428] px-3 py-1.5 rounded text-xs text-zinc-300 flex items-center gap-2 pointer-events-auto shadow-xl">
+          <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
           <span>
             {isDropTarget
               ? 'Release to drop template element here onto canvas'
@@ -178,14 +178,14 @@ export function CanvasStage() {
 
         <button
           onClick={() => setIsResolutionModalOpen(true)}
-          className="bg-[#11131c]/90 backdrop-blur border border-[#1e2130] hover:border-indigo-500/40 px-2.5 py-1 rounded-lg text-xs font-mono text-indigo-300 hover:text-indigo-200 pointer-events-auto shadow-lg transition flex items-center gap-1.5 cursor-pointer"
+          className="bg-[#161619]/90 backdrop-blur border border-[#242428] hover:border-purple-500/40 px-2.5 py-1 rounded text-xs font-mono text-zinc-300 hover:text-purple-300 pointer-events-auto shadow-xl transition flex items-center gap-1.5 cursor-pointer"
           title="Click to change canvas resolution & aspect ratio"
         >
-          <Maximize2 className="w-3 h-3 text-indigo-400" />
+          <Maximize2 className="w-3 h-3 text-purple-400" />
           <span>
             {canvasResolution.width} × {canvasResolution.height}
           </span>
-          <span className="text-[10px] text-slate-400">
+          <span className="text-[10px] text-zinc-500">
             ({getAspectRatioString(canvasResolution.width, canvasResolution.height)})
           </span>
         </button>
@@ -193,7 +193,7 @@ export function CanvasStage() {
 
       {/* Stage Canvas Frame */}
       <div
-        className="relative shadow-2xl shadow-black/80 rounded-xl overflow-hidden border border-[#2b2f44] canvas-checkerboard flex items-center justify-center max-w-full max-h-[50vh]"
+        className="relative shadow-2xl shadow-black rounded-lg overflow-hidden border border-[#242428] canvas-checkerboard flex items-center justify-center max-w-full max-h-[50vh]"
         style={{
           aspectRatio: `${canvasResolution.width} / ${canvasResolution.height}`,
         }}

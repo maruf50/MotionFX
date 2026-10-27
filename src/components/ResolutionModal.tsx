@@ -191,28 +191,28 @@ export function ResolutionModal() {
 
   return (
     <div
-      className="fixed inset-0 bg-[#07080d]/80 backdrop-blur-md z-50 flex items-center justify-center p-4 select-none animate-in fade-in duration-150"
+      className="fixed inset-0 bg-[#0d0d0f]/85 backdrop-blur-md z-50 flex items-center justify-center p-4 select-none animate-in fade-in duration-150"
       onClick={() => setIsResolutionModalOpen(false)}
     >
       <div
-        className="w-full max-w-3xl bg-[#11131c] border border-[#2b2f44] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-150"
+        className="w-full max-w-3xl bg-[#161619] border border-[#28282e] rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="p-5 border-b border-[#1e2130] flex items-center justify-between shrink-0 bg-[#141724]">
+        <div className="p-4 border-b border-[#242428] flex items-center justify-between shrink-0 bg-[#121215]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-              <Maximize2 className="w-5 h-5" />
+            <div className="w-9 h-9 rounded bg-purple-600/10 border border-purple-500/30 flex items-center justify-center text-purple-400">
+              <Maximize2 className="w-4 h-4" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-bold text-white tracking-tight">Canvas Resolution</h2>
-                <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-purple-950/60 text-purple-300 border border-purple-700/50">
                   {canvasResolution.width} × {canvasResolution.height} (
                   {getAspectRatioString(canvasResolution.width, canvasResolution.height)})
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-zinc-400">
                 Choose popular social & video presets or enter custom dimensions
               </p>
             </div>
@@ -220,22 +220,22 @@ export function ResolutionModal() {
 
           <button
             onClick={() => setIsResolutionModalOpen(false)}
-            className="w-8 h-8 rounded-lg text-slate-400 hover:text-white hover:bg-[#1e2130] transition flex items-center justify-center cursor-pointer"
+            className="w-7 h-7 rounded text-zinc-400 hover:text-white hover:bg-[#222227] transition flex items-center justify-center cursor-pointer"
             title="Close"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Tab Switcher */}
-        <div className="px-6 pt-4 border-b border-[#1e2130] flex items-center justify-between shrink-0 bg-[#0d0e17]">
+        <div className="px-6 pt-3 border-b border-[#242428] flex items-center justify-between shrink-0 bg-[#121215]">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setActiveTab('presets')}
-              className={`px-4 py-2 text-xs font-semibold rounded-t-lg transition border-b-2 flex items-center gap-2 cursor-pointer ${
+              className={`px-4 py-2 text-xs font-semibold rounded-t transition border-b-2 flex items-center gap-2 cursor-pointer ${
                 activeTab === 'presets'
-                  ? 'text-indigo-400 border-indigo-500 bg-[#11131c]'
-                  : 'text-slate-400 border-transparent hover:text-slate-200'
+                  ? 'text-purple-400 border-purple-500 bg-[#161619]'
+                  : 'text-zinc-400 border-transparent hover:text-zinc-200'
               }`}
             >
               <Monitor className="w-3.5 h-3.5" />
@@ -243,10 +243,10 @@ export function ResolutionModal() {
             </button>
             <button
               onClick={() => setActiveTab('custom')}
-              className={`px-4 py-2 text-xs font-semibold rounded-t-lg transition border-b-2 flex items-center gap-2 cursor-pointer ${
+              className={`px-4 py-2 text-xs font-semibold rounded-t transition border-b-2 flex items-center gap-2 cursor-pointer ${
                 activeTab === 'custom'
-                  ? 'text-indigo-400 border-indigo-500 bg-[#11131c]'
-                  : 'text-slate-400 border-transparent hover:text-slate-200'
+                  ? 'text-purple-400 border-purple-500 bg-[#161619]'
+                  : 'text-zinc-400 border-transparent hover:text-zinc-200'
               }`}
             >
               <ArrowRightLeft className="w-3.5 h-3.5" />
@@ -255,28 +255,28 @@ export function ResolutionModal() {
           </div>
 
           {/* Scale layers option toggle in header */}
-          <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer pb-2">
+          <label className="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer pb-2">
             <input
               type="checkbox"
               checked={scaleLayers}
               onChange={(e) => setScaleLayers(e.target.checked)}
-              className="rounded accent-indigo-500 cursor-pointer"
+              className="rounded accent-purple-500 cursor-pointer"
             />
             <span className="font-medium">Scale layers to fit</span>
           </label>
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-6">
+        <div className="p-5 overflow-y-auto flex-1 space-y-5">
           {activeTab === 'presets' ? (
-            <div className="space-y-6">
+            <div className="space-y-5">
               {/* 16:9 Landscape Video */}
               <div>
-                <div className="flex items-center gap-2 mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  <Tv className="w-3.5 h-3.5 text-indigo-400" />
+                <div className="flex items-center gap-2 mb-2.5 text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                  <Tv className="w-3.5 h-3.5 text-purple-400" />
                   <span>Landscape 16:9 (YouTube & Video)</span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {RESOLUTION_PRESETS.filter((p) => p.category === 'landscape').map((preset) => {
                     const isCurrent =
                       canvasResolution.width === preset.width &&
@@ -286,40 +286,40 @@ export function ResolutionModal() {
                       <button
                         key={preset.id}
                         onClick={() => handleSelectPreset(preset)}
-                        className={`p-3.5 rounded-xl border text-left transition flex items-center justify-between group cursor-pointer ${
+                        className={`p-3 rounded border text-left transition flex items-center justify-between group cursor-pointer ${
                           isCurrent
-                            ? 'bg-indigo-600/15 border-indigo-500 ring-1 ring-indigo-500/50'
-                            : 'bg-[#161824] border-[#24283b] hover:bg-[#1d2030] hover:border-slate-600'
+                            ? 'bg-purple-950/30 border-purple-500 ring-1 ring-purple-500/50'
+                            : 'bg-[#1a1a1e] border-[#25252b] hover:bg-[#222228] hover:border-zinc-600'
                         }`}
                       >
                         <div className="flex items-center gap-3">
                           {/* Mini aspect ratio preview box */}
-                          <div className="w-9 h-5 rounded border border-[#3a3f58] bg-[#0c0d14] flex items-center justify-center shrink-0">
-                            <span className="text-[9px] font-mono text-slate-400">16:9</span>
+                          <div className="w-9 h-5 rounded border border-[#303038] bg-[#101012] flex items-center justify-center shrink-0">
+                            <span className="text-[9px] font-mono text-zinc-400">16:9</span>
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold text-white group-hover:text-indigo-300 transition">
+                              <span className="text-xs font-bold text-white group-hover:text-purple-300 transition">
                                 {preset.name}
                               </span>
                               {preset.recommended && (
-                                <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-medium">
+                                <span className="text-[9px] px-1.5 py-0.2 rounded bg-purple-950/60 text-purple-300 border border-purple-700/50 font-medium">
                                   Standard
                                 </span>
                               )}
                             </div>
-                            <div className="text-[11px] font-mono text-indigo-300">
+                            <div className="text-[11px] font-mono text-purple-300">
                               {preset.width} × {preset.height}
                             </div>
-                            <div className="text-[10px] text-slate-400 mt-0.5">
+                            <div className="text-[10px] text-zinc-400 mt-0.5">
                               {preset.description}
                             </div>
                           </div>
                         </div>
 
                         {isCurrent && (
-                          <div className="w-6 h-6 rounded-full bg-indigo-500 text-white flex items-center justify-center shrink-0">
-                            <Check className="w-3.5 h-3.5" />
+                          <div className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center shrink-0">
+                            <Check className="w-3 h-3" />
                           </div>
                         )}
                       </button>
@@ -330,11 +330,11 @@ export function ResolutionModal() {
 
               {/* 9:16 Vertical Video */}
               <div>
-                <div className="flex items-center gap-2 mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  <Smartphone className="w-3.5 h-3.5 text-pink-400" />
+                <div className="flex items-center gap-2 mb-2.5 text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                  <Smartphone className="w-3.5 h-3.5 text-purple-400" />
                   <span>Vertical 9:16 (Shorts, Reels, TikTok)</span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {RESOLUTION_PRESETS.filter((p) => p.category === 'vertical').map((preset) => {
                     const isCurrent =
                       canvasResolution.width === preset.width &&
@@ -344,39 +344,39 @@ export function ResolutionModal() {
                       <button
                         key={preset.id}
                         onClick={() => handleSelectPreset(preset)}
-                        className={`p-3.5 rounded-xl border text-left transition flex items-center justify-between group cursor-pointer ${
+                        className={`p-3 rounded border text-left transition flex items-center justify-between group cursor-pointer ${
                           isCurrent
-                            ? 'bg-pink-600/15 border-pink-500 ring-1 ring-pink-500/50'
-                            : 'bg-[#161824] border-[#24283b] hover:bg-[#1d2030] hover:border-slate-600'
+                            ? 'bg-purple-950/30 border-purple-500 ring-1 ring-purple-500/50'
+                            : 'bg-[#1a1a1e] border-[#25252b] hover:bg-[#222228] hover:border-zinc-600'
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-5 h-9 rounded border border-[#3a3f58] bg-[#0c0d14] flex items-center justify-center shrink-0">
-                            <span className="text-[8px] font-mono text-slate-400">9:16</span>
+                          <div className="w-5 h-9 rounded border border-[#303038] bg-[#101012] flex items-center justify-center shrink-0">
+                            <span className="text-[8px] font-mono text-zinc-400">9:16</span>
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold text-white group-hover:text-pink-300 transition">
+                              <span className="text-xs font-bold text-white group-hover:text-purple-300 transition">
                                 {preset.name}
                               </span>
                               {preset.recommended && (
-                                <span className="text-[9px] px-1.5 py-0.2 rounded bg-pink-500/20 text-pink-300 font-medium">
+                                <span className="text-[9px] px-1.5 py-0.2 rounded bg-purple-950/60 text-purple-300 border border-purple-700/50 font-medium">
                                   Viral
                                 </span>
                               )}
                             </div>
-                            <div className="text-[11px] font-mono text-pink-300">
+                            <div className="text-[11px] font-mono text-purple-300">
                               {preset.width} × {preset.height}
                             </div>
-                            <div className="text-[10px] text-slate-400 mt-0.5">
+                            <div className="text-[10px] text-zinc-400 mt-0.5">
                               {preset.description}
                             </div>
                           </div>
                         </div>
 
                         {isCurrent && (
-                          <div className="w-6 h-6 rounded-full bg-pink-500 text-white flex items-center justify-center shrink-0">
-                            <Check className="w-3.5 h-3.5" />
+                          <div className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center shrink-0">
+                            <Check className="w-3 h-3" />
                           </div>
                         )}
                       </button>
@@ -387,11 +387,11 @@ export function ResolutionModal() {
 
               {/* 1:1 Square & Social Portrait */}
               <div>
-                <div className="flex items-center gap-2 mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  <Square className="w-3.5 h-3.5 text-emerald-400" />
+                <div className="flex items-center gap-2 mb-2.5 text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                  <Square className="w-3.5 h-3.5 text-purple-400" />
                   <span>Square 1:1 & Portrait 4:5 (Instagram & Feeds)</span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {RESOLUTION_PRESETS.filter(
                     (p) => p.category === 'square' || p.category === 'ultrawide'
                   ).map((preset) => {
@@ -403,38 +403,38 @@ export function ResolutionModal() {
                       <button
                         key={preset.id}
                         onClick={() => handleSelectPreset(preset)}
-                        className={`p-3.5 rounded-xl border text-left transition flex items-center justify-between group cursor-pointer ${
+                        className={`p-3 rounded border text-left transition flex items-center justify-between group cursor-pointer ${
                           isCurrent
-                            ? 'bg-emerald-600/15 border-emerald-500 ring-1 ring-emerald-500/50'
-                            : 'bg-[#161824] border-[#24283b] hover:bg-[#1d2030] hover:border-slate-600'
+                            ? 'bg-purple-950/30 border-purple-500 ring-1 ring-purple-500/50'
+                            : 'bg-[#1a1a1e] border-[#25252b] hover:bg-[#222228] hover:border-zinc-600'
                         }`}
                       >
                         <div className="flex items-center gap-3">
                           <div
-                            className={`rounded border border-[#3a3f58] bg-[#0c0d14] flex items-center justify-center shrink-0 ${
+                            className={`rounded border border-[#303038] bg-[#101012] flex items-center justify-center shrink-0 ${
                               preset.category === 'ultrawide' ? 'w-10 h-4' : 'w-7 h-7'
                             }`}
                           >
-                            <span className="text-[8px] font-mono text-slate-400">
+                            <span className="text-[8px] font-mono text-zinc-400">
                               {preset.aspectRatio}
                             </span>
                           </div>
                           <div>
-                            <span className="text-xs font-bold text-white group-hover:text-emerald-300 transition block">
+                            <span className="text-xs font-bold text-white group-hover:text-purple-300 transition block">
                               {preset.name}
                             </span>
-                            <div className="text-[11px] font-mono text-emerald-300">
+                            <div className="text-[11px] font-mono text-purple-300">
                               {preset.width} × {preset.height}
                             </div>
-                            <div className="text-[10px] text-slate-400 mt-0.5">
+                            <div className="text-[10px] text-zinc-400 mt-0.5">
                               {preset.description}
                             </div>
                           </div>
                         </div>
 
                         {isCurrent && (
-                          <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
-                            <Check className="w-3.5 h-3.5" />
+                          <div className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center shrink-0">
+                            <Check className="w-3 h-3" />
                           </div>
                         )}
                       </button>
@@ -445,13 +445,13 @@ export function ResolutionModal() {
             </div>
           ) : (
             /* Custom Resolution View */
-            <div className="space-y-6">
-              <div className="p-5 rounded-2xl bg-[#161824] border border-[#24283b]">
-                <h3 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-indigo-400" />
+            <div className="space-y-5">
+              <div className="p-4 rounded border border-[#28282e] bg-[#1a1a1e]">
+                <h3 className="text-sm font-semibold text-white mb-1.5 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-purple-400" />
                   <span>Custom Canvas Dimensions</span>
                 </h3>
-                <p className="text-xs text-slate-400 mb-6">
+                <p className="text-xs text-zinc-400 mb-5">
                   Specify arbitrary pixel width and height for special video banners, displays, or
                   custom canvas formats (from 100px up to 8K).
                 </p>
@@ -460,7 +460,7 @@ export function ResolutionModal() {
                 <div className="flex flex-col sm:flex-row items-center gap-4 justify-center">
                   {/* Width */}
                   <div className="w-full sm:w-44">
-                    <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                    <label className="block text-xs font-medium text-zinc-300 mb-1.5">
                       Width (px)
                     </label>
                     <input
@@ -470,16 +470,16 @@ export function ResolutionModal() {
                       step={10}
                       value={customWidth}
                       onChange={(e) => setCustomWidth(parseInt(e.target.value) || 100)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#0e1017] border border-[#2b2f44] focus:border-indigo-500 focus:outline-none text-white font-mono text-sm"
+                      className="w-full px-3 py-2 rounded bg-[#101012] border border-[#2c2c32] focus:border-purple-500 focus:outline-none text-white font-mono text-sm"
                     />
                   </div>
 
                   {/* Swap Button */}
-                  <div className="sm:pt-6">
+                  <div className="sm:pt-5">
                     <button
                       type="button"
                       onClick={handleSwapDimensions}
-                      className="p-2.5 rounded-xl bg-[#202436] hover:bg-[#2b3049] text-indigo-300 border border-[#2e334d] transition cursor-pointer flex items-center justify-center"
+                      className="p-2 rounded bg-[#222227] hover:bg-[#2c2c32] text-purple-300 border border-[#2c2c32] transition cursor-pointer flex items-center justify-center"
                       title="Swap Width and Height (Flip Orientation)"
                     >
                       <ArrowRightLeft className="w-4 h-4" />
@@ -488,7 +488,7 @@ export function ResolutionModal() {
 
                   {/* Height */}
                   <div className="w-full sm:w-44">
-                    <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                    <label className="block text-xs font-medium text-zinc-300 mb-1.5">
                       Height (px)
                     </label>
                     <input
@@ -498,20 +498,20 @@ export function ResolutionModal() {
                       step={10}
                       value={customHeight}
                       onChange={(e) => setCustomHeight(parseInt(e.target.value) || 100)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#0e1017] border border-[#2b2f44] focus:border-indigo-500 focus:outline-none text-white font-mono text-sm"
+                      className="w-full px-3 py-2 rounded bg-[#101012] border border-[#2c2c32] focus:border-purple-500 focus:outline-none text-white font-mono text-sm"
                     />
                   </div>
                 </div>
 
                 {/* Live Aspect Ratio Info */}
-                <div className="mt-6 pt-4 border-t border-[#24283b] flex items-center justify-between text-xs">
+                <div className="mt-5 pt-3 border-t border-[#242428] flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-400">Computed Ratio:</span>
-                    <span className="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-mono font-bold border border-indigo-500/30">
+                    <span className="text-zinc-400">Computed Ratio:</span>
+                    <span className="px-2 py-0.5 rounded bg-purple-950/60 text-purple-300 font-mono font-bold border border-purple-700/50">
                       {currentRatio}
                     </span>
                   </div>
-                  <div className="text-slate-400">
+                  <div className="text-zinc-400">
                     Total Pixels:{' '}
                     <span className="font-mono text-white">
                       {((customWidth * customHeight) / 1000000).toFixed(2)} MP
@@ -522,7 +522,7 @@ export function ResolutionModal() {
 
               {/* Quick Aspect Ratio Fill Shortcuts */}
               <div>
-                <span className="text-xs text-slate-400 block mb-2 font-medium">
+                <span className="text-xs text-zinc-400 block mb-2 font-medium">
                   Quick Ratio Base Sizes:
                 </span>
                 <div className="flex flex-wrap gap-2">
@@ -532,7 +532,7 @@ export function ResolutionModal() {
                       setCustomWidth(1920);
                       setCustomHeight(1080);
                     }}
-                    className="text-xs px-2.5 py-1.5 rounded-lg bg-[#161824] hover:bg-[#202436] text-slate-300 border border-[#24283b] transition cursor-pointer"
+                    className="text-xs px-2.5 py-1 rounded bg-[#1a1a1e] hover:bg-[#222228] text-zinc-300 border border-[#28282e] transition cursor-pointer"
                   >
                     16:9 (1920×1080)
                   </button>
@@ -542,7 +542,7 @@ export function ResolutionModal() {
                       setCustomWidth(1080);
                       setCustomHeight(1920);
                     }}
-                    className="text-xs px-2.5 py-1.5 rounded-lg bg-[#161824] hover:bg-[#202436] text-slate-300 border border-[#24283b] transition cursor-pointer"
+                    className="text-xs px-2.5 py-1 rounded bg-[#1a1a1e] hover:bg-[#222228] text-zinc-300 border border-[#28282e] transition cursor-pointer"
                   >
                     9:16 (1080×1920)
                   </button>
@@ -552,7 +552,7 @@ export function ResolutionModal() {
                       setCustomWidth(1080);
                       setCustomHeight(1080);
                     }}
-                    className="text-xs px-2.5 py-1.5 rounded-lg bg-[#161824] hover:bg-[#202436] text-slate-300 border border-[#24283b] transition cursor-pointer"
+                    className="text-xs px-2.5 py-1 rounded bg-[#1a1a1e] hover:bg-[#222228] text-zinc-300 border border-[#28282e] transition cursor-pointer"
                   >
                     1:1 (1080×1080)
                   </button>
@@ -562,7 +562,7 @@ export function ResolutionModal() {
                       setCustomWidth(1080);
                       setCustomHeight(1350);
                     }}
-                    className="text-xs px-2.5 py-1.5 rounded-lg bg-[#161824] hover:bg-[#202436] text-slate-300 border border-[#24283b] transition cursor-pointer"
+                    className="text-xs px-2.5 py-1 rounded bg-[#1a1a1e] hover:bg-[#222228] text-zinc-300 border border-[#28282e] transition cursor-pointer"
                   >
                     4:5 (1080×1350)
                   </button>
@@ -572,7 +572,7 @@ export function ResolutionModal() {
                       setCustomWidth(2560);
                       setCustomHeight(1080);
                     }}
-                    className="text-xs px-2.5 py-1.5 rounded-lg bg-[#161824] hover:bg-[#202436] text-slate-300 border border-[#24283b] transition cursor-pointer"
+                    className="text-xs px-2.5 py-1 rounded bg-[#1a1a1e] hover:bg-[#222228] text-zinc-300 border border-[#28282e] transition cursor-pointer"
                   >
                     21:9 (2560×1080)
                   </button>
@@ -582,8 +582,8 @@ export function ResolutionModal() {
           )}
 
           {/* Scale layers explanation note */}
-          <div className="p-3.5 rounded-xl bg-indigo-950/20 border border-indigo-900/30 text-xs text-indigo-200/90 flex items-start gap-2.5">
-            <span className="w-2 h-2 rounded-full bg-indigo-400 mt-1 shrink-0"></span>
+          <div className="p-3 rounded bg-purple-950/20 border border-purple-900/30 text-xs text-purple-200/90 flex items-start gap-2.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-purple-400 mt-1.5 shrink-0"></span>
             <div>
               <span className="font-semibold text-white">Scale layers option: </span>
               When enabled, all layer properties (positions, widths, heights, border widths, corner
@@ -594,8 +594,8 @@ export function ResolutionModal() {
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 border-t border-[#1e2130] bg-[#141724] flex items-center justify-between shrink-0">
-          <div className="text-xs text-slate-400">
+        <div className="p-3.5 border-t border-[#242428] bg-[#121215] flex items-center justify-between shrink-0">
+          <div className="text-xs text-zinc-400">
             Selected:{' '}
             <span className="font-mono font-semibold text-white">
               {activeTab === 'presets'
@@ -604,10 +604,10 @@ export function ResolutionModal() {
             </span>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setIsResolutionModalOpen(false)}
-              className="px-4 py-2 text-xs font-semibold rounded-xl bg-[#1e2130] hover:bg-[#2b2f44] text-slate-300 transition cursor-pointer"
+              className="px-3.5 py-1.5 text-xs font-medium rounded bg-[#222227] hover:bg-[#2c2c32] text-zinc-300 transition cursor-pointer"
             >
               Cancel
             </button>
@@ -615,14 +615,14 @@ export function ResolutionModal() {
             {activeTab === 'custom' ? (
               <button
                 onClick={handleApplyCustom}
-                className="px-5 py-2 text-xs font-semibold rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-lg shadow-indigo-600/30 transition cursor-pointer"
+                className="px-4 py-1.5 text-xs font-medium rounded bg-purple-600 hover:bg-purple-500 text-white shadow-md shadow-purple-950/50 transition cursor-pointer"
               >
                 Apply Custom Resolution
               </button>
             ) : (
               <button
                 onClick={() => setIsResolutionModalOpen(false)}
-                className="px-5 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition cursor-pointer"
+                className="px-4 py-1.5 text-xs font-medium rounded bg-purple-600 hover:bg-purple-500 text-white shadow-md shadow-purple-950/50 transition cursor-pointer"
               >
                 Done
               </button>

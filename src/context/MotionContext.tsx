@@ -629,26 +629,14 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         borderRadius: Math.max(0, Math.round(baseRadius * us)),
         borderStyle: 'solid',
         animateDash: false,
-        easing: 'backOut',
+        easing: 'easeOutCubic',
         keyframes: {
           x: [{ time: 0, value: centerX + offset - Math.round(40 * sx) }],
           y: [{ time: 0, value: centerY + offset - Math.round(40 * sy) }],
-          scaleX: [
-            { time: 0, value: 0.1 },
-            { time: 0.6, value: 1 },
-          ],
-          scaleY: [
-            { time: 0, value: 0.1 },
-            { time: 0.6, value: 1 },
-          ],
-          rotation: [
-            { time: 0, value: -15 },
-            { time: 0.6, value: 0 },
-          ],
-          opacity: [
-            { time: 0, value: 0 },
-            { time: 0.4, value: 1 },
-          ],
+          scaleX: [{ time: 0, value: 1 }],
+          scaleY: [{ time: 0, value: 1 }],
+          rotation: [{ time: 0, value: 0 }],
+          opacity: [{ time: 0, value: 1 }],
         },
       };
 
@@ -693,26 +681,14 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         borderRadius: 0,
         borderStyle: 'solid',
         animateDash: false,
-        easing: 'backOut',
+        easing: 'easeOutCubic',
         keyframes: {
           x: [{ time: 0, value: centerX + offset - Math.round(30 * sx) }],
           y: [{ time: 0, value: centerY + offset - Math.round(30 * sy) }],
-          scaleX: [
-            { time: 0, value: 0.1 },
-            { time: 0.6, value: 1 },
-          ],
-          scaleY: [
-            { time: 0, value: 0.1 },
-            { time: 0.6, value: 1 },
-          ],
-          rotation: [
-            { time: 0, value: -15 },
-            { time: 0.6, value: 0 },
-          ],
-          opacity: [
-            { time: 0, value: 0 },
-            { time: 0.4, value: 1 },
-          ],
+          scaleX: [{ time: 0, value: 1 }],
+          scaleY: [{ time: 0, value: 1 }],
+          rotation: [{ time: 0, value: 0 }],
+          opacity: [{ time: 0, value: 1 }],
         },
       };
 
@@ -723,7 +699,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
   );
 
   const addText = useCallback(
-    (textEffect: TextEffect = 'cascade') => {
+    (textEffect: TextEffect = 'none') => {
       pushUndo(true);
       const res = canvasResolutionRef.current;
       const sx = res.width / 800;
@@ -734,7 +710,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
 
       const newLayer: Layer = {
         id: uid('text'),
-        name: `Kinetic Text ${layers.length + 1}`,
+        name: `Text ${layers.length + 1}`,
         type: 'text',
         visible: true,
         text: 'MOTION FLOW',
@@ -746,21 +722,15 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         borderRadius: 0,
         borderStyle: 'none',
         animateDash: false,
-        textEffect,
-        easing: 'backOut',
+        textEffect: textEffect || 'none',
+        easing: 'easeOutCubic',
         width: Math.max(80, Math.round(340 * sx)),
         height: Math.max(20, Math.round(60 * sy)),
         keyframes: {
           x: [{ time: 0, value: centerX }],
           y: [{ time: 0, value: centerY }],
-          scaleX: [
-            { time: 0, value: 0.6 },
-            { time: 0.5, value: 1 },
-          ],
-          scaleY: [
-            { time: 0, value: 0.6 },
-            { time: 0.5, value: 1 },
-          ],
+          scaleX: [{ time: 0, value: 1 }],
+          scaleY: [{ time: 0, value: 1 }],
           rotation: [{ time: 0, value: 0 }],
           opacity: [{ time: 0, value: 1 }],
         },
@@ -796,29 +766,14 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         borderRadius: Math.round(14 * us),
         borderStyle: 'none',
         animateDash: false,
-        easing: 'elastic',
+        easing: 'easeOutCubic',
         keyframes: {
           x: [{ time: 0, value: centerX }],
-          y: [
-            { time: 0, value: centerY + Math.round(35 * sy) },
-            { time: 0.7, value: centerY },
-          ],
-          scaleX: [
-            { time: 0, value: 0 },
-            { time: 0.7, value: 1 },
-          ],
-          scaleY: [
-            { time: 0, value: 0 },
-            { time: 0.7, value: 1 },
-          ],
-          rotation: [
-            { time: 0, value: -25 },
-            { time: 0.7, value: 0 },
-          ],
-          opacity: [
-            { time: 0, value: 0 },
-            { time: 0.4, value: 1 },
-          ],
+          y: [{ time: 0, value: centerY }],
+          scaleX: [{ time: 0, value: 1 }],
+          scaleY: [{ time: 0, value: 1 }],
+          rotation: [{ time: 0, value: 0 }],
+          opacity: [{ time: 0, value: 1 }],
         },
       };
 
@@ -1694,26 +1649,14 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
             borderRadius: 0,
             borderStyle: 'solid',
             animateDash: false,
-            easing: 'backOut',
+            easing: 'easeOutCubic',
             keyframes: {
               x: [{ time: 0, value: Math.round(activeRes.width / 2) }],
               y: [{ time: 0, value: Math.round(activeRes.height / 2) }],
-              scaleX: [
-                { time: 0, value: 0.1 },
-                { time: 0.6, value: 1 },
-              ],
-              scaleY: [
-                { time: 0, value: 0.1 },
-                { time: 0.6, value: 1 },
-              ],
-              rotation: [
-                { time: 0, value: -15 },
-                { time: 0.6, value: 0 },
-              ],
-              opacity: [
-                { time: 0, value: 0 },
-                { time: 0.4, value: 1 },
-              ],
+              scaleX: [{ time: 0, value: 1 }],
+              scaleY: [{ time: 0, value: 1 }],
+              rotation: [{ time: 0, value: 0 }],
+              opacity: [{ time: 0, value: 1 }],
             },
           };
 

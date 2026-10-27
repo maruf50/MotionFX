@@ -866,14 +866,14 @@ export default function ShapeBuilderPage() {
         borderRadius: 0,
         borderStyle: 'solid',
         animateDash: false,
-        easing: 'backOut',
+        easing: 'easeOutCubic',
         keyframes: {
           x: [{ time: 0, value: 400 }],
           y: [{ time: 0, value: 225 }],
-          scaleX: [{ time: 0, value: 0.1 }, { time: 0.6, value: 1 }],
-          scaleY: [{ time: 0, value: 0.1 }, { time: 0.6, value: 1 }],
-          rotation: [{ time: 0, value: -15 }, { time: 0.6, value: 0 }],
-          opacity: [{ time: 0, value: 0 }, { time: 0.4, value: 1 }],
+          scaleX: [{ time: 0, value: 1 }],
+          scaleY: [{ time: 0, value: 1 }],
+          rotation: [{ time: 0, value: 0 }],
+          opacity: [{ time: 0, value: 1 }],
         },
       };
 

@@ -100,13 +100,13 @@ export function TimelineTracks() {
   return (
     <div className="flex-1 flex min-h-0 overflow-hidden">
       {/* Left Track Names List */}
-      <div className="w-64 border-r border-[#1e2130] flex flex-col shrink-0 bg-[#11131c]">
-        <div className="h-7 border-b border-[#1e2130] px-3 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-slate-500 bg-[#090a0f]/40">
+      <div className="w-64 border-r border-[#242428] flex flex-col shrink-0 bg-[#161619]">
+        <div className="h-7 border-b border-[#242428] px-3 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-zinc-500 bg-[#121214]">
           <span>Layer Track</span>
           <span>Properties</span>
         </div>
 
-        <div className="flex-1 overflow-y-hidden divide-y divide-[#1e2130]/60">
+        <div className="flex-1 overflow-y-hidden divide-y divide-[#242428]/80">
           {layers.map((layer) => {
             const isSel = layer.id === selectedLayerId;
             return (
@@ -114,11 +114,11 @@ export function TimelineTracks() {
                 key={layer.id}
                 onClick={() => selectLayer(layer.id)}
                 className={`h-9 px-3 flex items-center justify-between cursor-pointer transition ${
-                  isSel ? 'bg-indigo-950/50 text-indigo-200' : 'text-slate-400 hover:bg-[#171925]'
+                  isSel ? 'bg-purple-950/30 text-purple-200 border-l-2 border-purple-500' : 'text-zinc-400 hover:bg-[#1c1c20] hover:text-zinc-200'
                 }`}
               >
                 <span className="text-xs truncate font-medium">{layer.name}</span>
-                <span className="text-[10px] font-mono text-slate-500">
+                <span className="text-[10px] font-mono text-zinc-500">
                   pos • scale • rot
                 </span>
               </div>
@@ -131,7 +131,7 @@ export function TimelineTracks() {
       <div
         ref={tracksPaneRef}
         onMouseDown={handleTrackPaneMouseDown}
-        className="flex-1 overflow-y-auto relative divide-y divide-[#1e2130]/60 select-none cursor-crosshair"
+        className="flex-1 overflow-y-auto relative divide-y divide-[#242428]/80 select-none cursor-crosshair bg-[#121215]"
       >
         {layers.map((layer) => {
           const isSel = layer.id === selectedLayerId;
@@ -151,12 +151,12 @@ export function TimelineTracks() {
             <div
               key={layer.id}
               className={`h-9 relative transition ${
-                isSel ? 'bg-indigo-950/20' : 'hover:bg-[#11131c]/50'
+                isSel ? 'bg-purple-950/15' : 'hover:bg-[#18181c]/60'
               }`}
             >
               {/* Horizontal Center Guide Line */}
               <div className="absolute inset-y-0 left-0 right-0 flex items-center pointer-events-none">
-                <div className="w-full h-[1px] bg-[#1e2130]/70"></div>
+                <div className="w-full h-[1px] bg-[#242428]"></div>
               </div>
 
               {/* Keyframe Diamonds */}
@@ -175,7 +175,7 @@ export function TimelineTracks() {
                       handleStartKeyframeDrag(e, layer.id, d.prop, d.index, d.time)
                     }
                     title={`${d.prop}: ${Number(d.value).toFixed(1)} @ ${d.time.toFixed(2)}s`}
-                    className={`keyframe-diamond absolute top-1/2 bg-amber-400 border border-amber-950 cursor-pointer ${
+                    className={`keyframe-diamond absolute top-1/2 bg-zinc-200 border border-zinc-950 hover:bg-white cursor-pointer ${
                       isKfSelected ? 'selected' : ''
                     }`}
                     style={{ left: `${leftPct}%` }}

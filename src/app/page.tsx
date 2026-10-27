@@ -13,7 +13,7 @@ import { ResolutionModal } from '@/components/ResolutionModal';
 export default function MotionGraphicsStudioPage() {
   return (
     <MotionProvider>
-      <div className="h-screen w-screen flex flex-col font-sans antialiased overflow-hidden bg-[#090a0f]">
+      <div className="h-screen w-screen flex flex-col font-sans antialiased overflow-hidden bg-[#0d0d0f]">
         {/* Top Header Navigation */}
         <Header />
 

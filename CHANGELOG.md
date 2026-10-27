@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.0] - 2026-10-27
+
+### Removed
+- **Default Animation on Element Creation**:
+  - Removed entrance motion keyframes (scale 0.1→1, rotation -15°→0°, opacity 0→1) automatically added when spawning new elements:
+    - **Geometric Shapes**: Lines, rectangles, circles, stars, polygons, and capsules now spawn completely static with constant properties (`scale: 1`, `rotation: 0`, `opacity: 1`) across the timeline.
+    - **Vector Builder Shapes**: Custom shapes created and imported from the Shape Studio now spawn without motion keyframes.
+    - **Text Elements**: Text layers now spawn with static text (`textEffect: 'none'`) and no scale keyframes.
+    - **Image & PNG Stickers**: Uploaded images and preset stickers spawn static in their placed position without fly-in animations.
+  - Allows creators to build static scenes and selectively add animation keyframes only where desired.
+
+---
+
+## [2.0.0] - 2026-10-27
+
+### Changed
+- **DaVinci Resolve Studio UI Theme & Visual Overhaul**:
+  - Re-themed the entire interface to DaVinci Resolve's signature precision aesthetic:
+    - **Monochromatic Matte Charcoal/Graphite Base**: Transformed panels, toolbars, sidebar, headers, and inspectors to deep studio neutral tones (`#0d0d0f`, `#121215`, `#161619`, `#1a1a1e`, `#242428`) with clean `#32323a` dividers.
+    - **High-Contrast Neutral Zinc Typography**: Crisp, glare-free readability using `#f4f4f5` titles and `#a1a1aa` secondary captions.
+    - **Studio Purple Accents on Interactive Elements**:
+      - Replaced generic colors with DaVinci-grade purple accents (`bg-purple-600 hover:bg-purple-500`, `text-purple-400`, `border-purple-500/70`, `shadow-purple-950/50`).
+      - Primary action buttons (Export Video, Play/Pause, Add Keyframes, Custom Resolution Apply, Shape/Text creation) feature sleek purplish styling.
+      - Active states, selected keyframe diamonds, active sidebar tabs, timeline playhead scrubber & laser needle, and multi-selection badges adopt refined purple highlights.
+    - **Preserved Exact Layout**: Zero alterations to grid, panel sizing, component positioning, or functional workflows.
+
+---
+
 ## [1.9.0] - 2026-10-27
 
 ### Added

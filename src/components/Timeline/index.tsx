@@ -102,7 +102,7 @@ export function Timeline() {
   const playheadPct = Math.min(100, Math.max(0, (currentTime / duration) * 100));
 
   return (
-    <section className="h-64 bg-[#11131c] border-t border-[#1e2130] flex flex-col shrink-0 z-30 select-none">
+    <section className="h-64 bg-[#141417] border-t border-[#242428] flex flex-col shrink-0 z-30 select-none">
       <TransportControls />
 
       <div
@@ -139,10 +139,10 @@ export function Timeline() {
         <div className="flex-1 flex flex-col min-w-0 relative">
           <div className="flex flex-1 min-h-0">
             {/* Left track names spacer alignment with TimeRuler */}
-            <div className="w-64 border-r border-[#1e2130] bg-[#11131c] shrink-0 flex flex-col">
-              <div className="h-7 border-b border-[#1e2130] px-3 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-slate-500 bg-[#090a0f]/40">
+            <div className="w-64 border-r border-[#242428] bg-[#161619] shrink-0 flex flex-col">
+              <div className="h-7 border-b border-[#242428] px-3 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-zinc-500 bg-[#121214]">
                 <span>Timeline</span>
-                <span className="font-mono text-indigo-400">FPS: 60</span>
+                <span className="font-mono text-purple-400">FPS: 60</span>
               </div>
             </div>
 
@@ -155,9 +155,9 @@ export function Timeline() {
           {/* Timeline Tracks Lane area */}
           <TimelineTracks />
 
-          {/* Red Playhead Indicator Line (NO lag transition, realtime cursor follow) */}
+          {/* Purple Playhead Indicator Line (Realtime cursor follow) */}
           <div
-            className="absolute top-0 bottom-0 w-[2px] bg-rose-500 z-40 pointer-events-none"
+            className="absolute top-0 bottom-0 w-[2px] bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.7)] z-40 pointer-events-none"
             style={{
               left: `calc(16rem + (100% - 16rem) * ${playheadPct / 100})`,
             }}
@@ -166,9 +166,9 @@ export function Timeline() {
             <div
               onMouseDown={handlePlayheadMouseDown}
               title="Drag playhead to scrub timeline in realtime"
-              className="w-4 h-5 -ml-[7px] bg-rose-500 rounded-b-sm flex items-center justify-center shadow-lg shadow-rose-500/50 cursor-ew-resize pointer-events-auto hover:scale-110 transition-transform"
+              className="w-4 h-5 -ml-[7px] bg-purple-600 hover:bg-purple-500 rounded-b-sm flex items-center justify-center shadow-lg shadow-purple-950/60 cursor-ew-resize pointer-events-auto hover:scale-110 transition-transform"
             >
-              <div className="w-1 h-2.5 bg-white/90 rounded-full pointer-events-none"></div>
+              <div className="w-1 h-2.5 bg-white/95 rounded-full pointer-events-none"></div>
             </div>
           </div>
         </div>

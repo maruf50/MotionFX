@@ -11,27 +11,27 @@ export function TextEffectSection() {
   if (!selectedLayer || selectedLayer.type !== 'text') return null;
 
   return (
-    <div className="bg-[#171925] p-3 rounded-xl border border-[#1e2130] space-y-3">
-      <span className="text-[11px] font-semibold uppercase tracking-wider text-sky-300 flex items-center gap-1.5">
-        <Wand2 className="w-3 h-3 text-sky-400" />
+    <div className="bg-[#1a1a1e] p-2.5 rounded border border-[#28282e] space-y-2.5">
+      <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
+        <Wand2 className="w-3 h-3 text-purple-400" />
         Kinetic Text & Effects
       </span>
 
       {/* Text String */}
       <div>
-        <label className="text-[11px] text-slate-400 block mb-1">Text Content</label>
+        <label className="text-[11px] text-zinc-400 block mb-1">Text Content</label>
         <input
           type="text"
           value={selectedLayer.text || ''}
           onChange={(e) => updateLayer(selectedLayer.id, { text: e.target.value })}
-          className="w-full bg-[#090a0f] border border-[#2b2f44] focus:border-indigo-500 rounded-md px-2 py-1 text-xs font-sans text-white outline-none"
+          className="w-full bg-[#121214] border border-[#2c2c32] focus:border-purple-500 rounded px-2 py-1 text-xs font-sans text-white outline-none"
         />
       </div>
 
       {/* Font Size & Text Color */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <label className="text-[11px] text-slate-400">Font Size</label>
+          <label className="text-[11px] text-zinc-400">Font Size</label>
           <div className="flex items-center gap-1.5">
             <input
               type="number"
@@ -42,9 +42,9 @@ export function TextEffectSection() {
               onChange={(e) =>
                 updateLayer(selectedLayer.id, { fontSize: parseInt(e.target.value, 10) || 36 })
               }
-              className="w-16 bg-[#090a0f] border border-[#2b2f44] focus:border-indigo-500 rounded px-2 py-0.5 text-xs font-mono text-white outline-none text-right"
+              className="w-16 bg-[#121214] border border-[#2c2c32] focus:border-purple-500 rounded px-2 py-0.5 text-xs font-mono text-white outline-none text-right"
             />
-            <span className="text-[11px] text-slate-400">px</span>
+            <span className="text-[11px] text-zinc-400">px</span>
           </div>
         </div>
 
@@ -57,30 +57,30 @@ export function TextEffectSection() {
           onChange={(e) =>
             updateLayer(selectedLayer.id, { fontSize: parseInt(e.target.value, 10) || 36 })
           }
-          className="w-full accent-indigo-500 cursor-pointer"
+          className="w-full accent-purple-500 cursor-pointer"
         />
 
         {/* Text Color */}
-        <div className="flex items-center justify-between pt-1">
-          <label className="text-[11px] text-slate-400">Text Color</label>
+        <div className="flex items-center justify-between pt-0.5">
+          <label className="text-[11px] text-zinc-400">Text Color</label>
           <input
             type="color"
             value={selectedLayer.fill || '#ffffff'}
             onChange={(e) => updateLayer(selectedLayer.id, { fill: e.target.value })}
-            className="w-7 h-7 rounded cursor-pointer bg-[#090a0f] border border-[#2b2f44] p-0.5"
+            className="w-6 h-6 rounded cursor-pointer bg-[#121214] border border-[#2c2c32] p-0.5"
           />
         </div>
       </div>
 
       {/* Kinetic Text Effect Dropdown */}
       <div>
-        <label className="text-[11px] text-slate-400 block mb-1">Kinetic Motion Effect</label>
+        <label className="text-[11px] text-zinc-400 block mb-1">Kinetic Motion Effect</label>
         <select
           value={selectedLayer.textEffect || 'none'}
           onChange={(e) =>
             updateLayer(selectedLayer.id, { textEffect: e.target.value as TextEffect })
           }
-          className="w-full bg-[#090a0f] border border-[#2b2f44] focus:border-indigo-500 rounded-md px-2 py-1 text-xs font-sans text-white outline-none cursor-pointer"
+          className="w-full bg-[#121214] border border-[#2c2c32] focus:border-purple-500 rounded px-2 py-1 text-xs font-sans text-white outline-none cursor-pointer"
         >
           <option value="none">None (Standard Display)</option>
           <option value="typewriter">Typewriter + Blinking Cursor</option>
@@ -94,13 +94,13 @@ export function TextEffectSection() {
       {/* Morph Target Phrase */}
       {selectedLayer.textEffect === 'morph' && (
         <div>
-          <label className="text-[11px] text-slate-400 block mb-1">Morph Target Phrase</label>
+          <label className="text-[11px] text-zinc-400 block mb-1">Morph Target Phrase</label>
           <input
             type="text"
             value={selectedLayer.morphTarget || ''}
             onChange={(e) => updateLayer(selectedLayer.id, { morphTarget: e.target.value })}
             placeholder="Target word or phrase..."
-            className="w-full bg-[#090a0f] border border-[#2b2f44] focus:border-indigo-500 rounded-md px-2 py-1 text-xs font-sans text-white outline-none"
+            className="w-full bg-[#121214] border border-[#2c2c32] focus:border-purple-500 rounded px-2 py-1 text-xs font-sans text-white outline-none"
           />
         </div>
       )}
