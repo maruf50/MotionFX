@@ -13,20 +13,28 @@ import {
   Trash2,
   Sparkles,
   ArrowLeft,
-  Grid,
   CheckCircle,
   Eye,
+  EyeOff,
   Sliders,
-  Maximize2,
-  Shield,
+  Layers,
+  Combine,
+  Square,
+  Circle as CircleIcon,
+  Star as StarIcon,
+  Hexagon,
+  Minus,
+  Copy,
+  ArrowUp,
+  ArrowDown,
+  Plus,
   Zap,
-  MessageCircle,
+  Shield,
   Heart,
-  Moon,
-  Compass,
+  MessageCircle,
 } from 'lucide-react';
 
-interface Point {
+export interface Point {
   x: number;
   y: number;
   cp1x?: number; // control point 1
@@ -35,80 +43,344 @@ interface Point {
   cp2y?: number;
 }
 
+export interface BuilderLayer {
+  id: string;
+  name: string;
+  visible: boolean;
+  type: 'pen' | 'brush' | 'rect' | 'circle' | 'star' | 'polygon' | 'line' | 'compound';
+  points: Point[];
+  isClosed: boolean;
+  fill: string;
+  hasFill: boolean;
+  stroke: string;
+  strokeWidth: number;
+  opacity: number;
+}
+
 type BuilderTool = 'pen' | 'brush' | 'eraser' | 'select';
+
+// Math Helper: Kappa for perfect cubic Bézier circle approximation
+const KAPPA = 0.5522847498307935;
+
+function makeRectPoints(cx: number, cy: number, w: number, h: number, r: number = 0): Point[] {
+  const hw = w / 2;
+  const hh = h / 2;
+  return [
+    { x: cx - hw, y: cy - hh },
+    { x: cx + hw, y: cy - hh },
+    { x: cx + hw, y: cy + hh },
+    { x: cx - hw, y: cy + hh },
+  ];
+}
+
+function makeCirclePoints(cx: number, cy: number, r: number): Point[] {
+  const k = r * KAPPA;
+  return [
+    { x: cx, y: cy - r, cp1x: cx + k, cp1y: cy - r, cp2x: cx + r, cp2y: cy - k },
+    { x: cx + r, y: cy, cp1x: cx + r, cp1y: cy + k, cp2x: cx + k, cp2y: cy + r },
+    { x: cx, y: cy + r, cp1x: cx - k, cp1y: cy + r, cp2x: cx - r, cp2y: cy + k },
+    { x: cx - r, y: cy, cp1x: cx - r, cp1y: cy - k, cp2x: cx - k, cp2y: cy - r },
+  ];
+}
+
+function makeStarPoints(cx: number, cy: number, points: number = 5, outerR: number = 70, innerR: number = 32): Point[] {
+  const pts: Point[] = [];
+  const step = Math.PI / points;
+  for (let i = 0; i < points * 2; i++) {
+    const r = i % 2 === 0 ? outerR : innerR;
+    const angle = i * step - Math.PI / 2;
+    pts.push({
+      x: cx + Math.cos(angle) * r,
+      y: cy + Math.sin(angle) * r,
+    });
+  }
+  return pts;
+}
+
+function makePolygonPoints(cx: number, cy: number, sides: number = 6, r: number = 65): Point[] {
+  const pts: Point[] = [];
+  const step = (Math.PI * 2) / sides;
+  for (let i = 0; i < sides; i++) {
+    const angle = i * step - Math.PI / 2;
+    pts.push({
+      x: cx + Math.cos(angle) * r,
+      y: cy + Math.sin(angle) * r,
+    });
+  }
+  return pts;
+}
+
+function pointsToSvgSubpath(points: Point[], isClosed: boolean, offsetX = 0, offsetY = 0): string {
+  if (points.length === 0) return '';
+  let d = '';
+  points.forEach((p, idx) => {
+    const x = p.x - offsetX;
+    const y = p.y - offsetY;
+    if (idx === 0) {
+      d += `M ${x.toFixed(1)} ${y.toFixed(1)}`;
+    } else if (p.cp1x !== undefined && p.cp1y !== undefined) {
+      const cp1x = p.cp1x - offsetX;
+      const cp1y = p.cp1y - offsetY;
+      const cp2x = (p.cp2x ?? p.x) - offsetX;
+      const cp2y = (p.cp2y ?? p.y) - offsetY;
+      d += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${x.toFixed(1)} ${y.toFixed(1)}`;
+    } else {
+      d += ` L ${x.toFixed(1)} ${y.toFixed(1)}`;
+    }
+  });
+  if (isClosed || points.length > 2) {
+    d += ' Z';
+  }
+  return d;
+}
 
 export default function ShapeBuilderPage() {
   const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // Studio Settings
-  const [shapeName, setShapeName] = useState('Custom Vector');
+  // Global Builder Settings
+  const [shapeName, setShapeName] = useState('Custom Compound Shape');
   const [tool, setTool] = useState<BuilderTool>('pen');
-  const [fillColor, setFillColor] = useState('#6366f1');
-  const [hasFill, setHasFill] = useState(true);
-  const [strokeColor, setStrokeColor] = useState('#ffffff');
-  const [strokeWidth, setStrokeWidth] = useState(3);
-  const [isClosed, setIsClosed] = useState(false);
   const [snapToGrid, setSnapToGrid] = useState(true);
-  const [eraserRadius, setEraserRadius] = useState(25);
+  const [eraserRadius, setEraserRadius] = useState(24);
 
-  // Vector Geometry
-  const [points, setPoints] = useState<Point[]>([
-    { x: 300, y: 150 },
-    { x: 450, y: 150, cp1x: 400, cp1y: 120, cp2x: 450, cp2y: 150 },
-    { x: 500, y: 280 },
-    { x: 250, y: 280, cp1x: 350, cp1y: 340, cp2x: 270, cp2y: 300 },
+  // Layer Architecture inside Shape Builder
+  const [layers, setLayers] = useState<BuilderLayer[]>([
+    {
+      id: 'layer_rect',
+      name: 'Rounded Box 1',
+      visible: true,
+      type: 'rect',
+      points: makeRectPoints(350, 225, 180, 140),
+      isClosed: true,
+      fill: '#4f46e5',
+      hasFill: true,
+      stroke: '#a5b4fc',
+      strokeWidth: 3,
+      opacity: 0.9,
+    },
+    {
+      id: 'layer_circle',
+      name: 'Accent Ring 2',
+      visible: true,
+      type: 'circle',
+      points: makeCirclePoints(460, 225, 75),
+      isClosed: true,
+      fill: '#db2777',
+      hasFill: true,
+      stroke: '#ffffff',
+      strokeWidth: 3,
+      opacity: 0.85,
+    },
   ]);
+
+  const [activeLayerId, setActiveLayerId] = useState<string>('layer_circle');
   const [selectedPointIdx, setSelectedPointIdx] = useState<number | null>(null);
   const [selectedHandle, setSelectedHandle] = useState<'cp1' | 'cp2' | null>(null);
 
-  // History for Undo/Redo
-  const [history, setHistory] = useState<Point[][]>([]);
-  const [redoStack, setRedoStack] = useState<Point[][]>([]);
+  // Undo / Redo History
+  const [history, setHistory] = useState<BuilderLayer[][]>([]);
+  const [redoStack, setRedoStack] = useState<BuilderLayer[][]>([]);
 
-  // Interaction State
+  // Dragging and Cursor State
   const [isMouseDown, setIsMouseDown] = useState(false);
   const [dragStartPoint, setDragStartPoint] = useState<{ x: number; y: number } | null>(null);
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isSuccessToast, setIsSuccessToast] = useState(false);
 
+  const activeLayer = layers.find((l) => l.id === activeLayerId) || layers[0] || null;
+
   const pushHistory = useCallback(() => {
-    setHistory((prev) => [...prev.slice(-20), points]);
+    setHistory((prev) => [...prev.slice(-20), layers]);
     setRedoStack([]);
-  }, [points]);
+  }, [layers]);
 
   const handleUndo = () => {
     if (history.length === 0) return;
-    const previous = history[history.length - 1];
-    setRedoStack((prev) => [points, ...prev]);
-    setPoints(previous);
-    setHistory((prev) => prev.slice(0, -1));
+    const prev = history[history.length - 1];
+    setRedoStack((r) => [layers, ...r]);
+    setLayers(prev);
+    setHistory((h) => h.slice(0, -1));
   };
 
   const handleRedo = () => {
     if (redoStack.length === 0) return;
     const next = redoStack[0];
-    setHistory((prev) => [...prev, points]);
-    setPoints(next);
-    setRedoStack((prev) => prev.slice(1));
+    setHistory((h) => [...h, layers]);
+    setLayers(next);
+    setRedoStack((r) => r.slice(1));
   };
 
-  // Convert points to SVG path string
-  const generateSvgPath = useCallback(
-    (centered = false): { path: string; width: number; height: number } => {
-      if (points.length === 0) return { path: '', width: 100, height: 100 };
+  // Add Primitive Shapes to Builder
+  const addPrimitive = (
+    type: 'rect' | 'circle' | 'star' | 'polygon' | 'line',
+    name: string
+  ) => {
+    pushHistory();
+    const cx = 400 + (layers.length % 4) * 20 - 30;
+    const cy = 225 + (layers.length % 4) * 20 - 30;
 
-      // Calculate Bounding Box
+    let pts: Point[] = [];
+    if (type === 'rect') pts = makeRectPoints(cx, cy, 170, 130);
+    else if (type === 'circle') pts = makeCirclePoints(cx, cy, 75);
+    else if (type === 'star') pts = makeStarPoints(cx, cy, 5, 80, 36);
+    else if (type === 'polygon') pts = makePolygonPoints(cx, cy, 6, 75);
+    else if (type === 'line') pts = [{ x: cx - 80, y: cy }, { x: cx + 80, y: cy }];
+
+    const palette = ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#06b6d4', '#8b5cf6'];
+    const chosenColor = palette[layers.length % palette.length];
+
+    const newLayer: BuilderLayer = {
+      id: `bl_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      name: `${name} ${layers.length + 1}`,
+      visible: true,
+      type,
+      points: pts,
+      isClosed: type !== 'line',
+      fill: chosenColor,
+      hasFill: type !== 'line',
+      stroke: '#ffffff',
+      strokeWidth: 3,
+      opacity: 1,
+    };
+
+    setLayers((prev) => [newLayer, ...prev]);
+    setActiveLayerId(newLayer.id);
+  };
+
+  // Add New Freehand/Pen Layer
+  const addNewPenLayer = () => {
+    pushHistory();
+    const newLayer: BuilderLayer = {
+      id: `bl_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      name: `Pen Path ${layers.length + 1}`,
+      visible: true,
+      type: 'pen',
+      points: [],
+      isClosed: false,
+      fill: '#ec4899',
+      hasFill: true,
+      stroke: '#ffffff',
+      strokeWidth: 3,
+      opacity: 1,
+    };
+    setLayers((prev) => [newLayer, ...prev]);
+    setActiveLayerId(newLayer.id);
+    setTool('pen');
+  };
+
+  // Layer Operations
+  const updateActiveLayer = (updates: Partial<BuilderLayer>) => {
+    if (!activeLayer) return;
+    setLayers((prev) =>
+      prev.map((l) => (l.id === activeLayer.id ? { ...l, ...updates } : l))
+    );
+  };
+
+  const deleteLayer = (id: string) => {
+    pushHistory();
+    setLayers((prev) => {
+      const filtered = prev.filter((l) => l.id !== id);
+      if (activeLayerId === id) {
+        setActiveLayerId(filtered[0]?.id || '');
+      }
+      return filtered;
+    });
+  };
+
+  const duplicateLayer = (id: string) => {
+    pushHistory();
+    const target = layers.find((l) => l.id === id);
+    if (!target) return;
+    const cloned: BuilderLayer = {
+      ...JSON.parse(JSON.stringify(target)),
+      id: `bl_${Date.now()}_copy`,
+      name: `${target.name} Copy`,
+      points: target.points.map((p) => ({
+        ...p,
+        x: p.x + 25,
+        y: p.y + 25,
+        cp1x: p.cp1x !== undefined ? p.cp1x + 25 : undefined,
+        cp1y: p.cp1y !== undefined ? p.cp1y + 25 : undefined,
+        cp2x: p.cp2x !== undefined ? p.cp2x + 25 : undefined,
+        cp2y: p.cp2y !== undefined ? p.cp2y + 25 : undefined,
+      })),
+    };
+    setLayers((prev) => [cloned, ...prev]);
+    setActiveLayerId(cloned.id);
+  };
+
+  const reorderLayer = (id: string, dir: 'up' | 'down') => {
+    pushHistory();
+    setLayers((prev) => {
+      const idx = prev.findIndex((l) => l.id === id);
+      if (idx === -1) return prev;
+      const targetIdx = dir === 'up' ? idx - 1 : idx + 1;
+      if (targetIdx < 0 || targetIdx >= prev.length) return prev;
+      const copy = [...prev];
+      const item = copy.splice(idx, 1)[0];
+      copy.splice(targetIdx, 0, item);
+      return copy;
+    });
+  };
+
+  const toggleLayerVisible = (id: string) => {
+    setLayers((prev) =>
+      prev.map((l) => (l.id === id ? { ...l, visible: !l.visible } : l))
+    );
+  };
+
+  // Merge All Visible Layers Together Into a Single Compound Layer
+  const mergeLayersTogether = () => {
+    const visibleLayers = layers.filter((l) => l.visible && l.points.length > 0);
+    if (visibleLayers.length <= 1) {
+      alert('You need at least 2 visible layers with points to merge.');
+      return;
+    }
+    pushHistory();
+
+    const mergedPoints: Point[] = [];
+    visibleLayers.forEach((l) => {
+      mergedPoints.push(...l.points);
+    });
+
+    const primary = visibleLayers[0];
+    const compoundLayer: BuilderLayer = {
+      id: `bl_compound_${Date.now()}`,
+      name: `${shapeName || 'Compound Shape'} (Merged)`,
+      visible: true,
+      type: 'compound',
+      points: mergedPoints,
+      isClosed: true,
+      fill: primary.fill,
+      hasFill: primary.hasFill,
+      stroke: primary.stroke,
+      strokeWidth: primary.strokeWidth,
+      opacity: primary.opacity,
+    };
+
+    setLayers([compoundLayer]);
+    setActiveLayerId(compoundLayer.id);
+  };
+
+  // Calculate Global Bounding Box and SVG Path
+  const generateMergedSvgPath = useCallback(
+    (centered = true): { path: string; width: number; height: number; fill: string; stroke: string } => {
+      const visibleLayers = layers.filter((l) => l.visible && l.points.length > 0);
+      if (visibleLayers.length === 0) return { path: '', width: 100, height: 100, fill: '#6366f1', stroke: '#ffffff' };
+
       let minX = Infinity;
       let minY = Infinity;
       let maxX = -Infinity;
       let maxY = -Infinity;
 
-      points.forEach((p) => {
-        minX = Math.min(minX, p.x, p.cp1x ?? p.x, p.cp2x ?? p.x);
-        minY = Math.min(minY, p.y, p.cp1y ?? p.y, p.cp2y ?? p.y);
-        maxX = Math.max(maxX, p.x, p.cp1x ?? p.x, p.cp2x ?? p.x);
-        maxY = Math.max(maxY, p.y, p.cp1y ?? p.y, p.cp2y ?? p.y);
+      visibleLayers.forEach((layer) => {
+        layer.points.forEach((p) => {
+          minX = Math.min(minX, p.x, p.cp1x ?? p.x, p.cp2x ?? p.x);
+          minY = Math.min(minY, p.y, p.cp1y ?? p.y, p.cp2y ?? p.y);
+          maxX = Math.max(maxX, p.x, p.cp1x ?? p.x, p.cp2x ?? p.x);
+          maxY = Math.max(maxY, p.y, p.cp1y ?? p.y, p.cp2y ?? p.y);
+        });
       });
 
       const width = Math.max(40, maxX - minX);
@@ -116,41 +388,32 @@ export default function ShapeBuilderPage() {
       const centerX = (minX + maxX) / 2;
       const centerY = (minY + maxY) / 2;
 
-      let d = '';
-      points.forEach((p, idx) => {
-        const x = centered ? p.x - centerX : p.x;
-        const y = centered ? p.y - centerY : p.y;
+      const subpaths = visibleLayers.map((l) =>
+        pointsToSvgSubpath(l.points, l.isClosed, centered ? centerX : 0, centered ? centerY : 0)
+      );
 
-        if (idx === 0) {
-          d += `M ${x.toFixed(1)} ${y.toFixed(1)}`;
-        } else if (p.cp1x !== undefined && p.cp1y !== undefined) {
-          const cp1x = centered ? p.cp1x - centerX : p.cp1x;
-          const cp1y = centered ? p.cp1y - centerY : p.cp1y;
-          const cp2x = centered ? (p.cp2x ?? p.x) - centerX : (p.cp2x ?? p.x);
-          const cp2y = centered ? (p.cp2y ?? p.y) - centerY : (p.cp2y ?? p.y);
-          d += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${x.toFixed(1)} ${y.toFixed(1)}`;
-        } else {
-          d += ` L ${x.toFixed(1)} ${y.toFixed(1)}`;
-        }
-      });
+      const unifiedPath = subpaths.join(' ');
+      const mainFill = visibleLayers[0]?.hasFill ? visibleLayers[0]?.fill : 'transparent';
+      const mainStroke = visibleLayers[0]?.stroke || '#ffffff';
 
-      if (isClosed || points.length > 2) {
-        d += ' Z';
-      }
-
-      return { path: d, width, height };
+      return {
+        path: unifiedPath,
+        width: Math.round(width),
+        height: Math.round(height),
+        fill: mainFill,
+        stroke: mainStroke,
+      };
     },
-    [points, isClosed]
+    [layers]
   );
 
-  // Canvas Redraw
+  // Render Canvas Scene
   const renderCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Background
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#090a0f';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -172,8 +435,8 @@ export default function ShapeBuilderPage() {
       ctx.stroke();
     }
 
-    // Center Guides
-    ctx.strokeStyle = 'rgba(99, 102, 241, 0.15)';
+    // Center Crosshair
+    ctx.strokeStyle = 'rgba(99, 102, 241, 0.2)';
     ctx.beginPath();
     ctx.moveTo(canvas.width / 2, 0);
     ctx.lineTo(canvas.width / 2, canvas.height);
@@ -183,33 +446,68 @@ export default function ShapeBuilderPage() {
     ctx.lineTo(canvas.width, canvas.height / 2);
     ctx.stroke();
 
-    if (points.length === 0) return;
+    // Render Layers from bottom of stack to top (reverse order)
+    for (let i = layers.length - 1; i >= 0; i--) {
+      const layer = layers[i];
+      if (!layer.visible || layer.points.length === 0) continue;
 
-    // Draw Vector Path
-    const { path: pathD } = generateSvgPath(false);
-    try {
-      const p2d = new Path2D(pathD);
+      const subpath = pointsToSvgSubpath(layer.points, layer.isClosed);
+      try {
+        const p2d = new Path2D(subpath);
+        ctx.save();
+        ctx.globalAlpha = layer.opacity;
 
-      if (hasFill && fillColor) {
-        ctx.fillStyle = fillColor;
-        ctx.fill(p2d);
+        if (layer.hasFill && layer.fill) {
+          ctx.fillStyle = layer.fill;
+          ctx.fill(p2d);
+        }
+
+        if (layer.strokeWidth > 0 && layer.stroke) {
+          ctx.lineWidth = layer.strokeWidth;
+          ctx.strokeStyle = layer.stroke;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.stroke(p2d);
+        }
+        ctx.restore();
+      } catch {
+        // ignore
       }
 
-      if (strokeWidth > 0 && strokeColor) {
-        ctx.lineWidth = strokeWidth;
-        ctx.strokeStyle = strokeColor;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.stroke(p2d);
+      // Draw Anchor points for the ACTIVE layer
+      if (layer.id === activeLayerId) {
+        layer.points.forEach((p, idx) => {
+          const isSelected = selectedPointIdx === idx;
+
+          // Bézier Tangent Lines
+          if (p.cp1x !== undefined && p.cp1y !== undefined) {
+            ctx.strokeStyle = 'rgba(245, 158, 11, 0.6)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(p.cp1x, p.cp1y);
+            ctx.stroke();
+
+            ctx.fillStyle = '#f59e0b';
+            ctx.beginPath();
+            ctx.arc(p.cp1x, p.cp1y, 4, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // Anchor Square
+          ctx.fillStyle = isSelected ? '#38bdf8' : '#ffffff';
+          ctx.strokeStyle = '#090a0f';
+          ctx.lineWidth = 2;
+          ctx.fillRect(p.x - 5, p.y - 5, 10, 10);
+          ctx.strokeRect(p.x - 5, p.y - 5, 10, 10);
+        });
       }
-    } catch {
-      // ignore
     }
 
-    // Interactive Preview Line to cursor while using Pen tool
-    if (tool === 'pen' && points.length > 0) {
-      const last = points[points.length - 1];
-      ctx.strokeStyle = 'rgba(99, 102, 241, 0.5)';
+    // Active Pen Line following cursor
+    if (tool === 'pen' && activeLayer && activeLayer.points.length > 0) {
+      const last = activeLayer.points[activeLayer.points.length - 1];
+      ctx.strokeStyle = 'rgba(99, 102, 241, 0.55)';
       ctx.lineWidth = 1.5;
       ctx.setLineDash([4, 4]);
       ctx.beginPath();
@@ -219,34 +517,6 @@ export default function ShapeBuilderPage() {
       ctx.setLineDash([]);
     }
 
-    // Draw Anchors & Bézier Control Handles
-    points.forEach((p, idx) => {
-      const isSelected = selectedPointIdx === idx;
-
-      // Tangent lines
-      if (p.cp1x !== undefined && p.cp1y !== undefined) {
-        ctx.strokeStyle = 'rgba(245, 158, 11, 0.6)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(p.x, p.y);
-        ctx.lineTo(p.cp1x, p.cp1y);
-        ctx.stroke();
-
-        // Control point circle
-        ctx.fillStyle = '#f59e0b';
-        ctx.beginPath();
-        ctx.arc(p.cp1x, p.cp1y, 4, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Anchor Point Square
-      ctx.fillStyle = isSelected ? '#38bdf8' : '#ffffff';
-      ctx.strokeStyle = '#090a0f';
-      ctx.lineWidth = 2;
-      ctx.fillRect(p.x - 5, p.y - 5, 10, 10);
-      ctx.strokeRect(p.x - 5, p.y - 5, 10, 10);
-    });
-
     // Eraser Cursor Circle
     if (tool === 'eraser') {
       ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)';
@@ -255,24 +525,13 @@ export default function ShapeBuilderPage() {
       ctx.arc(cursorPos.x, cursorPos.y, eraserRadius, 0, Math.PI * 2);
       ctx.stroke();
     }
-  }, [
-    points,
-    fillColor,
-    hasFill,
-    strokeColor,
-    strokeWidth,
-    generateSvgPath,
-    tool,
-    cursorPos,
-    selectedPointIdx,
-    eraserRadius,
-  ]);
+  }, [layers, activeLayerId, selectedPointIdx, tool, activeLayer, cursorPos, eraserRadius]);
 
   useEffect(() => {
     renderCanvas();
   }, [renderCanvas]);
 
-  // Coordinate Calculation
+  // Coordinate Calculations
   const getCanvasCoords = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
@@ -292,35 +551,36 @@ export default function ShapeBuilderPage() {
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!activeLayer) return;
     const pt = getCanvasCoords(e);
     setIsMouseDown(true);
     setDragStartPoint(pt);
 
     if (tool === 'pen') {
       pushHistory();
-      // Check if clicking close to first point to close path
-      if (points.length > 2) {
-        const first = points[0];
-        const dist = Math.hypot(pt.x - first.x, pt.y - first.y);
-        if (dist < 15) {
-          setIsClosed(true);
+      // Check if clicking first point to close path
+      if (activeLayer.points.length > 2) {
+        const first = activeLayer.points[0];
+        if (Math.hypot(pt.x - first.x, pt.y - first.y) < 14) {
+          updateActiveLayer({ isClosed: true });
           return;
         }
       }
-      setPoints((prev) => [...prev, { x: pt.x, y: pt.y }]);
-      setSelectedPointIdx(points.length);
+      const updated = [...activeLayer.points, { x: pt.x, y: pt.y }];
+      updateActiveLayer({ points: updated });
+      setSelectedPointIdx(activeLayer.points.length);
     } else if (tool === 'brush') {
       pushHistory();
-      setPoints((prev) => [...prev, { x: pt.x, y: pt.y }]);
+      const updated = [...activeLayer.points, { x: pt.x, y: pt.y }];
+      updateActiveLayer({ points: updated });
     } else if (tool === 'eraser') {
       pushHistory();
       erasePointsNear(pt.x, pt.y);
     } else if (tool === 'select') {
-      // Find closest anchor or control handle
       let foundIdx: number | null = null;
       let foundHandle: 'cp1' | 'cp2' | null = null;
 
-      points.forEach((p, idx) => {
+      activeLayer.points.forEach((p, idx) => {
         if (Math.hypot(pt.x - p.x, pt.y - p.y) < 12) {
           foundIdx = idx;
         } else if (p.cp1x !== undefined && Math.hypot(pt.x - p.cp1x, pt.y - p.cp1y!) < 10) {
@@ -338,52 +598,47 @@ export default function ShapeBuilderPage() {
     const pt = getCanvasCoords(e);
     setCursorPos(pt);
 
-    if (!isMouseDown) return;
+    if (!isMouseDown || !activeLayer) return;
 
     if (tool === 'pen' && dragStartPoint && selectedPointIdx !== null) {
-      // Pulling Bézier handles while dragging pen!
-      setPoints((prev) =>
-        prev.map((p, idx) => {
-          if (idx !== selectedPointIdx) return p;
-          const dx = pt.x - dragStartPoint.x;
-          const dy = pt.y - dragStartPoint.y;
-          return {
-            ...p,
-            cp1x: p.x - dx,
-            cp1y: p.y - dy,
-            cp2x: p.x + dx,
-            cp2y: p.y + dy,
-          };
-        })
-      );
-    } else if (tool === 'brush') {
-      setPoints((prev) => {
-        const last = prev[prev.length - 1];
-        if (!last || Math.hypot(pt.x - last.x, pt.y - last.y) > 8) {
-          return [...prev, { x: pt.x, y: pt.y }];
-        }
-        return prev;
+      // Pulling Bézier tangent curve handles
+      const updated = activeLayer.points.map((p, idx) => {
+        if (idx !== selectedPointIdx) return p;
+        const dx = pt.x - dragStartPoint.x;
+        const dy = pt.y - dragStartPoint.y;
+        return {
+          ...p,
+          cp1x: p.x - dx,
+          cp1y: p.y - dy,
+          cp2x: p.x + dx,
+          cp2y: p.y + dy,
+        };
       });
+      updateActiveLayer({ points: updated });
+    } else if (tool === 'brush') {
+      const last = activeLayer.points[activeLayer.points.length - 1];
+      if (!last || Math.hypot(pt.x - last.x, pt.y - last.y) > 8) {
+        updateActiveLayer({ points: [...activeLayer.points, { x: pt.x, y: pt.y }] });
+      }
     } else if (tool === 'eraser') {
       erasePointsNear(pt.x, pt.y);
     } else if (tool === 'select' && selectedPointIdx !== null) {
-      setPoints((prev) =>
-        prev.map((p, idx) => {
-          if (idx !== selectedPointIdx) return p;
-          if (selectedHandle === 'cp1') {
-            return { ...p, cp1x: pt.x, cp1y: pt.y };
-          }
-          const dx = pt.x - p.x;
-          const dy = pt.y - p.y;
-          return {
-            ...p,
-            x: pt.x,
-            y: pt.y,
-            cp1x: p.cp1x !== undefined ? p.cp1x + dx : undefined,
-            cp1y: p.cp1y !== undefined ? p.cp1y + dy : undefined,
-          };
-        })
-      );
+      const updated = activeLayer.points.map((p, idx) => {
+        if (idx !== selectedPointIdx) return p;
+        if (selectedHandle === 'cp1') {
+          return { ...p, cp1x: pt.x, cp1y: pt.y };
+        }
+        const dx = pt.x - p.x;
+        const dy = pt.y - p.y;
+        return {
+          ...p,
+          x: pt.x,
+          y: pt.y,
+          cp1x: p.cp1x !== undefined ? p.cp1x + dx : undefined,
+          cp1y: p.cp1y !== undefined ? p.cp1y + dy : undefined,
+        };
+      });
+      updateActiveLayer({ points: updated });
     }
   };
 
@@ -393,80 +648,31 @@ export default function ShapeBuilderPage() {
   };
 
   const erasePointsNear = (x: number, y: number) => {
-    setPoints((prev) =>
-      prev.filter((p) => Math.hypot(p.x - x, p.y - y) > eraserRadius)
+    if (!activeLayer) return;
+    const remaining = activeLayer.points.filter(
+      (p) => Math.hypot(p.x - x, p.y - y) > eraserRadius
     );
+    updateActiveLayer({ points: remaining });
   };
 
-  // Preset Template Shapes
-  const loadPreset = (preset: string) => {
-    pushHistory();
-    const cx = 400;
-    const cy = 225;
-
-    if (preset === 'lightning') {
-      setPoints([
-        { x: cx, y: cy - 100 },
-        { x: cx + 30, y: cy - 20 },
-        { x: cx + 5, y: cy - 20 },
-        { x: cx + 35, y: cy + 100 },
-        { x: cx - 25, y: cy + 10 },
-        { x: cx + 5, y: cy + 10 },
-      ]);
-      setIsClosed(true);
-    } else if (preset === 'shield') {
-      setPoints([
-        { x: cx, y: cy - 90 },
-        { x: cx + 70, y: cy - 70 },
-        { x: cx + 60, y: cy + 30, cp1x: cx + 70, cp1y: cy },
-        { x: cx, y: cy + 100, cp1x: cx + 40, cp1y: cy + 70 },
-        { x: cx - 60, y: cy + 30, cp1x: cx - 40, cp1y: cy + 70 },
-        { x: cx - 70, y: cy - 70, cp1x: cx - 70, cp1y: cy },
-      ]);
-      setIsClosed(true);
-    } else if (preset === 'heart') {
-      setPoints([
-        { x: cx, y: cy + 70 },
-        { x: cx - 80, y: cy - 20, cp1x: cx - 60, cp1y: cy + 40 },
-        { x: cx - 35, y: cy - 70, cp1x: cx - 80, cp1y: cy - 60 },
-        { x: cx, y: cy - 35, cp1x: cx - 10, cp1y: cy - 70 },
-        { x: cx + 35, y: cy - 70, cp1x: cx + 10, cp1y: cy - 70 },
-        { x: cx + 80, y: cy - 20, cp1x: cx + 80, cp1y: cy - 60 },
-      ]);
-      setIsClosed(true);
-    } else if (preset === 'bubble') {
-      setPoints([
-        { x: cx - 80, y: cy - 50 },
-        { x: cx + 80, y: cy - 50, cp1x: cx, cp1y: cy - 50 },
-        { x: cx + 80, y: cy + 30, cp1x: cx + 80, cp1y: cy },
-        { x: cx - 20, y: cy + 30 },
-        { x: cx - 50, y: cy + 65 },
-        { x: cx - 45, y: cy + 30 },
-        { x: cx - 80, y: cy + 30 },
-      ]);
-      setIsClosed(true);
-    }
-  };
-
-  // Add Shape To Motion Scene Action
-  const handleAddToScene = () => {
-    if (points.length < 2) {
-      alert('Please draw at least 2 points before adding to scene.');
+  // Add Final Merged Shape into Main MotionFX Studio Scene
+  const handleMergeAndAddToScene = () => {
+    const { path, width, height, fill, stroke } = generateMergedSvgPath(true);
+    if (!path) {
+      alert('No visible shape points to export. Please draw or add a shape first.');
       return;
     }
 
-    const { path, width, height } = generateSvgPath(true);
-
-    const customShapePayload = {
-      name: shapeName || 'Custom Vector',
+    const payload = {
+      name: shapeName || 'Merged Custom Vector',
       pathData: path,
-      width: Math.round(width),
-      height: Math.round(height),
-      fill: hasFill ? fillColor : 'transparent',
-      stroke: strokeColor,
+      width,
+      height,
+      fill,
+      stroke,
     };
 
-    localStorage.setItem('motionfx_import_shape', JSON.stringify(customShapePayload));
+    localStorage.setItem('motionfx_import_shape', JSON.stringify(payload));
     setIsSuccessToast(true);
 
     setTimeout(() => {
@@ -481,7 +687,7 @@ export default function ShapeBuilderPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/"
-            className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white px-2.5 py-1.5 rounded-lg bg-[#171925] border border-[#2b2f44] transition"
+            className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white px-2.5 py-1.5 rounded-lg bg-[#171925] border border-[#2b2f44] transition cursor-pointer"
             title="Return to Motion Studio"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
@@ -496,68 +702,117 @@ export default function ShapeBuilderPage() {
               type="text"
               value={shapeName}
               onChange={(e) => setShapeName(e.target.value)}
-              className="bg-[#090a0f] border border-[#2b2f44] focus:border-amber-400 rounded px-2.5 py-1 text-xs font-semibold text-amber-300 outline-none w-44"
+              className="bg-[#090a0f] border border-[#2b2f44] focus:border-amber-400 rounded px-2.5 py-1 text-xs font-semibold text-amber-300 outline-none w-48"
             />
           </div>
         </div>
 
-        {/* Center Canvas Settings */}
-        <div className="flex items-center gap-3 bg-[#090a0f] px-3 py-1 rounded-lg border border-[#1e2130]">
-          {/* Fill Picker */}
-          <div className="flex items-center gap-1.5">
-            <label className="text-xs text-slate-400">Fill:</label>
-            <input
-              type="checkbox"
-              checked={hasFill}
-              onChange={(e) => setHasFill(e.target.checked)}
-              className="rounded accent-indigo-500 cursor-pointer"
-              title="Toggle Fill"
-            />
-            {hasFill && (
+        {/* Primitive Shapes Quick Add Row in Top Bar */}
+        <div className="hidden lg:flex items-center gap-1.5 bg-[#090a0f] px-2.5 py-1 rounded-lg border border-[#1e2130]">
+          <span className="text-[11px] font-semibold uppercase text-slate-400 mr-1 flex items-center gap-1">
+            <Plus className="w-3.5 h-3.5 text-amber-400" />
+            Primitives:
+          </span>
+
+          <button
+            onClick={() => addPrimitive('rect', 'Rectangle')}
+            className="p-1.5 rounded hover:bg-[#171925] text-indigo-400 border border-transparent hover:border-[#2b2f44] transition cursor-pointer"
+            title="Add Rectangle"
+          >
+            <Square className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={() => addPrimitive('circle', 'Circle')}
+            className="p-1.5 rounded hover:bg-[#171925] text-pink-400 border border-transparent hover:border-[#2b2f44] transition cursor-pointer"
+            title="Add Circle"
+          >
+            <CircleIcon className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={() => addPrimitive('star', 'Star')}
+            className="p-1.5 rounded hover:bg-[#171925] text-amber-400 border border-transparent hover:border-[#2b2f44] transition cursor-pointer"
+            title="Add Star"
+          >
+            <StarIcon className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={() => addPrimitive('polygon', 'Hexagon')}
+            className="p-1.5 rounded hover:bg-[#171925] text-emerald-400 border border-transparent hover:border-[#2b2f44] transition cursor-pointer"
+            title="Add Polygon"
+          >
+            <Hexagon className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={() => addPrimitive('line', 'Line')}
+            className="p-1.5 rounded hover:bg-[#171925] text-violet-400 border border-transparent hover:border-[#2b2f44] transition cursor-pointer"
+            title="Add Straight Line"
+          >
+            <Minus className="w-4 h-4 rotate-45" />
+          </button>
+        </div>
+
+        {/* Center Active Styling */}
+        {activeLayer && (
+          <div className="hidden xl:flex items-center gap-3 bg-[#090a0f] px-3 py-1 rounded-lg border border-[#1e2130]">
+            <div className="flex items-center gap-1.5">
+              <label className="text-xs text-slate-400">Fill:</label>
+              <input
+                type="checkbox"
+                checked={activeLayer.hasFill}
+                onChange={(e) => updateActiveLayer({ hasFill: e.target.checked })}
+                className="rounded accent-indigo-500 cursor-pointer"
+              />
+              {activeLayer.hasFill && (
+                <input
+                  type="color"
+                  value={activeLayer.fill}
+                  onChange={(e) => updateActiveLayer({ fill: e.target.value })}
+                  className="w-5 h-5 rounded cursor-pointer bg-transparent border-0"
+                />
+              )}
+            </div>
+
+            <div className="h-3 w-[1px] bg-[#1e2130]"></div>
+
+            <div className="flex items-center gap-1.5">
+              <label className="text-xs text-slate-400">Stroke:</label>
               <input
                 type="color"
-                value={fillColor}
-                onChange={(e) => setFillColor(e.target.value)}
+                value={activeLayer.stroke}
+                onChange={(e) => updateActiveLayer({ stroke: e.target.value })}
                 className="w-5 h-5 rounded cursor-pointer bg-transparent border-0"
               />
-            )}
+              <input
+                type="number"
+                min="0"
+                max="24"
+                value={activeLayer.strokeWidth}
+                onChange={(e) =>
+                  updateActiveLayer({ strokeWidth: parseInt(e.target.value, 10) || 0 })
+                }
+                className="w-11 bg-[#171925] border border-[#2b2f44] rounded px-1 text-xs font-mono text-center"
+              />
+            </div>
+
+            <div className="h-3 w-[1px] bg-[#1e2130]"></div>
+
+            <label className="text-xs text-slate-400 flex items-center gap-1 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={snapToGrid}
+                onChange={(e) => setSnapToGrid(e.target.checked)}
+                className="rounded accent-indigo-500 cursor-pointer"
+              />
+              <span>Snap Grid</span>
+            </label>
           </div>
+        )}
 
-          <div className="h-3 w-[1px] bg-[#1e2130]"></div>
-
-          {/* Stroke Picker */}
-          <div className="flex items-center gap-1.5">
-            <label className="text-xs text-slate-400">Stroke:</label>
-            <input
-              type="color"
-              value={strokeColor}
-              onChange={(e) => setStrokeColor(e.target.value)}
-              className="w-5 h-5 rounded cursor-pointer bg-transparent border-0"
-            />
-            <input
-              type="number"
-              min="0"
-              max="24"
-              value={strokeWidth}
-              onChange={(e) => setStrokeWidth(parseInt(e.target.value, 10) || 0)}
-              className="w-12 bg-[#171925] border border-[#2b2f44] rounded px-1.5 py-0.5 text-xs font-mono text-center"
-            />
-          </div>
-
-          <div className="h-3 w-[1px] bg-[#1e2130]"></div>
-
-          <label className="text-xs text-slate-400 flex items-center gap-1 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={snapToGrid}
-              onChange={(e) => setSnapToGrid(e.target.checked)}
-              className="rounded accent-indigo-500 cursor-pointer"
-            />
-            <span>Snap Grid</span>
-          </label>
-        </div>
-
-        {/* Right Actions */}
+        {/* Right Actions & Merge Button */}
         <div className="flex items-center gap-2">
           <button
             onClick={handleUndo}
@@ -578,30 +833,19 @@ export default function ShapeBuilderPage() {
           </button>
 
           <button
-            onClick={() => {
-              pushHistory();
-              setPoints([]);
-              setIsClosed(false);
-            }}
-            className="p-1.5 rounded bg-[#171925] hover:bg-red-950/70 text-slate-300 hover:text-red-300 border border-[#2b2f44] text-xs cursor-pointer"
-            title="Clear Vector Canvas"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-
-          <button
-            onClick={handleAddToScene}
+            onClick={handleMergeAndAddToScene}
             className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 via-orange-500 to-indigo-600 hover:from-amber-400 hover:to-indigo-500 text-white font-semibold text-xs flex items-center gap-1.5 shadow-lg shadow-amber-500/20 transition cursor-pointer"
+            title="Merge all layers together and add as a single unified custom shape to your motion scene"
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Add to Scene Layers</span>
+            <Combine className="w-3.5 h-3.5" />
+            <span>Merge & Add to Scene</span>
           </button>
         </div>
       </header>
 
-      {/* Main Studio Viewport */}
+      {/* Main Workspace */}
       <div className="flex-1 flex min-h-0 overflow-hidden">
-        {/* Left Illustrator Toolbar */}
+        {/* Left Toolbar (Illustrator Style) */}
         <aside className="w-16 bg-[#11131c] border-r border-[#1e2130] flex flex-col items-center py-3 gap-2 shrink-0 z-20">
           <button
             onClick={() => setTool('pen')}
@@ -610,7 +854,7 @@ export default function ShapeBuilderPage() {
                 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
                 : 'text-slate-400 hover:bg-[#171925] hover:text-white'
             }`}
-            title="Pen Tool (P) — Click to add anchors, drag for Bézier curves"
+            title="Pen Tool (P) — Click to place anchors, drag for Bézier curves"
           >
             <PenTool className="w-4 h-4" />
           </button>
@@ -655,59 +899,67 @@ export default function ShapeBuilderPage() {
 
           {/* Quick Shape Presets */}
           <button
-            onClick={() => loadPreset('lightning')}
-            className="w-10 h-10 rounded-xl text-amber-400 hover:bg-[#171925] flex items-center justify-center text-xs transition cursor-pointer"
-            title="Insert Lightning Bolt Preset"
+            onClick={() => addPrimitive('rect', 'Rectangle')}
+            className="w-10 h-10 rounded-xl text-indigo-400 hover:bg-[#171925] flex items-center justify-center transition cursor-pointer"
+            title="Add Rectangle Primitive"
           >
-            <Zap className="w-4 h-4" />
+            <Square className="w-4 h-4" />
           </button>
 
           <button
-            onClick={() => loadPreset('shield')}
-            className="w-10 h-10 rounded-xl text-emerald-400 hover:bg-[#171925] flex items-center justify-center text-xs transition cursor-pointer"
-            title="Insert Shield Crest Preset"
+            onClick={() => addPrimitive('circle', 'Circle')}
+            className="w-10 h-10 rounded-xl text-pink-400 hover:bg-[#171925] flex items-center justify-center transition cursor-pointer"
+            title="Add Circle Primitive"
           >
-            <Shield className="w-4 h-4" />
+            <CircleIcon className="w-4 h-4" />
           </button>
 
           <button
-            onClick={() => loadPreset('heart')}
-            className="w-10 h-10 rounded-xl text-pink-400 hover:bg-[#171925] flex items-center justify-center text-xs transition cursor-pointer"
-            title="Insert Heart Vector Preset"
+            onClick={() => addPrimitive('star', 'Star')}
+            className="w-10 h-10 rounded-xl text-amber-400 hover:bg-[#171925] flex items-center justify-center transition cursor-pointer"
+            title="Add Star Primitive"
           >
-            <Heart className="w-4 h-4" />
+            <StarIcon className="w-4 h-4" />
           </button>
 
           <button
-            onClick={() => loadPreset('bubble')}
-            className="w-10 h-10 rounded-xl text-sky-400 hover:bg-[#171925] flex items-center justify-center text-xs transition cursor-pointer"
-            title="Insert Speech Bubble Preset"
+            onClick={() => addPrimitive('polygon', 'Polygon')}
+            className="w-10 h-10 rounded-xl text-emerald-400 hover:bg-[#171925] flex items-center justify-center transition cursor-pointer"
+            title="Add Polygon Primitive"
           >
-            <MessageCircle className="w-4 h-4" />
+            <Hexagon className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={addNewPenLayer}
+            className="w-10 h-10 rounded-xl text-sky-400 hover:bg-[#171925] flex items-center justify-center transition cursor-pointer"
+            title="Add New Empty Pen Layer"
+          >
+            <Plus className="w-4 h-4" />
           </button>
         </aside>
 
         {/* Center Drawing Canvas */}
         <main className="flex-1 bg-[#090a0f] flex flex-col items-center justify-center p-4 relative overflow-hidden">
-          {/* Top Helper Hint */}
+          {/* Top Status Banner */}
           <div className="absolute top-3 left-4 right-4 flex items-center justify-between pointer-events-none z-10">
             <div className="bg-[#11131c]/90 backdrop-blur border border-[#1e2130] px-3 py-1.5 rounded-lg text-xs text-slate-300 pointer-events-auto shadow-lg flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
               <span>
                 {tool === 'pen' &&
-                  'Pen Tool: Click to place anchor point • Drag for Bézier curve • Click start point to close'}
-                {tool === 'brush' && 'Freehand Brush: Click and drag smoothly on canvas'}
-                {tool === 'eraser' && 'Eraser Tool: Click or drag over vertices to delete them'}
+                  'Pen: Click to add vertices • Drag for Bézier curve • Click start vertex to close path'}
+                {tool === 'brush' && 'Freehand Brush: Drag smoothly on canvas'}
+                {tool === 'eraser' && 'Eraser Tool: Click or drag over vertices to erase them'}
                 {tool === 'select' && 'Direct Selection: Click anchor point or control handle to reposition'}
               </span>
             </div>
 
-            <div className="bg-[#11131c]/90 backdrop-blur border border-[#1e2130] px-2.5 py-1 rounded-lg text-xs font-mono text-slate-400 pointer-events-auto">
-              Points: {points.length}
+            <div className="bg-[#11131c]/90 backdrop-blur border border-[#1e2130] px-2.5 py-1 rounded-lg text-xs font-mono text-indigo-300 pointer-events-auto">
+              Active Layer: {activeLayer?.name || 'None'}
             </div>
           </div>
 
-          {/* Vector Stage */}
+          {/* Canvas Viewport */}
           <div className="relative shadow-2xl shadow-black/80 rounded-xl overflow-hidden border border-[#2b2f44]">
             <canvas
               ref={canvasRef}
@@ -725,87 +977,197 @@ export default function ShapeBuilderPage() {
             <div className="absolute inset-0 bg-[#090a0f]/80 backdrop-blur-sm z-50 flex items-center justify-center animate-in fade-in">
               <div className="bg-[#11131c] border border-emerald-500/40 p-6 rounded-2xl shadow-2xl flex flex-col items-center text-center">
                 <CheckCircle className="w-12 h-12 text-emerald-400 mb-2 animate-bounce" />
-                <h4 className="text-base font-bold text-white">Custom Shape Exported!</h4>
+                <h4 className="text-base font-bold text-white">Shapes Merged Successfully!</h4>
                 <p className="text-xs text-slate-400 mt-1">
-                  Importing into your MotionFX scene layers...
+                  Importing compound vector into MotionFX scene layers...
                 </p>
               </div>
             </div>
           )}
         </main>
 
-        {/* Right Vector Properties Panel */}
-        <aside className="w-72 bg-[#11131c] border-l border-[#1e2130] flex flex-col p-4 space-y-4 shrink-0 overflow-y-auto">
-          <div className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2 pb-2 border-b border-[#1e2130]">
-            <Sliders className="w-3.5 h-3.5 text-amber-400" />
-            <span>Path Inspector</span>
-          </div>
-
-          {/* Quick Shape Geometry Information */}
-          <div className="bg-[#171925] p-3 rounded-xl border border-[#1e2130] space-y-2 text-xs">
-            <div className="flex justify-between text-slate-400">
-              <span>Anchor Points</span>
-              <span className="font-mono text-white">{points.length}</span>
-            </div>
-            <div className="flex justify-between text-slate-400">
-              <span>Path Status</span>
-              <span className="font-mono text-amber-400">
-                {isClosed ? 'Closed' : 'Open'}
+        {/* Right Sidebar: Shape Layers Stack & Path Inspector */}
+        <aside className="w-80 bg-[#11131c] border-l border-[#1e2130] flex flex-col shrink-0 overflow-hidden z-20">
+          {/* Layers Header */}
+          <div className="px-3.5 py-2.5 bg-[#090a0f]/60 border-b border-[#1e2130] flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5 text-indigo-400" />
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+                Shape Layers ({layers.length})
               </span>
             </div>
-            <div className="pt-2">
+
+            <div className="flex items-center gap-1">
               <button
-                onClick={() => setIsClosed((v) => !v)}
-                className="w-full py-1.5 rounded bg-[#1e2130] hover:bg-[#2b2f44] text-xs text-slate-200 border border-[#2b2f44] transition cursor-pointer"
+                onClick={mergeLayersTogether}
+                className="text-[11px] px-2 py-0.5 rounded bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 flex items-center gap-1 transition cursor-pointer"
+                title="Merge visible layers into a unified compound layer"
               >
-                {isClosed ? 'Open Path' : 'Close Path (Z)'}
+                <Combine className="w-3 h-3" />
+                <span>Merge</span>
               </button>
             </div>
           </div>
 
-          {/* Eraser Radius Slider (when eraser active) */}
-          {tool === 'eraser' && (
-            <div className="bg-[#171925] p-3 rounded-xl border border-[#1e2130] space-y-2">
-              <div className="flex justify-between text-xs text-slate-400">
-                <span>Eraser Radius</span>
-                <span className="font-mono text-indigo-300">{eraserRadius}px</span>
+          {/* Layers List */}
+          <div className="flex-1 overflow-y-auto p-2 space-y-1">
+            {layers.map((layer) => {
+              const isSelected = layer.id === activeLayerId;
+
+              return (
+                <div
+                  key={layer.id}
+                  onClick={() => setActiveLayerId(layer.id)}
+                  className={`group flex items-center justify-between px-2.5 py-2 rounded-lg cursor-pointer border transition ${
+                    isSelected
+                      ? 'bg-indigo-600/20 border-indigo-500/60 text-white shadow-sm shadow-indigo-500/10'
+                      : 'bg-[#171925]/70 border-transparent hover:bg-[#1e2130] text-slate-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className="w-3 h-3 rounded-full shrink-0 border border-white/20"
+                      style={{ backgroundColor: layer.fill || layer.stroke }}
+                    />
+                    <span className="text-xs font-medium truncate">{layer.name}</span>
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        reorderLayer(layer.id, 'up');
+                      }}
+                      className="p-1 text-slate-400 hover:text-white"
+                      title="Move Up"
+                    >
+                      <ArrowUp className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        reorderLayer(layer.id, 'down');
+                      }}
+                      className="p-1 text-slate-400 hover:text-white"
+                      title="Move Down"
+                    >
+                      <ArrowDown className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        duplicateLayer(layer.id);
+                      }}
+                      className="p-1 text-slate-400 hover:text-white"
+                      title="Duplicate"
+                    >
+                      <Copy className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteLayer(layer.id);
+                      }}
+                      className="p-1 text-slate-400 hover:text-red-400"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleLayerVisible(layer.id);
+                      }}
+                      className="p-1 text-slate-400 hover:text-white"
+                      title={layer.visible ? 'Hide' : 'Show'}
+                    >
+                      {layer.visible ? (
+                        <Eye className="w-3 h-3" />
+                      ) : (
+                        <EyeOff className="w-3 h-3 text-slate-600" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Active Layer Inspector */}
+          {activeLayer && (
+            <div className="p-3 bg-[#171925] border-t border-[#1e2130] space-y-3 shrink-0">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold uppercase text-slate-400">
+                  Active Layer Properties
+                </span>
+                <span className="text-[10px] font-mono text-indigo-300">
+                  {activeLayer.points.length} pts
+                </span>
               </div>
-              <input
-                type="range"
-                min="10"
-                max="60"
-                value={eraserRadius}
-                onChange={(e) => setEraserRadius(parseInt(e.target.value, 10))}
-                className="w-full accent-indigo-500 cursor-pointer"
-              />
+
+              {/* Layer Name */}
+              <div>
+                <input
+                  type="text"
+                  value={activeLayer.name}
+                  onChange={(e) => updateActiveLayer({ name: e.target.value })}
+                  className="w-full bg-[#090a0f] border border-[#2b2f44] focus:border-indigo-500 rounded px-2 py-1 text-xs text-white outline-none"
+                />
+              </div>
+
+              {/* Path Closed Toggle & Opacity */}
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <button
+                  onClick={() => updateActiveLayer({ isClosed: !activeLayer.isClosed })}
+                  className="py-1 rounded bg-[#090a0f] hover:bg-[#1e2130] border border-[#2b2f44] text-slate-200 transition"
+                >
+                  {activeLayer.isClosed ? 'Close Path (Z)' : 'Open Path'}
+                </button>
+
+                <div className="flex items-center gap-1.5 bg-[#090a0f] border border-[#2b2f44] rounded px-2 py-1">
+                  <span className="text-[10px] text-slate-400">Alpha:</span>
+                  <input
+                    type="range"
+                    min="0.1"
+                    max="1"
+                    step="0.05"
+                    value={activeLayer.opacity}
+                    onChange={(e) =>
+                      updateActiveLayer({ opacity: parseFloat(e.target.value) })
+                    }
+                    className="w-full accent-indigo-500"
+                  />
+                </div>
+              </div>
+
+              {/* Eraser Radius (when tool === 'eraser') */}
+              {tool === 'eraser' && (
+                <div className="pt-1">
+                  <div className="flex justify-between text-[11px] text-slate-400 mb-1">
+                    <span>Eraser Radius</span>
+                    <span className="font-mono text-red-400">{eraserRadius}px</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="10"
+                    max="60"
+                    value={eraserRadius}
+                    onChange={(e) => setEraserRadius(parseInt(e.target.value, 10))}
+                    className="w-full accent-red-500 cursor-pointer"
+                  />
+                </div>
+              )}
             </div>
           )}
 
-          {/* Path SVG Code Preview */}
-          <div className="bg-[#171925] p-3 rounded-xl border border-[#1e2130] space-y-1.5">
-            <span className="text-[11px] font-semibold uppercase text-slate-400">
-              SVG Path Preview
-            </span>
-            <div className="h-28 overflow-y-auto bg-[#090a0f] p-2 rounded border border-[#1e2130] font-mono text-[10px] text-indigo-300 break-all select-all">
-              {generateSvgPath(true).path || 'No path points yet'}
-            </div>
-          </div>
-
-          {/* Ready to Export Card */}
-          <div className="bg-gradient-to-br from-indigo-950/60 to-purple-950/40 p-3.5 rounded-xl border border-indigo-500/30 space-y-2">
-            <span className="text-xs font-semibold text-white flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              Add To Motion Scene
-            </span>
-            <p className="text-[11px] text-slate-300 leading-relaxed">
-              This shape will be converted into an animatable scene layer with full keyframing
-              (Position, Rotation, Scale, Opacity, and Marching Ants border flow).
-            </p>
+          {/* Merge & Add to Scene Action Footer */}
+          <div className="p-3 bg-[#11131c] border-t border-[#1e2130]">
             <button
-              onClick={handleAddToScene}
-              className="w-full mt-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs shadow-md shadow-indigo-600/30 transition cursor-pointer"
+              onClick={handleMergeAndAddToScene}
+              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-indigo-600 hover:from-amber-400 hover:to-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition cursor-pointer"
             >
-              Add Shape to Scene Layers
+              <Combine className="w-4 h-4" />
+              <span>Merge & Add to Scene</span>
             </button>
           </div>
         </aside>

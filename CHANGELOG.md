@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.0] - 2026-10-27
+
+### Added
+- **Primitive Shapes in Shape Builder (`/builder`)**:
+  - One-click primitives toolbar: **Rectangle** (cubic Bézier box), **Circle** (cubic Bézier 4-arc circle with Kappa approximation), **Star** (inner/outer radius points), **Polygon** (regular hexagons/polygons), and **Line**.
+  - Primitive shapes can be added multiple times and combined with pen and freehand paths.
+- **Layer Stack System in Shape Builder**:
+  - Full multi-layer manager inside the vector builder workstation.
+  - Layer operations: reorder up/down, duplicate, delete, and visibility toggle (`Eye`/`EyeOff`).
+  - Per-layer properties: individual fill, stroke, stroke width, opacity, and open/close path toggle.
+- **Compound Layer Merging (`Merge & Add to Scene`)**:
+  - In-builder layer merging tool (`Merge` button) that combines visible shape layers into a single compound path.
+  - Global bounding box calculation and multi-contour SVG path serialization (`Path2D`).
+  - Primary **"Merge & Add to Scene"** button that merges all visible vector layers and exports them as a single animatable layer in the main MotionFX scene.
+
+---
+
 ## [1.1.0] - 2026-10-27
 
 ### Added
