@@ -8,6 +8,7 @@ import { CanvasStage } from '@/components/CanvasStage';
 import { RightInspector } from '@/components/RightInspector';
 import { Timeline } from '@/components/Timeline';
 import { ExportModal } from '@/components/ExportModal';
+import { ResolutionModal } from '@/components/ResolutionModal';
 
 export default function MotionGraphicsStudioPage() {
   return (
@@ -28,6 +29,9 @@ export default function MotionGraphicsStudioPage() {
 
         {/* Video Rendering / Export Modal */}
         <ExportModal />
+
+        {/* Canvas Resolution & Aspect Ratio Modal */}
+        <ResolutionModal />
       </div>
     </MotionProvider>
   );

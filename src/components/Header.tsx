@@ -12,9 +12,11 @@ import {
   SlidersHorizontal,
   Undo2,
   Redo2,
+  Maximize2,
 } from 'lucide-react';
 import { useMotion } from '@/context/MotionContext';
 import { TEMPLATES } from '@/modules/templates';
+import { getAspectRatioString } from '@/components/ResolutionModal';
 
 export function Header() {
   const {
@@ -22,6 +24,8 @@ export function Header() {
     setCanvasBg,
     showGuides,
     setShowGuides,
+    canvasResolution,
+    setIsResolutionModalOpen,
     loadTemplate,
     clearScene,
     startExport,
@@ -105,9 +109,19 @@ export function Header() {
             title="Canvas Background Color"
           />
         </label>
-        <div className="h-3 w-[1px] bg-[#1e2130]"></div>
-        <span className="text-xs font-mono text-slate-400">800 × 450 (16:9)</span>
-        <div className="h-3 w-[1px] bg-[#1e2130]"></div>
+        <button
+          onClick={() => setIsResolutionModalOpen(true)}
+          className="flex items-center gap-1.5 px-2 py-0.5 rounded hover:bg-[#1e2130] text-xs font-mono text-indigo-300 hover:text-indigo-200 border border-transparent hover:border-[#2b2f44] transition cursor-pointer"
+          title="Change Canvas Resolution (Presets & Custom Dimensions)"
+        >
+          <Maximize2 className="w-3 h-3 text-indigo-400" />
+          <span>
+            {canvasResolution.width} × {canvasResolution.height}
+          </span>
+          <span className="text-[10px] text-slate-400">
+            ({getAspectRatioString(canvasResolution.width, canvasResolution.height)})
+          </span>
+        </button>
         <label className="text-xs text-slate-400 flex items-center gap-1.5 cursor-pointer">
           <input
             type="checkbox"

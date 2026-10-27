@@ -94,3 +94,8 @@ export interface ExportProgress {
   currentSec: number;
   totalSec: number;
 }
+
+export interface CanvasResolution {
+  width: number;
+  height: number;
+}

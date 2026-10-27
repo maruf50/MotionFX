@@ -16,6 +16,7 @@ import {
   SelectedKeyframeRef,
   ExportProgress,
   TextEffect,
+  CanvasResolution,
 } from '@/types/motion';
 import {
   uid,
@@ -41,8 +42,13 @@ interface MotionContextType {
   isLooping: boolean;
   canvasBg: string;
   showGuides: boolean;
+  canvasResolution: CanvasResolution;
+  isResolutionModalOpen: boolean;
   exportProgress: ExportProgress;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
+  // Canvas Resolution
+  setCanvasResolution: (res: CanvasResolution, scaleLayers?: boolean) => void;
+  setIsResolutionModalOpen: (open: boolean) => void;
   // Layer creation
   addShape: (shapeType: ShapeType) => void;
   addCustomShape: (
@@ -129,6 +135,7 @@ interface HistorySnapshot {
   selectedLayerId: string | null;
   duration?: number;
   canvasBg?: string;
+  canvasResolution?: CanvasResolution;
 }
 
 const PALETTE = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#06b6d4', '#8b5cf6', '#f43f5e'];
@@ -143,6 +150,11 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
   const [isLooping, setIsLooping] = useState<boolean>(true);
   const [canvasBg, setCanvasBg] = useState<string>('#090b10');
   const [showGuides, setShowGuides] = useState<boolean>(true);
+  const [canvasResolution, setCanvasResolutionState] = useState<CanvasResolution>({
+    width: 800,
+    height: 450,
+  });
+  const [isResolutionModalOpen, setIsResolutionModalOpen] = useState<boolean>(false);
   const [exportProgress, setExportProgress] = useState<ExportProgress>({
     isExporting: false,
     progress: 0,
@@ -163,6 +175,8 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
   durationRef.current = duration;
   const canvasBgRef = useRef<string>(canvasBg);
   canvasBgRef.current = canvasBg;
+  const canvasResolutionRef = useRef<CanvasResolution>(canvasResolution);
+  canvasResolutionRef.current = canvasResolution;
   const lastSnapshotTimeRef = useRef<number>(0);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -183,6 +197,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
       selectedLayerId: selectedLayerIdRef.current,
       duration: durationRef.current,
       canvasBg: canvasBgRef.current,
+      canvasResolution: { ...canvasResolutionRef.current },
     };
 
     setUndoStack((prev) => {
@@ -210,6 +225,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         selectedLayerId: selectedLayerIdRef.current,
         duration: durationRef.current,
         canvasBg: canvasBgRef.current,
+        canvasResolution: { ...canvasResolutionRef.current },
       };
 
       setRedoStack((prevRedo) => {
@@ -224,6 +240,15 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
       setSelectedLayerId(targetSnapshot.selectedLayerId);
       if (targetSnapshot.duration !== undefined) setDurationState(targetSnapshot.duration);
       if (targetSnapshot.canvasBg !== undefined) setCanvasBg(targetSnapshot.canvasBg);
+      if (targetSnapshot.canvasResolution) {
+        setCanvasResolutionState(targetSnapshot.canvasResolution);
+        try {
+          localStorage.setItem(
+            'motionfx_canvas_resolution',
+            JSON.stringify(targetSnapshot.canvasResolution)
+          );
+        } catch {}
+      }
       setSelectedKeyframe(null);
 
       return nextUndo;
@@ -241,6 +266,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         selectedLayerId: selectedLayerIdRef.current,
         duration: durationRef.current,
         canvasBg: canvasBgRef.current,
+        canvasResolution: { ...canvasResolutionRef.current },
       };
 
       setUndoStack((prevUndo) => {
@@ -255,11 +281,77 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
       setSelectedLayerId(targetSnapshot.selectedLayerId);
       if (targetSnapshot.duration !== undefined) setDurationState(targetSnapshot.duration);
       if (targetSnapshot.canvasBg !== undefined) setCanvasBg(targetSnapshot.canvasBg);
+      if (targetSnapshot.canvasResolution) {
+        setCanvasResolutionState(targetSnapshot.canvasResolution);
+        try {
+          localStorage.setItem(
+            'motionfx_canvas_resolution',
+            JSON.stringify(targetSnapshot.canvasResolution)
+          );
+        } catch {}
+      }
       setSelectedKeyframe(null);
 
       return nextRedo;
     });
   }, []);
+
+  // Change canvas resolution with optional layer scaling
+  const setCanvasResolution = useCallback(
+    (newRes: CanvasResolution, scaleLayers: boolean = false) => {
+      const validWidth = Math.max(100, Math.min(7680, Math.round(newRes.width) || 800));
+      const validHeight = Math.max(100, Math.min(4320, Math.round(newRes.height) || 450));
+      const finalized: CanvasResolution = { width: validWidth, height: validHeight };
+
+      pushUndo(true);
+
+      const oldRes = canvasResolutionRef.current;
+      if (scaleLayers && oldRes.width > 0 && oldRes.height > 0) {
+        const scaleX = validWidth / oldRes.width;
+        const scaleY = validHeight / oldRes.height;
+
+        setLayers((prevLayers) =>
+          prevLayers.map((layer) => {
+            const newKeyframes = { ...layer.keyframes };
+            if (newKeyframes.x) {
+              newKeyframes.x = newKeyframes.x.map((kf) => ({
+                ...kf,
+                value: Math.round(kf.value * scaleX),
+              }));
+            }
+            if (newKeyframes.y) {
+              newKeyframes.y = newKeyframes.y.map((kf) => ({
+                ...kf,
+                value: Math.round(kf.value * scaleY),
+              }));
+            }
+
+            const updatedLayer: Layer = {
+              ...layer,
+              width: Math.round(layer.width * scaleX),
+              height: Math.round(layer.height * scaleY),
+              keyframes: newKeyframes,
+            };
+
+            if (layer.fontSize) {
+              const fontScale = Math.min(scaleX, scaleY);
+              updatedLayer.fontSize = Math.max(8, Math.round(layer.fontSize * fontScale));
+            }
+
+            return updatedLayer;
+          })
+        );
+      }
+
+      setCanvasResolutionState(finalized);
+      try {
+        localStorage.setItem('motionfx_canvas_resolution', JSON.stringify(finalized));
+      } catch (err) {
+        console.warn('Failed to save resolution to localStorage:', err);
+      }
+    },
+    [pushUndo]
+  );
 
   // Selected layer derived
   const selectedLayer = useMemo(() => {
@@ -1127,6 +1219,19 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
+    // Restore saved resolution if available
+    const savedRes = localStorage.getItem('motionfx_canvas_resolution');
+    if (savedRes) {
+      try {
+        const parsed = JSON.parse(savedRes);
+        if (parsed && typeof parsed.width === 'number' && typeof parsed.height === 'number') {
+          setCanvasResolutionState(parsed);
+        }
+      } catch (err) {
+        console.warn('Failed to parse saved canvas resolution:', err);
+      }
+    }
+
     let initialLayers: Layer[] = [];
     const savedScene = localStorage.getItem('motionfx_scene_layers');
 
@@ -1232,6 +1337,10 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         isLooping,
         canvasBg,
         showGuides,
+        canvasResolution,
+        setCanvasResolution,
+        isResolutionModalOpen,
+        setIsResolutionModalOpen,
         exportProgress,
         canvasRef,
         addShape,

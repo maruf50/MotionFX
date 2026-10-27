@@ -55,8 +55,9 @@ export class VideoExporter {
       }
 
       const stream = canvas.captureStream(fps);
+      const isUltraRes = canvas.width >= 2500 || canvas.height >= 2500;
       const recorderOptions: MediaRecorderOptions = {
-        videoBitsPerSecond: 8000000, // 8 Mbps high quality
+        videoBitsPerSecond: isUltraRes ? 16000000 : 8000000, // 16 Mbps for 4K/UHD, 8 Mbps for FHD
       };
       if (mimeType) {
         recorderOptions.mimeType = mimeType;

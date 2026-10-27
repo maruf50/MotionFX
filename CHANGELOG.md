@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.6.0] - 2026-10-27
+
+### Added
+- **Canvas Resolution & Aspect Ratio Manager (`ResolutionModal`)**:
+  - Interactive resolution badges in the Top Header and on the Canvas Stage opening the resolution modal.
+  - **Most Used Resolution Presets**:
+    - **16:9 Landscape Video**: 1920 × 1080 (1080p Full HD - Standard), 1280 × 720 (720p HD), 3840 × 2160 (4K Ultra HD), and 800 × 450 (Default preview).
+    - **9:16 Vertical Video**: 1080 × 1920 (Full HD Vertical for TikTok, Instagram Reels, YouTube Shorts), 720 × 1280 (HD Story format).
+    - **1:1 Square & 4:5 Portrait**: 1080 × 1080 (Instagram Feed / Square), 1080 × 1350 (Instagram 4:5 Portrait Feed).
+    - **21:9 Ultrawide**: 2560 × 1080 (Cinema Ultrawide Banners & Video).
+  - **Custom Resolution Support**:
+    - Pixel-exact width (100px - 7680px) and height (100px - 4320px) numeric inputs.
+    - Orientation swap button (`⇄`) to instantly flip between Landscape and Portrait dimensions.
+    - Live computed aspect ratio indicator (e.g., `16:9`, `9:16`, `1:1`, `4:5`, `21:9`, `3:2`).
+    - Quick-ratio base size buttons for rapid switching.
+  - **Scale Existing Layers to Fit Option**:
+    - Optional smart scaling checkbox: automatically recalibrates layer positions (`x`, `y`), dimensions (`width`, `height`), keyframes, and text font sizes proportionally to fit inside the new canvas viewport.
+  - **Responsive Stage & Export Integration**:
+    - Canvas Stage automatically applies dynamic aspect-ratio CSS container formatting without distorting coordinates.
+    - Video Exporter renders and captures WebM/MP4 video at the exact chosen resolution with high-bitrate scaling (up to 16 Mbps for 4K).
+  - **50-Step Undo/Redo & Persistence**:
+    - Canvas resolution modifications are recorded in the 50-step undo/redo history and saved in `localStorage`.
+
+---
+
 ## [1.5.0] - 2026-10-27
 
 ### Added

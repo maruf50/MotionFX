@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useRef, useState, useCallback, useEffect } from 'react';
+import { Maximize2 } from 'lucide-react';
 import { useMotion } from '@/context/MotionContext';
 import { getLayerWorldTransformAtTime } from '@/modules/keyframes/evaluator';
 import { getLayerDimensions } from '@/modules/renderers/engine';
+import { getAspectRatioString } from '@/components/ResolutionModal';
 
 export function CanvasStage() {
   const {
@@ -16,6 +18,8 @@ export function CanvasStage() {
     duration,
     recordSnapshot,
     importTemplateLayer,
+    canvasResolution,
+    setIsResolutionModalOpen,
   } = useMotion();
 
   const isDraggingRef = useRef<boolean>(false);
@@ -172,19 +176,37 @@ export function CanvasStage() {
           </span>
         </div>
 
-        <div className="bg-[#11131c]/90 backdrop-blur border border-[#1e2130] px-2.5 py-1 rounded-lg text-xs font-mono text-indigo-300 pointer-events-auto shadow-lg">
-          <span>800 × 450 (16:9)</span>
-        </div>
+        <button
+          onClick={() => setIsResolutionModalOpen(true)}
+          className="bg-[#11131c]/90 backdrop-blur border border-[#1e2130] hover:border-indigo-500/40 px-2.5 py-1 rounded-lg text-xs font-mono text-indigo-300 hover:text-indigo-200 pointer-events-auto shadow-lg transition flex items-center gap-1.5 cursor-pointer"
+          title="Click to change canvas resolution & aspect ratio"
+        >
+          <Maximize2 className="w-3 h-3 text-indigo-400" />
+          <span>
+            {canvasResolution.width} × {canvasResolution.height}
+          </span>
+          <span className="text-[10px] text-slate-400">
+            ({getAspectRatioString(canvasResolution.width, canvasResolution.height)})
+          </span>
+        </button>
       </div>
 
       {/* Stage Canvas Frame */}
-      <div className="relative shadow-2xl shadow-black/80 rounded-xl overflow-hidden border border-[#2b2f44] canvas-checkerboard flex items-center justify-center max-w-full max-h-[50vh]">
+      <div
+        className="relative shadow-2xl shadow-black/80 rounded-xl overflow-hidden border border-[#2b2f44] canvas-checkerboard flex items-center justify-center max-w-full max-h-[50vh]"
+        style={{
+          aspectRatio: `${canvasResolution.width} / ${canvasResolution.height}`,
+        }}
+      >
         <canvas
           ref={canvasRef}
-          width={800}
-          height={450}
+          width={canvasResolution.width}
+          height={canvasResolution.height}
           onMouseDown={handleMouseDown}
           className="block max-w-full max-h-[50vh] w-auto h-auto cursor-crosshair"
+          style={{
+            aspectRatio: `${canvasResolution.width} / ${canvasResolution.height}`,
+          }}
         />
       </div>
     </main>
