@@ -1,0 +1,625 @@
+import { Layer, MotionTemplate } from '@/types/motion';
+import { uid } from '../keyframes/evaluator';
+import { STICKER_PRESETS } from '../assets/stickers';
+
+export const TEMPLATES: MotionTemplate[] = [
+  {
+    id: 'bento-grid',
+    name: 'Bento Grid Pop',
+    description: 'Trendy UI bento grid cards popping in with staggered bouncy spring & dotted borders',
+    badge: 'Popular',
+    duration: 5.0,
+    canvasBg: '#090b10',
+    createLayers: (): Layer[] => {
+      const cards = [
+        {
+          name: 'Hero Bento Card',
+          x: 240,
+          y: 155,
+          w: 300,
+          h: 170,
+          fill: '#4f46e5',
+          stroke: '#a5b4fc',
+          style: 'solid' as const,
+          delay: 0.05,
+        },
+        {
+          name: 'Stat Tile (Dashed)',
+          x: 525,
+          y: 155,
+          w: 230,
+          h: 170,
+          fill: '#1e1b4b',
+          stroke: '#818cf8',
+          style: 'dashed' as const,
+          delay: 0.2,
+        },
+        {
+          name: 'Accent Pill',
+          x: 180,
+          y: 330,
+          w: 180,
+          h: 130,
+          fill: '#db2777',
+          stroke: '#fbcfe8',
+          style: 'solid' as const,
+          delay: 0.35,
+        },
+        {
+          name: 'Feature Card (Dotted)',
+          x: 475,
+          y: 330,
+          w: 370,
+          h: 130,
+          fill: '#0f172a',
+          stroke: '#38bdf8',
+          style: 'dotted' as const,
+          delay: 0.5,
+        },
+      ];
+
+      const layers: Layer[] = [];
+
+      // 1. Bento Card Boxes
+      cards.forEach(c => {
+        layers.push({
+          id: uid('bento_box'),
+          name: c.name,
+          type: 'shape',
+          shapeType: 'rect',
+          visible: true,
+          width: c.w,
+          height: c.h,
+          fill: c.fill,
+          stroke: c.stroke,
+          borderWidth: 3,
+          borderRadius: 24,
+          borderStyle: c.style,
+          animateDash: c.style !== 'solid',
+          easing: 'backOut',
+          keyframes: {
+            x: [{ time: 0, value: c.x }],
+            y: [
+              { time: c.delay, value: c.y + 60 },
+              { time: c.delay + 0.65, value: c.y },
+            ],
+            scaleX: [
+              { time: 0, value: 0 },
+              { time: c.delay, value: 0 },
+              { time: c.delay + 0.65, value: 1 },
+            ],
+            scaleY: [
+              { time: 0, value: 0 },
+              { time: c.delay, value: 0 },
+              { time: c.delay + 0.65, value: 1 },
+            ],
+            rotation: [
+              { time: c.delay, value: -6 },
+              { time: c.delay + 0.65, value: 0 },
+            ],
+            opacity: [
+              { time: 0, value: 0 },
+              { time: c.delay, value: 0 },
+              { time: c.delay + 0.3, value: 1 },
+            ],
+          },
+        });
+      });
+
+      // 2. Floating Star Badge
+      layers.unshift({
+        id: uid('star_badge'),
+        name: 'Floating Star Badge',
+        type: 'shape',
+        shapeType: 'star',
+        sides: 5,
+        visible: true,
+        width: 70,
+        height: 70,
+        fill: '#fbbf24',
+        stroke: '#ffffff',
+        borderWidth: 2,
+        borderRadius: 8,
+        borderStyle: 'solid',
+        animateDash: false,
+        easing: 'elastic',
+        keyframes: {
+          x: [{ time: 0, value: 630 }],
+          y: [{ time: 0, value: 80 }],
+          scaleX: [
+            { time: 0, value: 0 },
+            { time: 0.65, value: 0 },
+            { time: 1.5, value: 1 },
+          ],
+          scaleY: [
+            { time: 0, value: 0 },
+            { time: 0.65, value: 0 },
+            { time: 1.5, value: 1 },
+          ],
+          rotation: [
+            { time: 0.65, value: -90 },
+            { time: 1.5, value: 0 },
+            { time: 5.0, value: 180 },
+          ],
+          opacity: [
+            { time: 0, value: 0 },
+            { time: 0.65, value: 0 },
+            { time: 0.95, value: 1 },
+          ],
+        },
+      });
+
+      // 3. Headline Text
+      layers.unshift({
+        id: uid('bento_head'),
+        name: 'Headline Text',
+        type: 'text',
+        visible: true,
+        text: 'BENTO MOTION',
+        fontSize: 34,
+        fill: '#ffffff',
+        stroke: '#4f46e5',
+        borderWidth: 0,
+        borderRadius: 0,
+        borderStyle: 'none',
+        animateDash: false,
+        textEffect: 'cascade',
+        easing: 'backOut',
+        width: 250,
+        height: 50,
+        keyframes: {
+          x: [{ time: 0, value: 240 }],
+          y: [{ time: 0, value: 155 }],
+          scaleX: [{ time: 0, value: 1 }],
+          scaleY: [{ time: 0, value: 1 }],
+          rotation: [{ time: 0, value: 0 }],
+          opacity: [
+            { time: 0, value: 0 },
+            { time: 0.35, value: 1 },
+          ],
+        },
+      });
+
+      // 4. Subtitle Typewriter
+      layers.unshift({
+        id: uid('bento_sub'),
+        name: 'Typewriter Subtext',
+        type: 'text',
+        visible: true,
+        text: 'DOTTED & ROUNDED GRIDS',
+        fontSize: 20,
+        fill: '#38bdf8',
+        stroke: '#0f172a',
+        borderWidth: 0,
+        borderRadius: 0,
+        borderStyle: 'none',
+        animateDash: false,
+        textEffect: 'typewriter',
+        easing: 'linear',
+        width: 320,
+        height: 40,
+        keyframes: {
+          x: [{ time: 0, value: 475 }],
+          y: [{ time: 0, value: 330 }],
+          scaleX: [{ time: 0, value: 1 }],
+          scaleY: [{ time: 0, value: 1 }],
+          rotation: [{ time: 0, value: 0 }],
+          opacity: [
+            { time: 0, value: 0 },
+            { time: 0.6, value: 0 },
+            { time: 0.9, value: 1 },
+          ],
+        },
+      });
+
+      return layers;
+    },
+  },
+  {
+    id: 'kinetic-typography',
+    name: 'Kinetic Typography',
+    description: 'Cyber morphing text with animated rotating dotted ring and wave dancers',
+    badge: 'Trendy',
+    duration: 5.0,
+    canvasBg: '#0b0716',
+    createLayers: (): Layer[] => {
+      return [
+        // 1. Morphing Headline
+        {
+          id: uid('morph_txt'),
+          name: 'Morphing Headline',
+          type: 'text',
+          visible: true,
+          text: 'KINETIC TYPE',
+          morphTarget: 'MOTION STUDIO',
+          fontSize: 62,
+          fill: '#ffffff',
+          stroke: '#818cf8',
+          borderWidth: 0,
+          borderRadius: 0,
+          borderStyle: 'none',
+          animateDash: false,
+          textEffect: 'morph',
+          easing: 'backOut',
+          width: 400,
+          height: 80,
+          keyframes: {
+            x: [{ time: 0, value: 400 }],
+            y: [{ time: 0, value: 200 }],
+            scaleX: [
+              { time: 0, value: 0.3 },
+              { time: 0.6, value: 1 },
+            ],
+            scaleY: [
+              { time: 0, value: 0.3 },
+              { time: 0.6, value: 1 },
+            ],
+            rotation: [{ time: 0, value: 0 }],
+            opacity: [
+              { time: 0, value: 0 },
+              { time: 0.3, value: 1 },
+            ],
+          },
+        },
+        // 2. Wave Subtitle
+        {
+          id: uid('wave_sub'),
+          name: 'Sine Wave Subtitle',
+          type: 'text',
+          visible: true,
+          text: 'SMOOTH KEYFRAME ENGINE',
+          fontSize: 24,
+          fill: '#f472b6',
+          stroke: '#db2777',
+          borderWidth: 0,
+          borderRadius: 0,
+          borderStyle: 'none',
+          animateDash: false,
+          textEffect: 'wave',
+          easing: 'linear',
+          width: 350,
+          height: 40,
+          keyframes: {
+            x: [{ time: 0, value: 400 }],
+            y: [{ time: 0, value: 280 }],
+            scaleX: [{ time: 0, value: 1 }],
+            scaleY: [{ time: 0, value: 1 }],
+            rotation: [{ time: 0, value: 0 }],
+            opacity: [
+              { time: 0, value: 0 },
+              { time: 0.5, value: 0 },
+              { time: 1.0, value: 1 },
+            ],
+          },
+        },
+        // 3. Rotating Dotted Orbit Ring
+        {
+          id: uid('orbit_ring'),
+          name: 'Dotted Orbit Ring',
+          type: 'shape',
+          shapeType: 'circle',
+          visible: true,
+          width: 370,
+          height: 370,
+          fill: '#1e1b4b',
+          stroke: '#ec4899',
+          borderWidth: 5,
+          borderRadius: 0,
+          borderStyle: 'dotted',
+          animateDash: true,
+          easing: 'backOut',
+          keyframes: {
+            x: [{ time: 0, value: 400 }],
+            y: [{ time: 0, value: 225 }],
+            scaleX: [
+              { time: 0, value: 0.1 },
+              { time: 0.8, value: 1 },
+              { time: 4.5, value: 1.06 },
+            ],
+            scaleY: [
+              { time: 0, value: 0.1 },
+              { time: 0.8, value: 1 },
+              { time: 4.5, value: 1.06 },
+            ],
+            rotation: [
+              { time: 0, value: 0 },
+              { time: 5.0, value: 90 },
+            ],
+            opacity: [
+              { time: 0, value: 0 },
+              { time: 0.45, value: 0.85 },
+            ],
+          },
+        },
+      ];
+    },
+  },
+  {
+    id: 'logo-reveal',
+    name: 'Logo Reveal Badge',
+    description: 'Dynamic dashed polygon with golden star badge & cascade reveal title',
+    badge: 'Showcase',
+    duration: 5.0,
+    canvasBg: '#071318',
+    createLayers: (): Layer[] => {
+      return [
+        // 1. Badge Title
+        {
+          id: uid('badge_txt'),
+          name: 'Badge Title',
+          type: 'text',
+          visible: true,
+          text: 'MOTION STUDIO PRO',
+          fontSize: 32,
+          fill: '#ffffff',
+          stroke: '#0d9488',
+          borderWidth: 0,
+          borderRadius: 0,
+          borderStyle: 'none',
+          animateDash: false,
+          textEffect: 'cascade',
+          easing: 'backOut',
+          width: 380,
+          height: 50,
+          keyframes: {
+            x: [{ time: 0, value: 400 }],
+            y: [{ time: 0, value: 385 }],
+            scaleX: [{ time: 0, value: 1 }],
+            scaleY: [{ time: 0, value: 1 }],
+            rotation: [{ time: 0, value: 0 }],
+            opacity: [
+              { time: 0, value: 0 },
+              { time: 0.6, value: 0 },
+              { time: 1.1, value: 1 },
+            ],
+          },
+        },
+        // 2. Inner Star Emblem
+        {
+          id: uid('star_emblem'),
+          name: 'Core Star Emblem',
+          type: 'shape',
+          shapeType: 'star',
+          sides: 8,
+          visible: true,
+          width: 170,
+          height: 170,
+          fill: '#f59e0b',
+          stroke: '#ffffff',
+          borderWidth: 3,
+          borderRadius: 10,
+          borderStyle: 'solid',
+          animateDash: false,
+          easing: 'backOut',
+          keyframes: {
+            x: [{ time: 0, value: 400 }],
+            y: [{ time: 0, value: 200 }],
+            scaleX: [
+              { time: 0, value: 0 },
+              { time: 0.35, value: 0 },
+              { time: 1.0, value: 1 },
+            ],
+            scaleY: [
+              { time: 0, value: 0 },
+              { time: 0.35, value: 0 },
+              { time: 1.0, value: 1 },
+            ],
+            rotation: [
+              { time: 0.35, value: 90 },
+              { time: 1.2, value: 0 },
+              { time: 5.0, value: -60 },
+            ],
+            opacity: [
+              { time: 0, value: 0 },
+              { time: 0.35, value: 0 },
+              { time: 0.65, value: 1 },
+            ],
+          },
+        },
+        // 3. Outer Dashed Hexagon
+        {
+          id: uid('outer_hex'),
+          name: 'Outer Dashed Hexagon',
+          type: 'shape',
+          shapeType: 'polygon',
+          sides: 6,
+          visible: true,
+          width: 290,
+          height: 290,
+          fill: '#042f2e',
+          stroke: '#2dd4bf',
+          borderWidth: 4,
+          borderRadius: 24,
+          borderStyle: 'dashed',
+          animateDash: true,
+          easing: 'elastic',
+          keyframes: {
+            x: [{ time: 0, value: 400 }],
+            y: [{ time: 0, value: 200 }],
+            scaleX: [
+              { time: 0, value: 0 },
+              { time: 1.1, value: 1 },
+            ],
+            scaleY: [
+              { time: 0, value: 0 },
+              { time: 1.1, value: 1 },
+            ],
+            rotation: [
+              { time: 0, value: -120 },
+              { time: 1.2, value: 0 },
+              { time: 5.0, value: 45 },
+            ],
+            opacity: [
+              { time: 0, value: 0 },
+              { time: 0.3, value: 1 },
+            ],
+          },
+        },
+      ];
+    },
+  },
+  {
+    id: 'notification-toast',
+    name: 'Dynamic Island Toast',
+    description: 'Sleek dark card sliding down with spring overshoot, app badge & status message',
+    badge: 'Modern UI',
+    duration: 4.0,
+    canvasBg: '#090a0f',
+    createLayers: (): Layer[] => {
+      const rocketPreset = STICKER_PRESETS[0];
+      return [
+        // 1. Toast Subtext
+        {
+          id: uid('toast_sub'),
+          name: 'Notification Body',
+          type: 'text',
+          visible: true,
+          text: 'Video render ready for export',
+          fontSize: 18,
+          fill: '#94a3b8',
+          stroke: '#0f172a',
+          borderWidth: 0,
+          borderRadius: 0,
+          borderStyle: 'none',
+          animateDash: false,
+          textEffect: 'none',
+          easing: 'backOut',
+          width: 280,
+          height: 30,
+          keyframes: {
+            x: [{ time: 0, value: 420 }],
+            y: [
+              { time: 0, value: 130 },
+              { time: 0.8, value: 242 },
+            ],
+            scaleX: [{ time: 0, value: 1 }],
+            scaleY: [{ time: 0, value: 1 }],
+            rotation: [{ time: 0, value: 0 }],
+            opacity: [
+              { time: 0, value: 0 },
+              { time: 0.5, value: 1 },
+            ],
+          },
+        },
+        // 2. Toast Title
+        {
+          id: uid('toast_title'),
+          name: 'Notification Title',
+          type: 'text',
+          visible: true,
+          text: 'MotionFlow Studio',
+          fontSize: 22,
+          fill: '#ffffff',
+          stroke: '#6366f1',
+          borderWidth: 0,
+          borderRadius: 0,
+          borderStyle: 'none',
+          animateDash: false,
+          textEffect: 'cascade',
+          easing: 'backOut',
+          width: 280,
+          height: 35,
+          keyframes: {
+            x: [{ time: 0, value: 420 }],
+            y: [
+              { time: 0, value: 100 },
+              { time: 0.75, value: 212 },
+            ],
+            scaleX: [{ time: 0, value: 1 }],
+            scaleY: [{ time: 0, value: 1 }],
+            rotation: [{ time: 0, value: 0 }],
+            opacity: [
+              { time: 0, value: 0 },
+              { time: 0.4, value: 1 },
+            ],
+          },
+        },
+        // 3. Rocket Sticker Icon
+        {
+          id: uid('toast_ico'),
+          name: 'App Icon PNG',
+          type: 'image',
+          imageSrc: rocketPreset.dataUrl,
+          visible: true,
+          width: 60,
+          height: 60,
+          fill: '#ffffff',
+          stroke: '#6366f1',
+          borderWidth: 0,
+          borderRadius: 16,
+          borderStyle: 'none',
+          animateDash: false,
+          easing: 'elastic',
+          keyframes: {
+            x: [{ time: 0, value: 245 }],
+            y: [
+              { time: 0, value: 110 },
+              { time: 0.8, value: 225 },
+            ],
+            scaleX: [
+              { time: 0, value: 0 },
+              { time: 0.8, value: 1 },
+            ],
+            scaleY: [
+              { time: 0, value: 0 },
+              { time: 0.8, value: 1 },
+            ],
+            rotation: [
+              { time: 0, value: -20 },
+              { time: 0.8, value: 0 },
+            ],
+            opacity: [
+              { time: 0, value: 0 },
+              { time: 0.3, value: 1 },
+            ],
+          },
+        },
+        // 4. Background Toast Pill
+        {
+          id: uid('toast_bg'),
+          name: 'Island Glass Card',
+          type: 'shape',
+          shapeType: 'rect',
+          visible: true,
+          width: 440,
+          height: 100,
+          fill: '#181828',
+          stroke: '#6366f1',
+          borderWidth: 2,
+          borderRadius: 30,
+          borderStyle: 'solid',
+          animateDash: false,
+          easing: 'backOut',
+          keyframes: {
+            x: [{ time: 0, value: 400 }],
+            y: [
+              { time: 0, value: 100 },
+              { time: 0.7, value: 225 },
+              { time: 3.2, value: 225 },
+              { time: 3.8, value: 90 },
+            ],
+            scaleX: [
+              { time: 0, value: 0.4 },
+              { time: 0.7, value: 1 },
+              { time: 3.2, value: 1 },
+              { time: 3.8, value: 0.4 },
+            ],
+            scaleY: [
+              { time: 0, value: 0.4 },
+              { time: 0.7, value: 1 },
+              { time: 3.2, value: 1 },
+              { time: 3.8, value: 0.4 },
+            ],
+            rotation: [{ time: 0, value: 0 }],
+            opacity: [
+              { time: 0, value: 0 },
+              { time: 0.3, value: 1 },
+              { time: 3.2, value: 1 },
+              { time: 3.8, value: 0 },
+            ],
+          },
+        },
+      ];
+    },
+  },
+];

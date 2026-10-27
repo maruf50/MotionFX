@@ -1,0 +1,34 @@
+'use client';
+
+import React from 'react';
+import { MotionProvider } from '@/context/MotionContext';
+import { Header } from '@/components/Header';
+import { LeftSidebar } from '@/components/LeftSidebar';
+import { CanvasStage } from '@/components/CanvasStage';
+import { RightInspector } from '@/components/RightInspector';
+import { Timeline } from '@/components/Timeline';
+import { ExportModal } from '@/components/ExportModal';
+
+export default function MotionGraphicsStudioPage() {
+  return (
+    <MotionProvider>
+      <div className="h-screen w-screen flex flex-col font-sans antialiased overflow-hidden bg-[#090a0f]">
+        {/* Top Header Navigation */}
+        <Header />
+
+        {/* Main Workspace (Left Palette/Layers + Center Canvas + Right Inspector) */}
+        <div className="flex-1 flex min-h-0 overflow-hidden">
+          <LeftSidebar />
+          <CanvasStage />
+          <RightInspector />
+        </div>
+
+        {/* Bottom Keyframe Sequencer & Transport Controls */}
+        <Timeline />
+
+        {/* Video Rendering / Export Modal */}
+        <ExportModal />
+      </div>
+    </MotionProvider>
+  );
+}
