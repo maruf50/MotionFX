@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.9.0] - 2026-10-27
+
+### Added
+- **Resolution-Independent Border & Element Scaling System**:
+  - Implemented `scaleLayerToResolution` and `scaleSvgPath` to preserve visual proportions of all element properties when changing canvas resolution:
+    - **Border Width Ratio Preservation**: Border widths scale geometrically (`Math.sqrt(scaleX * scaleY)`) to prevent borders from shrinking or vanishing when moving to higher resolutions (e.g. 1080p Full HD, 4K Ultra HD) or expanding excessively on smaller screens.
+    - **Border Radius Preservation**: Rounded corner curvature scales proportionally so shapes retain their exact roundness and aesthetics across all resolutions.
+    - **Vector Path Scaling**: Custom SVG path data created in the Shape Builder scales coordinates (`M`, `L`, `C`, `H`, `V`, `S`, `Q`, `A`) to match the new canvas size accurately.
+    - **Typography Scaling**: Font size scales proportionally with canvas resolution.
+    - **Line Thickness Scaling**: Single-line elements maintain their stroke width in proportion to canvas resolution.
+  - **Resolution-Aware Element Creation**:
+    - Newly added shapes (`addShape`), kinetic text (`addText`), custom builder shapes (`addCustomShape`), and images (`addImage`) automatically spawn centered and scaled to match the active canvas resolution (800x450, 1080p, 4K, 9:16 vertical, etc.).
+    - Importing or dragging template layers dynamically adapts to the current canvas dimensions without shrinking or distorting borders.
+  - **Expanded Inspector Inputs**:
+    - Increased max width and height limits (up to `7680x4320`), max border width (up to `200px`), max border radius (up to `500px`), and max font size (up to `500px`) in the Right Inspector to comfortably support 4K and 8K workflows.
+
+---
+
 ## [1.8.0] - 2026-10-27
 
 ### Added

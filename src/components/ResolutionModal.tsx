@@ -586,8 +586,9 @@ export function ResolutionModal() {
             <span className="w-2 h-2 rounded-full bg-indigo-400 mt-1 shrink-0"></span>
             <div>
               <span className="font-semibold text-white">Scale layers option: </span>
-              When enabled, your current layers (positions, keyframes, dimensions, and text font
-              sizes) will be proportionally scaled to fit inside the new canvas resolution.
+              When enabled, all layer properties (positions, widths, heights, border widths, corner
+              radii, text font sizes, and vector paths) proportionally scale to maintain the exact
+              visual ratio across any canvas resolution without borders shrinking.
             </div>
           </div>
         </div>

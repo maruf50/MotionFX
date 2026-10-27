@@ -35,8 +35,8 @@ export function TextEffectSection() {
           <div className="flex items-center gap-1.5">
             <input
               type="number"
-              min="12"
-              max="200"
+              min="8"
+              max="500"
               step="2"
               value={selectedLayer.fontSize || 48}
               onChange={(e) =>
@@ -50,8 +50,8 @@ export function TextEffectSection() {
 
         <input
           type="range"
-          min="12"
-          max="180"
+          min="8"
+          max="500"
           step="2"
           value={selectedLayer.fontSize || 48}
           onChange={(e) =>

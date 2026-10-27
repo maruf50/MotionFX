@@ -148,6 +148,131 @@ interface HistorySnapshot {
 
 const PALETTE = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#06b6d4', '#8b5cf6', '#f43f5e'];
 
+/**
+ * Scales an SVG path string's coordinates by sx and sy.
+ */
+export function scaleSvgPath(d: string, sx: number, sy: number): string {
+  if (!d) return d;
+  return d.replace(/([a-df-z])\s*([^a-df-z]*)/gi, (match, cmd, argsStr) => {
+    const upperCmd = cmd.toUpperCase();
+    if (upperCmd === 'Z') return match;
+
+    const rawNums = argsStr.match(/-?\d+(?:\.\d+)?(?:e[+-]?\d+)?/gi);
+    if (!rawNums || rawNums.length === 0) return match;
+    const nums = rawNums.map(Number);
+
+    if (upperCmd === 'H') {
+      return `${cmd} ${nums.map((x: number) => (x * sx).toFixed(1)).join(' ')} `;
+    }
+    if (upperCmd === 'V') {
+      return `${cmd} ${nums.map((y: number) => (y * sy).toFixed(1)).join(' ')} `;
+    }
+    if (upperCmd === 'M' || upperCmd === 'L' || upperCmd === 'T') {
+      const parts: string[] = [];
+      for (let i = 0; i < nums.length; i += 2) {
+        if (i + 1 < nums.length) {
+          parts.push(`${(nums[i] * sx).toFixed(1)} ${(nums[i + 1] * sy).toFixed(1)}`);
+        }
+      }
+      return `${cmd} ${parts.join(' ')} `;
+    }
+    if (upperCmd === 'C') {
+      const parts: string[] = [];
+      for (let i = 0; i < nums.length; i += 6) {
+        if (i + 5 < nums.length) {
+          const cp1x = (nums[i] * sx).toFixed(1);
+          const cp1y = (nums[i + 1] * sy).toFixed(1);
+          const cp2x = (nums[i + 2] * sx).toFixed(1);
+          const cp2y = (nums[i + 3] * sy).toFixed(1);
+          const x = (nums[i + 4] * sx).toFixed(1);
+          const y = (nums[i + 5] * sy).toFixed(1);
+          parts.push(`${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${x} ${y}`);
+        }
+      }
+      return `${cmd} ${parts.join(' ')} `;
+    }
+    if (upperCmd === 'S' || upperCmd === 'Q') {
+      const parts: string[] = [];
+      for (let i = 0; i < nums.length; i += 4) {
+        if (i + 3 < nums.length) {
+          parts.push(
+            `${(nums[i] * sx).toFixed(1)} ${(nums[i + 1] * sy).toFixed(1)}, ${(nums[i + 2] * sx).toFixed(1)} ${(nums[i + 3] * sy).toFixed(1)}`
+          );
+        }
+      }
+      return `${cmd} ${parts.join(' ')} `;
+    }
+    if (upperCmd === 'A') {
+      const parts: string[] = [];
+      for (let i = 0; i < nums.length; i += 7) {
+        if (i + 6 < nums.length) {
+          const rx = (nums[i] * sx).toFixed(1);
+          const ry = (nums[i + 1] * sy).toFixed(1);
+          const xRot = nums[i + 2];
+          const largeArc = nums[i + 3];
+          const sweep = nums[i + 4];
+          const x = (nums[i + 5] * sx).toFixed(1);
+          const y = (nums[i + 6] * sy).toFixed(1);
+          parts.push(`${rx} ${ry} ${xRot} ${largeArc} ${sweep} ${x} ${y}`);
+        }
+      }
+      return `${cmd} ${parts.join(' ')} `;
+    }
+    return match;
+  });
+}
+
+/**
+ * Proportionally scales a layer's dimensions, keyframes, border width, corner radius,
+ * font size, and vector path data so that visual ratios are identically preserved across resolutions.
+ */
+export function scaleLayerToResolution(layer: Layer, scaleX: number, scaleY: number): Layer {
+  const uniformScale = Math.sqrt(scaleX * scaleY);
+
+  const newKeyframes = { ...layer.keyframes };
+  if (newKeyframes.x) {
+    newKeyframes.x = newKeyframes.x.map((kf) => ({
+      ...kf,
+      value: Math.round(kf.value * scaleX),
+    }));
+  }
+  if (newKeyframes.y) {
+    newKeyframes.y = newKeyframes.y.map((kf) => ({
+      ...kf,
+      value: Math.round(kf.value * scaleY),
+    }));
+  }
+
+  const updated: Layer = {
+    ...layer,
+    width: Math.max(1, Math.round(layer.width * scaleX)),
+    height: Math.max(1, Math.round(layer.height * scaleY)),
+    keyframes: newKeyframes,
+  };
+
+  // Preserve border width ratio across resolutions (prevent borders from shrinking)
+  if (typeof layer.borderWidth === 'number' && layer.borderWidth > 0) {
+    updated.borderWidth = Math.max(1, Math.round(layer.borderWidth * uniformScale));
+  }
+
+  // Preserve border radius (rounded corner curvature)
+  if (typeof layer.borderRadius === 'number' && layer.borderRadius > 0) {
+    updated.borderRadius = Math.max(0, Math.round(layer.borderRadius * uniformScale));
+  }
+
+  // Preserve typography scale
+  if (layer.fontSize) {
+    updated.fontSize = Math.max(8, Math.round(layer.fontSize * uniformScale));
+  }
+
+  // Preserve custom vector path coordinates
+  if (layer.pathData) {
+    updated.pathData = scaleSvgPath(layer.pathData, scaleX, scaleY);
+  }
+
+  return updated;
+}
+
 export function MotionProvider({ children }: { children: React.ReactNode }) {
   const [layers, setLayers] = useState<Layer[]>([]);
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
@@ -324,9 +449,10 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  // Change canvas resolution with optional layer scaling
+
+  // Change canvas resolution with proportional layer & border scaling
   const setCanvasResolution = useCallback(
-    (newRes: CanvasResolution, scaleLayers: boolean = false) => {
+    (newRes: CanvasResolution, scaleLayers: boolean = true) => {
       const validWidth = Math.max(100, Math.min(7680, Math.round(newRes.width) || 800));
       const validHeight = Math.max(100, Math.min(4320, Math.round(newRes.height) || 450));
       const finalized: CanvasResolution = { width: validWidth, height: validHeight };
@@ -339,35 +465,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         const scaleY = validHeight / oldRes.height;
 
         setLayers((prevLayers) =>
-          prevLayers.map((layer) => {
-            const newKeyframes = { ...layer.keyframes };
-            if (newKeyframes.x) {
-              newKeyframes.x = newKeyframes.x.map((kf) => ({
-                ...kf,
-                value: Math.round(kf.value * scaleX),
-              }));
-            }
-            if (newKeyframes.y) {
-              newKeyframes.y = newKeyframes.y.map((kf) => ({
-                ...kf,
-                value: Math.round(kf.value * scaleY),
-              }));
-            }
-
-            const updatedLayer: Layer = {
-              ...layer,
-              width: Math.round(layer.width * scaleX),
-              height: Math.round(layer.height * scaleY),
-              keyframes: newKeyframes,
-            };
-
-            if (layer.fontSize) {
-              const fontScale = Math.min(scaleX, scaleY);
-              updatedLayer.fontSize = Math.max(8, Math.round(layer.fontSize * fontScale));
-            }
-
-            return updatedLayer;
-          })
+          prevLayers.map((layer) => scaleLayerToResolution(layer, scaleX, scaleY))
         );
       }
 
@@ -502,27 +600,39 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
   const addShape = useCallback(
     (shapeType: ShapeType) => {
       pushUndo(true);
-      const offset = (layers.length % 5) * 20;
+      const res = canvasResolutionRef.current;
+      const sx = res.width / 800;
+      const sy = res.height / 450;
+      const us = Math.sqrt(sx * sy);
+      const centerX = Math.round(res.width / 2);
+      const centerY = Math.round(res.height / 2);
+      const offset = (layers.length % 5) * Math.round(20 * us);
       const color = PALETTE[layers.length % PALETTE.length];
+
+      const baseW = shapeType === 'line' ? 220 : shapeType === 'rect' ? 160 : shapeType === 'pill' ? 180 : 130;
+      const baseH = shapeType === 'line' ? 24 : shapeType === 'rect' ? 120 : shapeType === 'pill' ? 90 : 130;
+      const baseBorderW = shapeType === 'line' ? 4 : 3;
+      const baseRadius = shapeType === 'rect' ? 24 : 8;
+
       const newLayer: Layer = {
         id: uid(`shape_${shapeType}`),
         name: `${shapeType.charAt(0).toUpperCase() + shapeType.slice(1)} ${layers.length + 1}`,
         type: 'shape',
         shapeType,
         visible: true,
-        width: shapeType === 'line' ? 220 : shapeType === 'rect' ? 160 : shapeType === 'pill' ? 180 : 130,
-        height: shapeType === 'line' ? 24 : shapeType === 'rect' ? 120 : shapeType === 'pill' ? 90 : 130,
+        width: Math.max(10, Math.round(baseW * sx)),
+        height: Math.max(10, Math.round(baseH * sy)),
         sides: shapeType === 'star' ? 5 : shapeType === 'polygon' ? 6 : undefined,
         fill: shapeType === 'line' ? 'transparent' : color,
         stroke: shapeType === 'line' ? color : '#ffffff',
-        borderWidth: shapeType === 'line' ? 4 : 3,
-        borderRadius: shapeType === 'rect' ? 24 : 8,
+        borderWidth: Math.max(1, Math.round(baseBorderW * us)),
+        borderRadius: Math.max(0, Math.round(baseRadius * us)),
         borderStyle: 'solid',
         animateDash: false,
         easing: 'backOut',
         keyframes: {
-          x: [{ time: 0, value: 400 + offset - 40 }],
-          y: [{ time: 0, value: 225 + offset - 40 }],
+          x: [{ time: 0, value: centerX + offset - Math.round(40 * sx) }],
+          y: [{ time: 0, value: centerY + offset - Math.round(40 * sy) }],
           scaleX: [
             { time: 0, value: 0.1 },
             { time: 0.6, value: 1 },
@@ -558,26 +668,35 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
       stroke: string = '#ffffff'
     ) => {
       pushUndo(true);
-      const offset = (layers.length % 5) * 20;
+      const res = canvasResolutionRef.current;
+      const sx = res.width / 800;
+      const sy = res.height / 450;
+      const us = Math.sqrt(sx * sy);
+      const centerX = Math.round(res.width / 2);
+      const centerY = Math.round(res.height / 2);
+      const offset = (layers.length % 5) * Math.round(20 * us);
+
+      const scaledPath = scaleSvgPath(pathData, sx, sy);
+
       const newLayer: Layer = {
         id: uid('custom_shape'),
         name: name || `Custom Shape ${layers.length + 1}`,
         type: 'shape',
         shapeType: 'custom',
-        pathData,
+        pathData: scaledPath,
         visible: true,
-        width: Math.max(40, width),
-        height: Math.max(40, height),
+        width: Math.max(40, Math.round(width * sx)),
+        height: Math.max(40, Math.round(height * sy)),
         fill,
         stroke,
-        borderWidth: 3,
+        borderWidth: Math.max(1, Math.round(3 * us)),
         borderRadius: 0,
         borderStyle: 'solid',
         animateDash: false,
         easing: 'backOut',
         keyframes: {
-          x: [{ time: 0, value: 400 + offset - 30 }],
-          y: [{ time: 0, value: 225 + offset - 30 }],
+          x: [{ time: 0, value: centerX + offset - Math.round(30 * sx) }],
+          y: [{ time: 0, value: centerY + offset - Math.round(30 * sy) }],
           scaleX: [
             { time: 0, value: 0.1 },
             { time: 0.6, value: 1 },
@@ -606,6 +725,13 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
   const addText = useCallback(
     (textEffect: TextEffect = 'cascade') => {
       pushUndo(true);
+      const res = canvasResolutionRef.current;
+      const sx = res.width / 800;
+      const sy = res.height / 450;
+      const us = Math.sqrt(sx * sy);
+      const centerX = Math.round(res.width / 2);
+      const centerY = Math.round(res.height / 2);
+
       const newLayer: Layer = {
         id: uid('text'),
         name: `Kinetic Text ${layers.length + 1}`,
@@ -613,7 +739,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         visible: true,
         text: 'MOTION FLOW',
         morphTarget: 'FUTURE DESIGN',
-        fontSize: 52,
+        fontSize: Math.max(12, Math.round(52 * us)),
         fill: '#ffffff',
         stroke: '#6366f1',
         borderWidth: 0,
@@ -622,11 +748,11 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         animateDash: false,
         textEffect,
         easing: 'backOut',
-        width: 340,
-        height: 60,
+        width: Math.max(80, Math.round(340 * sx)),
+        height: Math.max(20, Math.round(60 * sy)),
         keyframes: {
-          x: [{ time: 0, value: 400 }],
-          y: [{ time: 0, value: 225 }],
+          x: [{ time: 0, value: centerX }],
+          y: [{ time: 0, value: centerY }],
           scaleX: [
             { time: 0, value: 0.6 },
             { time: 0.5, value: 1 },
@@ -649,26 +775,33 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
   const addImage = useCallback(
     (src: string, name: string = 'PNG Asset', w = 150, h = 150) => {
       pushUndo(true);
+      const res = canvasResolutionRef.current;
+      const sx = res.width / 800;
+      const sy = res.height / 450;
+      const us = Math.sqrt(sx * sy);
+      const centerX = Math.round(res.width / 2);
+      const centerY = Math.round(res.height / 2);
+
       const newLayer: Layer = {
         id: uid('img'),
         name,
         type: 'image',
         imageSrc: src,
         visible: true,
-        width: w,
-        height: h,
+        width: Math.max(20, Math.round(w * sx)),
+        height: Math.max(20, Math.round(h * sy)),
         fill: '#ffffff',
         stroke: '#ffffff',
         borderWidth: 0,
-        borderRadius: 14,
+        borderRadius: Math.round(14 * us),
         borderStyle: 'none',
         animateDash: false,
         easing: 'elastic',
         keyframes: {
-          x: [{ time: 0, value: 400 }],
+          x: [{ time: 0, value: centerX }],
           y: [
-            { time: 0, value: 260 },
-            { time: 0.7, value: 225 },
+            { time: 0, value: centerY + Math.round(35 * sy) },
+            { time: 0.7, value: centerY },
           ],
           scaleX: [
             { time: 0, value: 0 },
@@ -1326,7 +1459,13 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
       pausePlay();
       setDurationState(t.duration);
       setCanvasBg(t.canvasBg);
-      const newLayers = t.createLayers();
+      let newLayers = t.createLayers();
+      const curRes = canvasResolutionRef.current;
+      if (curRes.width !== 800 || curRes.height !== 450) {
+        const sx = curRes.width / 800;
+        const sy = curRes.height / 450;
+        newLayers = newLayers.map((l) => scaleLayerToResolution(l, sx, sy));
+      }
       setLayers(newLayers);
       setSelectedLayerId(newLayers[0]?.id || null);
       setSelectedKeyframe(null);
@@ -1338,15 +1477,22 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
   const importTemplateLayer = useCallback(
     (templateLayer: Layer, atTime?: number, atPos?: { x: number; y: number }) => {
       pushUndo(true);
-      const clone: Layer = JSON.parse(JSON.stringify(templateLayer));
+      let clone: Layer = JSON.parse(JSON.stringify(templateLayer));
       clone.id = uid(templateLayer.type || 'tmpl');
       clone.name = `${templateLayer.name} (Template)`;
       clone.parentId = null;
       clone.groupId = null;
 
+      const curRes = canvasResolutionRef.current;
+      if (curRes.width !== 800 || curRes.height !== 450) {
+        const sx = curRes.width / 800;
+        const sy = curRes.height / 450;
+        clone = scaleLayerToResolution(clone, sx, sy);
+      }
+
       if (atPos) {
-        const origX = clone.keyframes.x[0]?.value ?? 400;
-        const origY = clone.keyframes.y[0]?.value ?? 225;
+        const origX = clone.keyframes.x[0]?.value ?? Math.round(curRes.width / 2);
+        const origY = clone.keyframes.y[0]?.value ?? Math.round(curRes.height / 2);
         const dx = atPos.x - origX;
         const dy = atPos.y - origY;
         clone.keyframes.x.forEach((k) => (k.value += dx));
@@ -1497,9 +1643,27 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Default to Bento Grid if no saved scene
+    let activeRes: CanvasResolution = { width: 800, height: 450 };
+    if (savedRes) {
+      try {
+        const parsed = JSON.parse(savedRes);
+        if (parsed && typeof parsed.width === 'number' && typeof parsed.height === 'number') {
+          activeRes = parsed;
+        }
+      } catch (e) {
+        console.warn('Failed to parse saved canvas resolution:', e);
+      }
+    }
+
     if (initialLayers.length === 0) {
       const defaultTemplate = TEMPLATES[0];
-      initialLayers = defaultTemplate.createLayers();
+      let templLayers = defaultTemplate.createLayers();
+      if (activeRes.width !== 800 || activeRes.height !== 450) {
+        const sx = activeRes.width / 800;
+        const sy = activeRes.height / 450;
+        templLayers = templLayers.map((l) => scaleLayerToResolution(l, sx, sy));
+      }
+      initialLayers = templLayers;
       setDurationState(defaultTemplate.duration);
       setCanvasBg(defaultTemplate.canvasBg);
     }
@@ -1512,25 +1676,28 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
       try {
         const item = JSON.parse(importedRaw);
         if (item && item.pathData) {
+          const sx = activeRes.width / 800;
+          const sy = activeRes.height / 450;
+          const us = Math.sqrt(sx * sy);
           const customLayer: Layer = {
             id: uid('custom_shape'),
             name: item.name || 'Merged Custom Vector',
             type: 'shape',
             shapeType: 'custom',
-            pathData: item.pathData,
+            pathData: scaleSvgPath(item.pathData, sx, sy),
             visible: true,
-            width: Math.max(40, item.width || 180),
-            height: Math.max(40, item.height || 180),
+            width: Math.max(40, Math.round((item.width || 180) * sx)),
+            height: Math.max(40, Math.round((item.height || 180) * sy)),
             fill: item.fill || '#6366f1',
             stroke: item.stroke || '#ffffff',
-            borderWidth: 3,
+            borderWidth: Math.max(1, Math.round(3 * us)),
             borderRadius: 0,
             borderStyle: 'solid',
             animateDash: false,
             easing: 'backOut',
             keyframes: {
-              x: [{ time: 0, value: 400 }],
-              y: [{ time: 0, value: 225 }],
+              x: [{ time: 0, value: Math.round(activeRes.width / 2) }],
+              y: [{ time: 0, value: Math.round(activeRes.height / 2) }],
               scaleX: [
                 { time: 0, value: 0.1 },
                 { time: 0.6, value: 1 },

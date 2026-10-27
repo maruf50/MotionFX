@@ -23,8 +23,8 @@ export function ShapeStyleSection() {
           <label className="text-[11px] text-slate-400 block mb-1">Width (px)</label>
           <input
             type="number"
-            min="10"
-            max="1200"
+            min="1"
+            max="7680"
             value={selectedLayer.width}
             onChange={(e) =>
               updateLayer(selectedLayer.id, { width: parseFloat(e.target.value) || 20 })
@@ -36,8 +36,8 @@ export function ShapeStyleSection() {
           <label className="text-[11px] text-slate-400 block mb-1">Height (px)</label>
           <input
             type="number"
-            min="10"
-            max="1200"
+            min="1"
+            max="4320"
             value={selectedLayer.height}
             onChange={(e) =>
               updateLayer(selectedLayer.id, { height: parseFloat(e.target.value) || 20 })
@@ -100,7 +100,7 @@ export function ShapeStyleSection() {
         <input
           type="range"
           min="0"
-          max="150"
+          max="500"
           step="1"
           value={selectedLayer.borderRadius}
           onChange={(e) =>
@@ -117,7 +117,7 @@ export function ShapeStyleSection() {
           <input
             type="number"
             min="0"
-            max="40"
+            max="200"
             value={selectedLayer.borderWidth}
             onChange={(e) =>
               updateLayer(selectedLayer.id, { borderWidth: parseFloat(e.target.value) || 0 })
