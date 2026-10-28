@@ -1,4 +1,7 @@
 import { Layer } from '@/types/motion';
+import { renderBarShape } from './bar';
+import { renderBranchingShape } from './branching';
+import { renderPathFollower } from './pathFollower';
 
 /**
  * Applies stroke styles (solid, dashed, dotted) and marching ants offset.
@@ -68,7 +71,9 @@ export function drawPolygonOrStar(
   points: number,
   outerR: number,
   innerR: number | null,
-  cornerRadius = 0
+  cornerRadius = 0,
+  scaleX = 1,
+  scaleY = 1
 ) {
   const vertices: { x: number; y: number }[] = [];
   const totalVertices = innerR ? points * 2 : points;
@@ -78,8 +83,8 @@ export function drawPolygonOrStar(
     const r = innerR ? (i % 2 === 0 ? outerR : innerR) : outerR;
     const angle = (i * (innerR ? step : step * 2)) - Math.PI / 2;
     vertices.push({
-      x: cx + Math.cos(angle) * r,
-      y: cy + Math.sin(angle) * r,
+      x: cx + Math.cos(angle) * r * scaleX,
+      y: cy + Math.sin(angle) * r * scaleY,
     });
   }
 
@@ -91,7 +96,8 @@ export function drawPolygonOrStar(
     });
     ctx.closePath();
   } else {
-    const cr = Math.min(cornerRadius * 0.4, outerR * 0.35);
+    const minScale = Math.min(Math.abs(scaleX), Math.abs(scaleY)) || 1;
+    const cr = Math.min(cornerRadius * 0.4, outerR * minScale * 0.35);
     for (let i = 0; i < vertices.length; i++) {
       const p0 = vertices[(i - 1 + vertices.length) % vertices.length];
       const p1 = vertices[i];
@@ -109,30 +115,76 @@ export function drawPolygonOrStar(
 
 /**
  * Main dispatcher to render any shape layer.
+ * Shapes are rendered with scaled dimensions in unscaled context
+ * so that border stroke widths remain constant (non-scaling stroke).
  */
 export function renderShapeLayer(
   ctx: CanvasRenderingContext2D,
   layer: Layer,
-  time: number
+  time: number,
+  onImageLoad?: () => void,
+  tr?: { scaleX: number; scaleY: number }
 ) {
   const shape = layer.shapeType || 'rect';
-  const hw = layer.width / 2;
-  const hh = layer.height / 2;
+
+  const sx = tr ? tr.scaleX : 1;
+  const sy = tr ? tr.scaleY : 1;
+  const absSx = Math.max(0.0001, Math.abs(sx));
+  const absSy = Math.max(0.0001, Math.abs(sy));
+
+  // Special Shapes
+  if (shape === 'bar') {
+    ctx.save();
+    ctx.scale(sx, sy);
+    renderBarShape(ctx, layer, time, tr);
+    ctx.restore();
+    return;
+  }
+  if (shape === 'branching') {
+    ctx.save();
+    ctx.scale(sx, sy);
+    renderBranchingShape(ctx, layer, time, tr);
+    ctx.restore();
+    return;
+  }
+  if (shape === 'pathFollower') {
+    ctx.save();
+    ctx.scale(sx, sy);
+    renderPathFollower(ctx, layer, time, onImageLoad);
+    ctx.restore();
+    return;
+  }
+
+  // Geometric shapes (rect, circle, pill, star, polygon, line, custom)
+  ctx.save();
+  if (sx < 0 || sy < 0) {
+    ctx.scale(Math.sign(sx), Math.sign(sy));
+  }
+
+  const w = layer.width * absSx;
+  const h = layer.height * absSy;
+  const hw = w / 2;
+  const hh = h / 2;
 
   applyStrokeStyle(ctx, layer, time);
 
   if (shape === 'custom' && layer.pathData) {
     try {
       const path = new Path2D(layer.pathData);
+      ctx.save();
+      ctx.scale(absSx, absSy);
       if (layer.fill && layer.fill !== 'transparent') {
         ctx.fillStyle = layer.fill;
         ctx.fill(path);
       }
       if (layer.borderWidth > 0 && layer.borderStyle !== 'none' && layer.stroke) {
-        ctx.lineWidth = layer.borderWidth;
+        const avgScale = (absSx + absSy) / 2 || 1;
+        ctx.lineWidth = layer.borderWidth / avgScale;
         ctx.strokeStyle = layer.stroke;
         ctx.stroke(path);
       }
+      ctx.restore();
+      ctx.restore();
       return;
     } catch (e) {
       console.warn('Error rendering custom Path2D shape:', e);
@@ -148,24 +200,25 @@ export function renderShapeLayer(
     ctx.strokeStyle = layer.stroke || layer.fill || '#ffffff';
     ctx.lineCap = 'round';
     ctx.stroke();
+    ctx.restore();
     return;
   }
 
   if (shape === 'rect') {
-    drawRoundedRect(ctx, -hw, -hh, layer.width, layer.height, layer.borderRadius);
+    drawRoundedRect(ctx, -hw, -hh, w, h, layer.borderRadius);
   } else if (shape === 'circle') {
     ctx.beginPath();
     ctx.ellipse(0, 0, hw, hh, 0, 0, Math.PI * 2);
     ctx.closePath();
   } else if (shape === 'pill') {
     const r = Math.min(hw, hh);
-    drawRoundedRect(ctx, -hw, -hh, layer.width, layer.height, r);
+    drawRoundedRect(ctx, -hw, -hh, w, h, r);
   } else if (shape === 'star') {
     const points = layer.sides || 5;
-    drawPolygonOrStar(ctx, 0, 0, points, hw, hw * 0.44, layer.borderRadius);
+    drawPolygonOrStar(ctx, 0, 0, points, layer.width / 2, (layer.width / 2) * 0.44, layer.borderRadius, absSx, absSy);
   } else if (shape === 'polygon') {
     const sides = layer.sides || 6;
-    drawPolygonOrStar(ctx, 0, 0, sides, hw, null, layer.borderRadius);
+    drawPolygonOrStar(ctx, 0, 0, sides, layer.width / 2, null, layer.borderRadius, absSx, absSy);
   }
 
   // Fill
@@ -174,10 +227,12 @@ export function renderShapeLayer(
     ctx.fill();
   }
 
-  // Border / Stroke
+  // Border / Stroke (Guaranteed non-scaling stroke width)
   if (layer.borderWidth > 0 && layer.borderStyle !== 'none' && layer.stroke) {
     ctx.lineWidth = layer.borderWidth;
     ctx.strokeStyle = layer.stroke;
     ctx.stroke();
   }
+
+  ctx.restore();
 }

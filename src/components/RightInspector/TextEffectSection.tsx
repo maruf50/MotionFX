@@ -4,6 +4,7 @@ import React from 'react';
 import { Wand2 } from 'lucide-react';
 import { useMotion } from '@/context/MotionContext';
 import { TextEffect } from '@/types/motion';
+import { GoogleFontPicker } from '@/components/common/GoogleFontPicker';
 
 export function TextEffectSection() {
   const { selectedLayer, updateLayer } = useMotion();
@@ -26,6 +27,50 @@ export function TextEffectSection() {
           onChange={(e) => updateLayer(selectedLayer.id, { text: e.target.value })}
           className="w-full bg-[#121214] border border-[#2c2c32] focus:border-purple-500 rounded px-2 py-1 text-xs font-sans text-white outline-none"
         />
+      </div>
+
+      {/* Google Font Picker */}
+      <div>
+        <label className="text-[11px] text-zinc-400 block mb-1">Google Font</label>
+        <GoogleFontPicker
+          value={selectedLayer.fontFamily || 'Inter'}
+          onChange={(fontFamily) => updateLayer(selectedLayer.id, { fontFamily })}
+        />
+      </div>
+
+      {/* Font Weight & Style */}
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="text-[11px] text-zinc-400 block mb-1">Font Weight</label>
+          <select
+            value={selectedLayer.fontWeight || 'bold'}
+            onChange={(e) => updateLayer(selectedLayer.id, { fontWeight: e.target.value })}
+            className="w-full bg-[#121214] border border-[#2c2c32] focus:border-purple-500 rounded px-2 py-1 text-xs text-white outline-none cursor-pointer"
+          >
+            <option value="300">Light (300)</option>
+            <option value="normal">Regular (400)</option>
+            <option value="500">Medium (500)</option>
+            <option value="600">SemiBold (600)</option>
+            <option value="bold">Bold (700)</option>
+            <option value="800">ExtraBold (800)</option>
+            <option value="900">Black (900)</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-[11px] text-zinc-400 block mb-1">Font Style</label>
+          <select
+            value={selectedLayer.fontStyle || 'normal'}
+            onChange={(e) =>
+              updateLayer(selectedLayer.id, {
+                fontStyle: e.target.value as 'normal' | 'italic',
+              })
+            }
+            className="w-full bg-[#121214] border border-[#2c2c32] focus:border-purple-500 rounded px-2 py-1 text-xs text-white outline-none cursor-pointer"
+          >
+            <option value="normal">Normal</option>
+            <option value="italic">Italic</option>
+          </select>
+        </div>
       </div>
 
       {/* Font Size & Text Color */}

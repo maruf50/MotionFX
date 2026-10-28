@@ -29,31 +29,46 @@ export function renderImageLayer(
   ctx: CanvasRenderingContext2D,
   layer: Layer,
   time: number,
-  onImageLoad?: () => void
+  onImageLoad?: () => void,
+  tr?: { scaleX: number; scaleY: number }
 ) {
   if (!layer.imageSrc) return;
   const img = getImageFromCache(layer.imageSrc, onImageLoad);
   if (!img || !img.complete || img.naturalWidth === 0) return;
 
-  const hw = layer.width / 2;
-  const hh = layer.height / 2;
+  const sx = tr ? tr.scaleX : 1;
+  const sy = tr ? tr.scaleY : 1;
+  const absSx = Math.max(0.0001, Math.abs(sx));
+  const absSy = Math.max(0.0001, Math.abs(sy));
+
+  ctx.save();
+  if (sx < 0 || sy < 0) {
+    ctx.scale(Math.sign(sx), Math.sign(sy));
+  }
+
+  const w = layer.width * absSx;
+  const h = layer.height * absSy;
+  const hw = w / 2;
+  const hh = h / 2;
 
   ctx.save();
   // Clip with rounded borders if specified
   if (layer.borderRadius > 0) {
-    drawRoundedRect(ctx, -hw, -hh, layer.width, layer.height, layer.borderRadius);
+    drawRoundedRect(ctx, -hw, -hh, w, h, layer.borderRadius);
     ctx.clip();
   }
 
-  ctx.drawImage(img, -hw, -hh, layer.width, layer.height);
+  ctx.drawImage(img, -hw, -hh, w, h);
   ctx.restore();
 
-  // Draw border outline if configured
+  // Draw border outline if configured (non-scaling stroke)
   if (layer.borderWidth > 0 && layer.borderStyle !== 'none' && layer.stroke) {
     applyStrokeStyle(ctx, layer, time);
-    drawRoundedRect(ctx, -hw, -hh, layer.width, layer.height, layer.borderRadius);
+    drawRoundedRect(ctx, -hw, -hh, w, h, layer.borderRadius);
     ctx.lineWidth = layer.borderWidth;
     ctx.strokeStyle = layer.stroke;
     ctx.stroke();
   }
+
+  ctx.restore();
 }

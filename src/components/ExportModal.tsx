@@ -24,15 +24,31 @@ export function ExportModal() {
           <Loader2 className="w-7 h-7 text-purple-400 animate-spin" />
         </div>
 
-        <h3 className="text-base font-bold text-white mb-1">Rendering Motion Video...</h3>
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <h3 className="text-base font-bold text-white">Rendering Motion Video</h3>
+          <span
+            className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+              (exportProgress.fps || 60) >= 120
+                ? 'bg-amber-500/15 text-amber-300 border-amber-500/40 shadow-sm shadow-amber-950/40'
+                : 'bg-purple-950/60 text-purple-300 border-purple-700/50'
+            }`}
+          >
+            {exportProgress.fps || 60} FPS {(exportProgress.fps || 60) >= 120 ? 'ULTRA' : 'PRO'}
+          </span>
+        </div>
+
         <p className="text-xs text-zinc-400 mb-5">
-          Capturing 60 FPS Canvas captureStream & encoding video file
+          Capturing {exportProgress.fps || 60} FPS Canvas stream & encoding high-fidelity video
         </p>
 
         {/* Progress Bar */}
         <div className="w-full h-2.5 bg-[#101012] rounded-full overflow-hidden border border-[#242428] mb-2.5">
           <div
-            className="h-full bg-gradient-to-r from-purple-700 via-purple-500 to-purple-400 transition-all duration-75"
+            className={`h-full transition-all duration-75 ${
+              (exportProgress.fps || 60) >= 120
+                ? 'bg-gradient-to-r from-amber-600 via-purple-600 to-purple-400'
+                : 'bg-gradient-to-r from-purple-700 via-purple-500 to-purple-400'
+            }`}
             style={{ width: `${exportProgress.progress}%` }}
           />
         </div>
@@ -40,6 +56,10 @@ export function ExportModal() {
         {/* Progress Status */}
         <div className="flex items-center justify-between text-xs font-mono">
           <span className="text-purple-400 font-semibold">{exportProgress.progress}%</span>
+          <span className="text-[11px] text-zinc-400">
+            Frame {Math.round(exportProgress.currentSec * (exportProgress.fps || 60))} /{' '}
+            {Math.round(exportProgress.totalSec * (exportProgress.fps || 60))}
+          </span>
           <span className="text-zinc-400">
             {exportProgress.currentSec.toFixed(1)}s / {exportProgress.totalSec.toFixed(1)}s
           </span>

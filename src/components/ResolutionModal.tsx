@@ -11,6 +11,8 @@ import {
   ArrowRightLeft,
   Check,
   Tv,
+  Gauge,
+  Zap,
 } from 'lucide-react';
 import { useMotion } from '@/context/MotionContext';
 import { CanvasResolution } from '@/types/motion';
@@ -141,20 +143,28 @@ export function ResolutionModal() {
     setCanvasResolution,
     isResolutionModalOpen,
     setIsResolutionModalOpen,
+    exportFps,
+    setExportFps,
   } = useMotion();
 
   const [customWidth, setCustomWidth] = useState<number>(canvasResolution.width);
   const [customHeight, setCustomHeight] = useState<number>(canvasResolution.height);
   const [scaleLayers, setScaleLayers] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<'presets' | 'custom'>('presets');
+  const [selectedFps, setSelectedFps] = useState<number>(exportFps || 60);
+  const [isCustomFpsActive, setIsCustomFpsActive] = useState<boolean>(
+    exportFps !== 30 && exportFps !== 60 && exportFps !== 120
+  );
 
   // Synchronize initial input values when modal opens
   useEffect(() => {
     if (isResolutionModalOpen) {
       setCustomWidth(canvasResolution.width);
       setCustomHeight(canvasResolution.height);
+      setSelectedFps(exportFps || 60);
+      setIsCustomFpsActive(exportFps !== 30 && exportFps !== 60 && exportFps !== 120);
     }
-  }, [isResolutionModalOpen, canvasResolution]);
+  }, [isResolutionModalOpen, canvasResolution, exportFps]);
 
   // Handle escape key
   useEffect(() => {
@@ -171,6 +181,7 @@ export function ResolutionModal() {
   if (!isResolutionModalOpen) return null;
 
   const handleSelectPreset = (preset: ResolutionPreset) => {
+    setExportFps(selectedFps);
     setCanvasResolution({ width: preset.width, height: preset.height }, scaleLayers);
     setIsResolutionModalOpen(false);
   };
@@ -178,6 +189,7 @@ export function ResolutionModal() {
   const handleApplyCustom = () => {
     const w = Math.max(100, Math.min(7680, customWidth || 800));
     const h = Math.max(100, Math.min(4320, customHeight || 450));
+    setExportFps(selectedFps);
     setCanvasResolution({ width: w, height: h }, scaleLayers);
     setIsResolutionModalOpen(false);
   };
@@ -580,6 +592,92 @@ export function ResolutionModal() {
               </div>
             </div>
           )}
+
+          {/* Framerate (FPS) Selection Section */}
+          <div className="p-4 rounded-xl bg-[#1a1a1e] border border-[#28282e] space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Gauge className="w-4 h-4 text-purple-400" />
+                <span className="text-xs font-semibold text-white uppercase tracking-wider">
+                  Framerate (FPS) Options
+                </span>
+              </div>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-950/60 text-purple-300 border border-purple-700/50">
+                Active: {selectedFps} FPS
+              </span>
+            </div>
+
+            <p className="text-[11px] text-zinc-400">
+              Set target timeline playback & high-fidelity export framerate for this canvas.
+            </p>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {[
+                { fps: 30, label: '30 FPS', badge: 'Compact', desc: 'Web & light transfers' },
+                { fps: 60, label: '60 FPS', badge: 'Standard Smooth', desc: 'Universal 60Hz displays', recommended: true },
+                { fps: 120, label: '120 FPS', badge: 'Ultra Fluid', desc: '120Hz/144Hz+ displays' },
+                { fps: -1, label: 'Custom FPS', badge: 'Custom', desc: 'Arbitrary framerate' },
+              ].map((item) => {
+                const isSelected = item.fps === -1 ? isCustomFpsActive : selectedFps === item.fps && !isCustomFpsActive;
+                return (
+                  <button
+                    key={item.label}
+                    type="button"
+                    onClick={() => {
+                      if (item.fps === -1) {
+                        setIsCustomFpsActive(true);
+                      } else {
+                        setIsCustomFpsActive(false);
+                        setSelectedFps(item.fps);
+                        setExportFps(item.fps);
+                      }
+                    }}
+                    className={`p-2.5 rounded-lg border text-left transition cursor-pointer flex flex-col justify-between ${
+                      isSelected
+                        ? 'bg-purple-950/40 border-purple-500/80 ring-1 ring-purple-500/50 shadow-md shadow-purple-950/30'
+                        : 'bg-[#121215] border-[#26262c] hover:bg-[#1a1a20] text-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-zinc-300'}`}>
+                        {item.label}
+                      </span>
+                      {item.recommended && (
+                        <span className="text-[8px] font-bold px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                          PRO
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-zinc-500 leading-tight">
+                      {item.desc}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Custom FPS Input */}
+            {isCustomFpsActive && (
+              <div className="pt-2 border-t border-[#242428] flex items-center gap-3">
+                <span className="text-xs text-zinc-300 font-medium">Custom FPS:</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={240}
+                  value={selectedFps}
+                  onChange={(e) => {
+                    const val = Math.max(1, Math.min(240, parseInt(e.target.value) || 60));
+                    setSelectedFps(val);
+                    setExportFps(val);
+                  }}
+                  className="w-24 px-2.5 py-1 rounded bg-[#101012] border border-[#2c2c32] focus:border-purple-500 focus:outline-none text-white font-mono text-xs"
+                />
+                <span className="text-[11px] text-zinc-400">
+                  (Common: 24 for Film, 75, 90, 144, 240 for high refresh gaming displays)
+                </span>
+              </div>
+            )}
+          </div>
 
           {/* Scale layers explanation note */}
           <div className="p-3 rounded bg-purple-950/20 border border-purple-900/30 text-xs text-purple-200/90 flex items-start gap-2.5">

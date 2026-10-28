@@ -6,6 +6,9 @@ import { useMotion } from '@/context/MotionContext';
 import { TransformSection } from './TransformSection';
 import { ParentHierarchySection } from './ParentHierarchySection';
 import { ShapeStyleSection } from './ShapeStyleSection';
+import { BarInspectorSection } from './BarInspectorSection';
+import { BranchingInspectorSection } from './BranchingInspectorSection';
+import { PathFollowerInspectorSection } from './PathFollowerInspectorSection';
 import { TextEffectSection } from './TextEffectSection';
 import { MultiSelectSection } from './MultiSelectSection';
 
@@ -70,8 +73,16 @@ export function RightInspector() {
           {/* Transform & Keyframable Props */}
           <TransformSection />
 
-          {/* Shape & Border Section */}
-          <ShapeStyleSection />
+          {/* Specialized Sections according to shape type */}
+          {selectedLayer.shapeType === 'bar' && <BarInspectorSection />}
+          {selectedLayer.shapeType === 'branching' && <BranchingInspectorSection />}
+          {selectedLayer.shapeType === 'pathFollower' && <PathFollowerInspectorSection />}
+
+          {/* Standard Shape & Border Section (for standard shapes) */}
+          {selectedLayer.type === 'shape' &&
+            selectedLayer.shapeType !== 'bar' &&
+            selectedLayer.shapeType !== 'branching' &&
+            selectedLayer.shapeType !== 'pathFollower' && <ShapeStyleSection />}
 
           {/* Kinetic Text & Effects Section */}
           <TextEffectSection />

@@ -1,22 +1,31 @@
 import { Layer } from '@/types/motion';
 import { Easings } from '../easing/easings';
+import { loadGoogleFont } from '../fonts/googleFonts';
 
 const GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*<>[]{}';
 
 /**
- * Renders kinetic text layers with various motion effects.
+ * Renders kinetic text layers with various motion effects and Google Fonts support.
  */
 export function renderTextLayer(
   ctx: CanvasRenderingContext2D,
   layer: Layer,
   time: number,
-  totalDuration: number
+  totalDuration: number,
+  tr?: { scaleX: number; scaleY: number }
 ) {
+  if (layer.fontFamily) {
+    loadGoogleFont(layer.fontFamily);
+  }
+
   const fontSize = layer.fontSize || 48;
   const str = layer.text || 'TEXT';
   const effect = layer.textEffect || 'none';
+  const family = layer.fontFamily ? `"${layer.fontFamily}", ` : '';
+  const weight = layer.fontWeight || 'bold';
+  const style = layer.fontStyle === 'italic' ? 'italic ' : '';
 
-  ctx.font = `bold ${fontSize}px "Geist", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+  ctx.font = `${style}${weight} ${fontSize}px ${family}"Geist", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = layer.fill || '#ffffff';
@@ -24,7 +33,8 @@ export function renderTextLayer(
   if (effect === 'none') {
     ctx.fillText(str, 0, 0);
     if (layer.borderWidth > 0 && layer.borderStyle !== 'none' && layer.stroke) {
-      ctx.lineWidth = layer.borderWidth;
+      const avgScale = (Math.abs(tr?.scaleX ?? 1) + Math.abs(tr?.scaleY ?? 1)) / 2 || 1;
+      ctx.lineWidth = layer.borderWidth / avgScale;
       ctx.strokeStyle = layer.stroke;
       ctx.strokeText(str, 0, 0);
     }

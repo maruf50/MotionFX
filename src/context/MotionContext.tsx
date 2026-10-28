@@ -30,6 +30,7 @@ import {
 import { TEMPLATES } from '@/modules/templates';
 import { VideoExporter } from '@/modules/export/videoExporter';
 import { renderSceneAtTime } from '@/modules/renderers/engine';
+import { DEFAULT_PATH_POINTS } from '@/modules/renderers/pathFollower';
 
 interface MotionContextType {
   layers: Layer[];
@@ -118,9 +119,28 @@ interface MotionContextType {
     atTime?: number,
     atPos?: { x: number; y: number }
   ) => void;
+  importTemplateAsGroup: (templateId: string, customGroupName?: string) => void;
+  importAllTemplatesAsGroups: () => void;
   clearScene: () => void;
+  // Shape Builder Studio
+  isBuildShapeModalOpen: boolean;
+  setIsBuildShapeModalOpen: (open: boolean) => void;
+  addCustomShapeLayer: (shape: {
+    name: string;
+    pathData: string;
+    width: number;
+    height: number;
+    fill: string;
+    stroke: string;
+    borderWidth?: number;
+  }) => void;
+  // Export Settings & FPS
+  exportFps: number;
+  setExportFps: (fps: number) => void;
+  isExportSettingsOpen: boolean;
+  setIsExportSettingsOpen: (open: boolean) => void;
   // Export
-  startExport: () => void;
+  startExport: (customFps?: number) => void;
   cancelExport: () => void;
   // 50-step Undo / Redo Mechanism
   undo: () => void;
@@ -270,6 +290,40 @@ export function scaleLayerToResolution(layer: Layer, scaleX: number, scaleY: num
     updated.pathData = scaleSvgPath(layer.pathData, scaleX, scaleY);
   }
 
+  // Preserve vector path follower points
+  if (layer.pathPoints && layer.pathPoints.length > 0) {
+    updated.pathPoints = layer.pathPoints.map((p) => ({
+      x: Math.round(p.x * scaleX),
+      y: Math.round(p.y * scaleY),
+      cp1x: p.cp1x !== undefined ? Math.round(p.cp1x * scaleX) : undefined,
+      cp1y: p.cp1y !== undefined ? Math.round(p.cp1y * scaleY) : undefined,
+      cp2x: p.cp2x !== undefined ? Math.round(p.cp2x * scaleX) : undefined,
+      cp2y: p.cp2y !== undefined ? Math.round(p.cp2y * scaleY) : undefined,
+    }));
+  }
+
+  // Preserve branching metrics & custom endpoints
+  if (typeof layer.branchLength === 'number') {
+    updated.branchLength = Math.max(10, Math.round(layer.branchLength * uniformScale));
+  }
+  if (typeof layer.branchTrunkLength === 'number') {
+    updated.branchTrunkLength = Math.max(10, Math.round(layer.branchTrunkLength * uniformScale));
+  }
+  if (typeof layer.branchSpread === 'number') {
+    updated.branchSpread = Math.max(10, Math.round(layer.branchSpread * uniformScale));
+  }
+  if (layer.branchEndpoints && layer.branchEndpoints.length > 0) {
+    updated.branchEndpoints = layer.branchEndpoints.map((p) => ({
+      x: Math.round(p.x * scaleX),
+      y: Math.round(p.y * scaleY),
+    }));
+  }
+
+  // Preserve bar font size
+  if (typeof layer.barFontSize === 'number') {
+    updated.barFontSize = Math.max(8, Math.round(layer.barFontSize * uniformScale));
+  }
+
   return updated;
 }
 
@@ -294,7 +348,37 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
     progress: 0,
     currentSec: 0,
     totalSec: 0,
+    fps: 60,
   });
+
+  const [exportFps, setExportFpsState] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('motionfx_export_fps');
+        if (saved) {
+          const parsed = parseInt(saved, 10);
+          if (parsed === 60 || parsed === 120 || parsed === 30) return parsed;
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return 60;
+  });
+
+  const setExportFps = useCallback((fps: number) => {
+    setExportFpsState(fps);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('motionfx_export_fps', String(fps));
+      } catch {
+        // ignore
+      }
+    }
+  }, []);
+
+  const [isExportSettingsOpen, setIsExportSettingsOpen] = useState<boolean>(false);
+  const [isBuildShapeModalOpen, setIsBuildShapeModalOpen] = useState<boolean>(false);
 
   // 50-step Undo / Redo History Stacks
   const [undoStack, setUndoStack] = useState<HistorySnapshot[]>([]);
@@ -552,12 +636,15 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         const nextTime = prev + dt;
         if (nextTime >= duration) {
           if (isLooping) {
+            drawCurrentFrame(0);
             return 0;
           } else {
             setIsPlaying(false);
+            drawCurrentFrame(duration);
             return duration;
           }
         }
+        drawCurrentFrame(nextTime);
         return nextTime;
       });
 
@@ -609,14 +696,45 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
       const offset = (layers.length % 5) * Math.round(20 * us);
       const color = PALETTE[layers.length % PALETTE.length];
 
-      const baseW = shapeType === 'line' ? 220 : shapeType === 'rect' ? 160 : shapeType === 'pill' ? 180 : 130;
-      const baseH = shapeType === 'line' ? 24 : shapeType === 'rect' ? 120 : shapeType === 'pill' ? 90 : 130;
-      const baseBorderW = shapeType === 'line' ? 4 : 3;
-      const baseRadius = shapeType === 'rect' ? 24 : 8;
+      let baseW = 130;
+      let baseH = 130;
+      let baseBorderW = 3;
+      let baseRadius = 8;
+      let layerName = `${shapeType.charAt(0).toUpperCase() + shapeType.slice(1)} ${layers.length + 1}`;
+
+      if (shapeType === 'line') {
+        baseW = 220;
+        baseH = 24;
+        baseBorderW = 4;
+        baseRadius = 0;
+      } else if (shapeType === 'rect') {
+        baseW = 160;
+        baseH = 120;
+        baseRadius = 24;
+      } else if (shapeType === 'pill') {
+        baseW = 180;
+        baseH = 90;
+      } else if (shapeType === 'bar') {
+        baseW = 280;
+        baseH = 40;
+        baseRadius = 14;
+        baseBorderW = 2;
+        layerName = `Progress Bar ${layers.length + 1}`;
+      } else if (shapeType === 'branching') {
+        baseW = 260;
+        baseH = 160;
+        baseBorderW = 3;
+        layerName = `Branching Tree ${layers.length + 1}`;
+      } else if (shapeType === 'pathFollower') {
+        baseW = 340;
+        baseH = 160;
+        baseBorderW = 2;
+        layerName = `Move Along Path ${layers.length + 1}`;
+      }
 
       const newLayer: Layer = {
         id: uid(`shape_${shapeType}`),
-        name: `${shapeType.charAt(0).toUpperCase() + shapeType.slice(1)} ${layers.length + 1}`,
+        name: layerName,
         type: 'shape',
         shapeType,
         visible: true,
@@ -624,12 +742,57 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         height: Math.max(10, Math.round(baseH * sy)),
         sides: shapeType === 'star' ? 5 : shapeType === 'polygon' ? 6 : undefined,
         fill: shapeType === 'line' ? 'transparent' : color,
-        stroke: shapeType === 'line' ? color : '#ffffff',
+        stroke:
+          shapeType === 'line'
+            ? color
+            : shapeType === 'bar'
+            ? 'transparent'
+            : shapeType === 'branching'
+            ? color
+            : '#ffffff',
         borderWidth: Math.max(1, Math.round(baseBorderW * us)),
         borderRadius: Math.max(0, Math.round(baseRadius * us)),
         borderStyle: 'solid',
         animateDash: false,
         easing: 'easeOutCubic',
+        // Bar defaults
+        barPercentage: shapeType === 'bar' ? 75 : undefined,
+        barShape: shapeType === 'bar' ? 'horizontal' : undefined,
+        barTrackColor: shapeType === 'bar' ? 'rgba(255, 255, 255, 0.12)' : undefined,
+        barFillColor: shapeType === 'bar' ? color : undefined,
+        barShowLabel: shapeType === 'bar' ? true : undefined,
+        barLabelColor: shapeType === 'bar' ? '#ffffff' : undefined,
+        barFontSize: shapeType === 'bar' ? 13 : undefined,
+        barThickness: shapeType === 'bar' ? 14 : undefined,
+        // Branching defaults
+        branchCount: shapeType === 'branching' ? 4 : undefined,
+        branchLength: shapeType === 'branching' ? 130 : undefined,
+        branchSpread: shapeType === 'branching' ? 130 : undefined,
+        branchPosition: shapeType === 'branching' ? 0 : undefined,
+        branchTrunkLength: shapeType === 'branching' ? 50 : undefined,
+        branchCurvature: shapeType === 'branching' ? 'curved' : undefined,
+        branchDirection: shapeType === 'branching' ? 'right' : undefined,
+        branchEndShape: shapeType === 'branching' ? 'circle' : undefined,
+        branchEndSize: shapeType === 'branching' ? 8 : undefined,
+        branchAnimated: shapeType === 'branching' ? true : undefined,
+        branchAnimDuration: shapeType === 'branching' ? 2.5 : undefined,
+        branchAnimLoop: shapeType === 'branching' ? 'loop' : undefined,
+        // Path Follower defaults
+        pathPoints: shapeType === 'pathFollower' ? DEFAULT_PATH_POINTS.map((p) => ({ ...p })) : undefined,
+        followerCount: shapeType === 'pathFollower' ? 5 : undefined,
+        followerType: shapeType === 'pathFollower' ? 'circle' : undefined,
+        followerSize: shapeType === 'pathFollower' ? 22 : undefined,
+        followerColor: shapeType === 'pathFollower' ? color : undefined,
+        followerSpeed: shapeType === 'pathFollower' ? 3.0 : undefined,
+        followerSpacing: shapeType === 'pathFollower' ? 0.14 : undefined,
+        followerFadeStart: shapeType === 'pathFollower' ? 0.75 : undefined,
+        followerFadeIn: shapeType === 'pathFollower' ? true : undefined,
+        followerScaleDown: shapeType === 'pathFollower' ? true : undefined,
+        followerOrientToPath: shapeType === 'pathFollower' ? true : undefined,
+        showPathTrack: shapeType === 'pathFollower' ? true : undefined,
+        pathTrackColor: shapeType === 'pathFollower' ? 'rgba(99, 102, 241, 0.4)' : undefined,
+        pathTrackWidth: shapeType === 'pathFollower' ? 2.5 : undefined,
+        pathTrackDashed: shapeType === 'pathFollower' ? true : undefined,
         keyframes: {
           x: [{ time: 0, value: centerX + offset - Math.round(40 * sx) }],
           y: [{ time: 0, value: centerY + offset - Math.round(40 * sy) }],
@@ -716,6 +879,9 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         text: 'MOTION FLOW',
         morphTarget: 'FUTURE DESIGN',
         fontSize: Math.max(12, Math.round(52 * us)),
+        fontFamily: 'Inter',
+        fontWeight: 'bold',
+        fontStyle: 'normal',
         fill: '#ffffff',
         stroke: '#6366f1',
         borderWidth: 0,
@@ -1475,6 +1641,146 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
     [pushUndo]
   );
 
+  const importTemplateAsGroup = useCallback(
+    (templateId: string, customGroupName?: string) => {
+      const tmpl = TEMPLATES.find((t) => t.id === templateId);
+      if (!tmpl) return;
+
+      pushUndo(true);
+      const rawLayers = tmpl.createLayers();
+      const groupId = uid('tmpl_grp');
+      const curRes = canvasResolutionRef.current;
+      const sx = curRes.width / 800;
+      const sy = curRes.height / 450;
+
+      let sumX = 0;
+      let sumY = 0;
+      let count = 0;
+
+      const scaledClones: Layer[] = rawLayers.map((l) => {
+        let clone: Layer = JSON.parse(JSON.stringify(l));
+        clone.id = uid(clone.type || 'tmpl_layer');
+        if (curRes.width !== 800 || curRes.height !== 450) {
+          clone = scaleLayerToResolution(clone, sx, sy);
+        }
+        const firstX = clone.keyframes.x[0]?.value ?? 400;
+        const firstY = clone.keyframes.y[0]?.value ?? 225;
+        sumX += firstX;
+        sumY += firstY;
+        count++;
+        return clone;
+      });
+
+      const avgX = count > 0 ? Math.round(sumX / count) : Math.round(curRes.width / 2);
+      const avgY = count > 0 ? Math.round(sumY / count) : Math.round(curRes.height / 2);
+
+      const groupLayer: Layer = {
+        id: groupId,
+        name: customGroupName || `[Group] ${tmpl.name}`,
+        type: 'group',
+        isGroup: true,
+        expanded: true,
+        visible: true,
+        width: Math.round(320 * sx),
+        height: Math.round(220 * sy),
+        fill: 'transparent',
+        stroke: '#8b5cf6',
+        borderWidth: 1.5,
+        borderRadius: 8,
+        borderStyle: 'dashed',
+        animateDash: false,
+        easing: 'easeOutCubic',
+        keyframes: {
+          x: [{ time: 0, value: avgX }],
+          y: [{ time: 0, value: avgY }],
+          scaleX: [{ time: 0, value: 1 }],
+          scaleY: [{ time: 0, value: 1 }],
+          rotation: [{ time: 0, value: 0 }],
+          opacity: [{ time: 0, value: 1 }],
+        },
+      };
+
+      const memberLayers = scaledClones.map((l) => {
+        const adjustedKeyframes = { ...l.keyframes };
+        adjustedKeyframes.x = l.keyframes.x.map((k) => ({
+          ...k,
+          value: Math.round(k.value - avgX),
+        }));
+        adjustedKeyframes.y = l.keyframes.y.map((k) => ({
+          ...k,
+          value: Math.round(k.value - avgY),
+        }));
+
+        return {
+          ...l,
+          parentId: groupId,
+          groupId: groupId,
+          keyframes: adjustedKeyframes,
+        };
+      });
+
+      setLayers((prev) => [groupLayer, ...memberLayers, ...prev]);
+      setSelectedLayerId(groupId);
+      setSelectedLayerIdsState([groupId]);
+      setSelectedKeyframe(null);
+    },
+    [pushUndo]
+  );
+
+  const importAllTemplatesAsGroups = useCallback(() => {
+    pushUndo(true);
+    // Reverse so first template is at top of stack
+    const reversed = [...TEMPLATES].reverse();
+    reversed.forEach((tmpl) => {
+      importTemplateAsGroup(tmpl.id);
+    });
+  }, [pushUndo, importTemplateAsGroup]);
+
+  const addCustomShapeLayer = useCallback(
+    (shape: {
+      name: string;
+      pathData: string;
+      width: number;
+      height: number;
+      fill: string;
+      stroke: string;
+      borderWidth?: number;
+    }) => {
+      pushUndo(true);
+      const curRes = canvasResolutionRef.current;
+      const newLayer: Layer = {
+        id: uid('custom_shape'),
+        name: shape.name || 'Custom Shape',
+        type: 'shape',
+        shapeType: 'custom',
+        pathData: shape.pathData,
+        visible: true,
+        width: Math.max(20, Math.round(shape.width)),
+        height: Math.max(20, Math.round(shape.height)),
+        fill: shape.fill || '#6366f1',
+        stroke: shape.stroke || '#ffffff',
+        borderWidth: shape.borderWidth ?? 2,
+        borderRadius: 0,
+        borderStyle: 'solid',
+        animateDash: false,
+        easing: 'easeOutCubic',
+        keyframes: {
+          x: [{ time: 0, value: Math.round(curRes.width / 2) }],
+          y: [{ time: 0, value: Math.round(curRes.height / 2) }],
+          scaleX: [{ time: 0, value: 1 }],
+          scaleY: [{ time: 0, value: 1 }],
+          rotation: [{ time: 0, value: 0 }],
+          opacity: [{ time: 0, value: 1 }],
+        },
+      };
+
+      setLayers((prev) => [newLayer, ...prev]);
+      setSelectedLayerId(newLayer.id);
+      setSelectedKeyframe(null);
+    },
+    [pushUndo]
+  );
+
   const clearScene = useCallback(() => {
     pushUndo(true);
     pausePlay();
@@ -1484,10 +1790,12 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
     setCurrentTimeState(0);
   }, [pausePlay, pushUndo]);
 
-  // Video Export
-  const startExport = useCallback(async () => {
+  // Video Export (Supports 60 FPS, 120 FPS, and Custom Framerates)
+  const startExport = useCallback(async (customFps?: number) => {
     const canvas = canvasRef.current;
     if (!canvas || layers.length === 0) return;
+
+    const targetFps = customFps || exportFps || 60;
 
     pausePlay();
     setSelectedKeyframe(null);
@@ -1498,6 +1806,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
       progress: 0,
       currentSec: 0,
       totalSec: duration,
+      fps: targetFps,
     });
 
     try {
@@ -1506,12 +1815,14 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         layers,
         duration,
         canvasBg,
-        onProgress: (pct, cur, total) => {
+        fps: targetFps,
+        onProgress: (pct, cur, total, streamFps) => {
           setExportProgress({
             isExporting: true,
             progress: pct,
             currentSec: cur,
             totalSec: total,
+            fps: streamFps || targetFps,
           });
         },
         onComplete: () => {
@@ -1520,6 +1831,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
             progress: 100,
             currentSec: duration,
             totalSec: duration,
+            fps: targetFps,
           });
           setCurrentTimeState(0);
         },
@@ -1530,6 +1842,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
             progress: 0,
             currentSec: 0,
             totalSec: 0,
+            fps: targetFps,
           });
           alert('Failed to export video: ' + err.message);
         },
@@ -1541,19 +1854,21 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         progress: 0,
         currentSec: 0,
         totalSec: 0,
+        fps: targetFps,
       });
     }
-  }, [layers, duration, canvasBg, pausePlay]);
+  }, [layers, duration, canvasBg, exportFps, pausePlay]);
 
   const cancelExport = useCallback(() => {
     if (exporterRef.current) {
       exporterRef.current.cancel();
-      setExportProgress({
+      setExportProgress((prev) => ({
         isExporting: false,
         progress: 0,
         currentSec: 0,
         totalSec: 0,
-      });
+        fps: prev.fps || 60,
+      }));
     }
   }, []);
 
@@ -1743,7 +2058,16 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         setShowGuides,
         loadTemplate,
         importTemplateLayer,
+        importTemplateAsGroup,
+        importAllTemplatesAsGroups,
         clearScene,
+        isBuildShapeModalOpen,
+        setIsBuildShapeModalOpen,
+        addCustomShapeLayer,
+        exportFps,
+        setExportFps,
+        isExportSettingsOpen,
+        setIsExportSettingsOpen,
         startExport,
         cancelExport,
         undo,

@@ -13,6 +13,7 @@ import {
   Undo2,
   Redo2,
   Maximize2,
+  PenTool,
 } from 'lucide-react';
 import { useMotion } from '@/context/MotionContext';
 import { TEMPLATES } from '@/modules/templates';
@@ -26,10 +27,13 @@ export function Header() {
     setShowGuides,
     canvasResolution,
     setIsResolutionModalOpen,
+    setIsBuildShapeModalOpen,
     loadTemplate,
     clearScene,
     startExport,
     exportProgress,
+    exportFps,
+    setIsExportSettingsOpen,
     layers,
     undo,
     redo,
@@ -95,6 +99,16 @@ export function Header() {
             Dynamic Toast
           </button>
         </div>
+
+        {/* Build Shape Studio Action */}
+        <button
+          onClick={() => setIsBuildShapeModalOpen(true)}
+          className="text-xs px-2.5 py-1 rounded bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 hover:text-white border border-purple-500/40 transition flex items-center gap-1.5 cursor-pointer"
+          title="Open Vector Pen & Shape Builder Studio"
+        >
+          <PenTool className="w-3.5 h-3.5 text-purple-300" />
+          <span className="font-semibold">Build Shape</span>
+        </button>
       </div>
 
       {/* Center Canvas Background & Guides */}
@@ -173,13 +187,26 @@ export function Header() {
         </button>
 
         <button
-          onClick={startExport}
+          onClick={() => setIsExportSettingsOpen(true)}
           disabled={layers.length === 0 || exportProgress.isExporting}
-          className="text-xs font-medium px-3.5 py-1 rounded bg-purple-600 hover:bg-purple-500 disabled:opacity-30 disabled:cursor-not-allowed text-white shadow-md shadow-purple-950/50 border border-purple-400/30 transition flex items-center gap-1.5 cursor-pointer"
-          title="Export animation as WebM/MP4 video"
+          className={`text-xs font-semibold px-3 py-1 rounded transition flex items-center gap-2 cursor-pointer shadow-md disabled:opacity-30 disabled:cursor-not-allowed ${
+            exportFps >= 120
+              ? 'bg-gradient-to-r from-amber-600 via-purple-600 to-purple-600 hover:from-amber-500 hover:to-purple-500 text-white shadow-amber-950/30 border border-amber-400/40'
+              : 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-950/50 border border-purple-400/30'
+          }`}
+          title="Export Video Settings (Choose 60 FPS or 120 FPS)"
         >
           <Film className="w-3.5 h-3.5" />
-          <span>Export Video</span>
+          <span>Export</span>
+          <span
+            className={`text-[9px] font-mono px-1.5 py-0.2 rounded font-bold uppercase ${
+              exportFps >= 120
+                ? 'bg-amber-400 text-black shadow-xs'
+                : 'bg-purple-950/80 text-purple-200 border border-purple-400/40'
+            }`}
+          >
+            {exportFps} FPS
+          </span>
         </button>
       </div>
     </header>

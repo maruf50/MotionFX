@@ -14,13 +14,15 @@ import {
   Hexagon,
   Minus,
   Image as ImageIcon,
+  FolderPlus,
+  Layers,
 } from 'lucide-react';
 import { TEMPLATES } from '@/modules/templates';
 import { Layer } from '@/types/motion';
 import { useMotion } from '@/context/MotionContext';
 
 export function TemplatesBrowserPanel() {
-  const { importTemplateLayer } = useMotion();
+  const { importTemplateLayer, importTemplateAsGroup, importAllTemplatesAsGroups } = useMotion();
   const [expandedTemplateId, setExpandedTemplateId] = useState<string | null>('bento-grid');
 
   const getLayerIcon = (layer: Layer) => {
@@ -36,14 +38,21 @@ export function TemplatesBrowserPanel() {
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden select-none">
       {/* Header */}
-      <div className="px-3 py-1.5 bg-[#121214] border-b border-[#242428] flex items-center justify-between">
+      <div className="px-3 py-2 bg-[#121214] border-b border-[#242428] flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <Sparkles className="w-3.5 h-3.5 text-purple-400" />
           <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
-            Template Layers Library
+            Templates Library
           </span>
         </div>
-        <span className="text-[10px] text-zinc-500 font-mono">Drag to Canvas</span>
+        <button
+          onClick={importAllTemplatesAsGroups}
+          className="text-[10px] font-semibold px-2 py-0.5 rounded bg-purple-900/30 hover:bg-purple-600/40 text-purple-300 border border-purple-500/40 transition flex items-center gap-1 cursor-pointer"
+          title="Add all templates as individual parent groups to the active scene"
+        >
+          <FolderPlus className="w-3 h-3 text-purple-300" />
+          <span>Add All as Groups</span>
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
@@ -77,19 +86,40 @@ export function TemplatesBrowserPanel() {
                     {templateLayers.length} animatable layers • {tmpl.duration}s
                   </p>
                 </div>
-                {isExpanded ? (
-                  <ChevronDown className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                ) : (
-                  <ChevronRight className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                )}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      importTemplateAsGroup(tmpl.id);
+                    }}
+                    className="px-2 py-0.5 rounded bg-purple-900/40 hover:bg-purple-600 text-[10px] font-medium text-purple-200 hover:text-white border border-purple-500/50 transition cursor-pointer flex items-center gap-1"
+                    title={`Add ${tmpl.name} as a single organized group layer to scene`}
+                  >
+                    <FolderPlus className="w-3 h-3" />
+                    <span>Add as Group</span>
+                  </button>
+                  {isExpanded ? (
+                    <ChevronDown className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                  ) : (
+                    <ChevronRight className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                  )}
+                </div>
               </div>
 
               {/* Draggable Layers List */}
               {isExpanded && (
                 <div className="px-2 pb-2 pt-1 border-t border-[#242428] space-y-1 bg-[#131316]">
                   <div className="text-[10px] text-zinc-400 px-1 py-0.5 flex items-center justify-between">
-                    <span>Drag layer to timeline/canvas:</span>
-                    <span className="text-[9px] text-purple-400">or click +</span>
+                    <span>Drag layer or click + :</span>
+                    <button
+                      type="button"
+                      onClick={() => importTemplateAsGroup(tmpl.id)}
+                      className="text-[9px] font-medium text-purple-400 hover:text-purple-300 flex items-center gap-1 cursor-pointer"
+                    >
+                      <Layers className="w-2.5 h-2.5" />
+                      <span>Insert All as Group</span>
+                    </button>
                   </div>
 
                   {templateLayers.map((layer, idx) => (

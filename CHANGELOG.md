@@ -7,6 +7,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.2.0] - 2026-10-28
+
+### Added
+- **On-Canvas Direct Text Editing**:
+  - Click or double-click any text layer directly on the canvas to open an inline editor right in place without opening the inspector.
+  - Floating mini toolbar provides immediate controls for font family, font size, text color, and quick "Done" confirmation.
+  - Pressing `Enter` or clicking outside instantly commits changes with undo history support; `Escape` cancels edits.
+  - Added an interactive "Edit Text" pill badge floating above selected text elements for 1-click text editing.
+  - Added a direct Text Content input and Google Font selector inside the bottom Transform HUD for rapid adjustments.
+- **Curated Free Google Fonts Library**:
+  - Integrated 35+ top free Google Fonts spanning Sans-Serif (Inter, Roboto, Montserrat, Poppins, Outfit, Space Grotesk, Plus Jakarta Sans), Display (Bebas Neue, Anton, Syne, Righteous, Orbitron, Audiowide), Serif (Playfair Display, Cinzel, Merriweather, Lora), Monospace (Fira Code, JetBrains Mono, Space Mono), and Handwriting/Script (Pacifico, Dancing Script, Caveat).
+  - Dynamic asynchronous Google Font loader (`loadGoogleFont`) injects stylesheets on demand and synchronizes with `document.fonts.ready` for live canvas rendering and video export.
+  - Reusable `GoogleFontPicker` component with search filtering, category tabs (All, Sans Serif, Display, Serif, Monospace, Script), and live typeface previews.
+  - Added Font Weight (300 to 900) and Font Style (Normal, Italic) controls to `TextEffectSection`.
+- **Deterministic 60 FPS & 120 FPS Video Rendering Engine**:
+  - Overhauled `VideoExporter` to render frames deterministically at exact timestamps (`t = currentFrame / fps`) instead of relying on wall-clock `requestAnimationFrame`, which was constrained by standard 60Hz monitor refresh rates and dropped frames during heavy CPU loads.
+  - Generates all 60 or 120 unique discrete frames per second, ensuring exported videos achieve true, butter-smooth 60/120 FPS motion fluidity.
+  - Direct canvas frame rendering during live timeline playback eliminates React reconciliation lag for maximum preview smoothness.
+- **Framerate (FPS) Selector in Resolution Settings Modal**:
+  - Added project framerate controls directly inside `ResolutionModal`:
+    - **Default Presets**: 30 FPS (Web & Lightweight), 60 FPS (Smooth Pro Default), 120 FPS (Ultra Fluid for high-refresh 120Hz/144Hz+ displays).
+    - **Custom FPS Input**: Supports arbitrary framerate numbers (e.g. 24 for cinematic film, 75, 90, 144, 240).
+    - Synchronizes seamlessly with project settings, canvas timeline ticks, and export presets.
+- **Template Grouping System ("Add as Group")**:
+  - Added **"Add as Group"** button to every template card in the Templates Browser panel, bundling all template layers into an organized `group` parent container.
+  - Added **"Add All as Groups"** action in the header to batch-import all templates as individual parent groups with a single click.
+  - Elements inside the template group follow group translation, rotation, and scaling smoothly on the canvas and timeline.
+- **Interactive On-Canvas Scale & Rotate Gizmo Handles**:
+  - **Rotation Handle (Lollipop Knob)**: Added a vertical stem and circular rotation knob extending above the top edge of selected layers. Dragging rotates the element smoothly around its anchor point, with 15° snapping when holding Shift.
+  - **8 Scale Handles**: 4 corner handles and 4 edge midpoint handles allow direct click-and-drag scaling on the canvas with uniform scaling support.
+  - **Dynamic Directional Cursors**: Hovering over handles displays contextual cursors (`grab`, `nwse-resize`, `nesw-resize`, `ns-resize`, `ew-resize`, `move`).
+- **Fixed Gizmo Sizing (Non-scaling Gizmo UI)**:
+  - Completely detached selection gizmo rendering from layer scale transformations.
+  - Dashed outline bounding boxes, 8 scale handle squares (10x10 px), rotation stems (26 px), rotation lollipop circles (12 px), anchor points, and path control handles maintain a fixed, crisp 1:1 pixel size on screen regardless of element scale magnitude.
+  - Resolved non-uniform handle distortion (ellipses or stretched rectangles) when non-uniformly scaling layers.
+  - Aligned canvas mouse hit-testing and dragging calculations with fixed padding for zero-jerk handle interaction.
+- **Non-Scaling Border Strokes (`vector-effect: non-scaling-stroke`)**:
+  - Implemented non-scaling borders across shape layers (rectangles, circles, pills, stars, polygons, lines, custom paths) and media/text layers.
+  - Scaling an element (via on-canvas scale handles or property inputs) now resizes the shape geometry while keeping the border stroke width (`borderWidth`) strictly constant and uniform on all edges.
+- **Floating On-Canvas Transform HUD**:
+  - Sleek, glassmorphic control dock appears below the canvas when any layer is selected:
+    - **Scale**: Steppers (`-` / `+`), presets (50%, 100%, 150%, 200%), scale percentage display, and slider.
+    - **Rotate**: Steppers (`↺ -90°` / `↻ +90°`), presets (0°, 45°, 90°, 180°), degree display, and slider.
+    - **Quick Flip & Reset**: Horizontal Flip, Vertical Flip, and instant Transform Reset (`100% / 0°`).
+- **Integrated In-Scene Vector Shape Builder Studio Modal**:
+  - Accessible via **"Build Shape"** in the Left Sidebar and Top Header toolbar.
+  - Complete in-modal vector studio with Pen tool (Bézier anchors & handles), Freehand Brush, Eraser, and geometric presets (Star, Circle, Rectangle, Polygon, Heart, Pill).
+  - Shape geometry styling: Fill color toggle & picker, stroke color, stroke width slider, scale, flip, and center alignment.
+  - One-click **"Add Built Shape to Scene"** inserts the custom vector directly into active scene layers without navigating away or losing animation state.
+
+---
+
 ## [2.1.0] - 2026-10-27
 
 ### Removed

@@ -1,6 +1,7 @@
 import confetti from 'canvas-confetti';
 import { Layer } from '@/types/motion';
 import { renderSceneAtTime } from '../renderers/engine';
+import { loadGoogleFont } from '../fonts/googleFonts';
 
 export interface ExporterOptions {
   canvas: HTMLCanvasElement;
@@ -8,7 +9,7 @@ export interface ExporterOptions {
   duration: number; // in seconds
   canvasBg: string;
   fps?: number;
-  onProgress: (progress: number, currentSec: number, totalSec: number) => void;
+  onProgress: (progress: number, currentSec: number, totalSec: number, fps: number) => void;
   onComplete: () => void;
   onError: (err: Error) => void;
 }
@@ -39,6 +40,12 @@ export class VideoExporter {
     }
 
     try {
+      // Ensure all Google Fonts used by text layers are loaded before rendering frames
+      const textLayers = layers.filter((l) => l.type === 'text' && l.fontFamily);
+      await Promise.all(textLayers.map((l) => loadGoogleFont(l.fontFamily!)));
+      if (typeof document !== 'undefined' && 'fonts' in document) {
+        await (document as any).fonts.ready;
+      }
       // 1. Detect supported MIME type
       let mimeType = 'video/webm;codecs=vp9';
       if (!MediaRecorder.isTypeSupported(mimeType)) {
@@ -56,8 +63,14 @@ export class VideoExporter {
 
       const stream = canvas.captureStream(fps);
       const isUltraRes = canvas.width >= 2500 || canvas.height >= 2500;
+      const isHighFps = fps >= 120;
+      // Scale bitrate for 120 FPS and 4K ultra-resolutions to prevent compression artifacts
+      const bitrate = isUltraRes
+        ? (isHighFps ? 28000000 : 16000000) // 28 Mbps for 120fps UHD, 16 Mbps for 60fps UHD
+        : (isHighFps ? 18000000 : 9000000);  // 18 Mbps for 120fps FHD, 9 Mbps for 60fps FHD
+
       const recorderOptions: MediaRecorderOptions = {
-        videoBitsPerSecond: isUltraRes ? 16000000 : 8000000, // 16 Mbps for 4K/UHD, 8 Mbps for FHD
+        videoBitsPerSecond: bitrate,
       };
       if (mimeType) {
         recorderOptions.mimeType = mimeType;
@@ -81,7 +94,7 @@ export class VideoExporter {
 
         const a = document.createElement('a');
         a.href = url;
-        a.download = `MotionFX_Animation_${Date.now()}.${ext}`;
+        a.download = `MotionFX_${fps}fps_${Date.now()}.${ext}`;
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -101,28 +114,45 @@ export class VideoExporter {
         onComplete();
       };
 
+      const totalFrames = Math.max(1, Math.round(duration * fps));
+      const frameIntervalMs = 1000 / fps;
+      const videoTrack = stream.getVideoTracks()[0] as any;
+
       this.recorder.start();
 
-      const startTime = performance.now();
-      const step = (now: number) => {
+      let currentFrame = 0;
+
+      const renderNextFrame = () => {
         if (this.isCancelled) return;
-        const elapsed = (now - startTime) / 1000;
 
-        if (elapsed < duration) {
-          const pct = Math.min(99, Math.round((elapsed / duration) * 100));
-          onProgress(pct, elapsed, duration);
+        const frameTime = Math.min(duration, currentFrame / fps);
+        const pct = Math.min(99, Math.round((currentFrame / totalFrames) * 100));
+        onProgress(pct, frameTime, duration, fps);
 
-          // Render frame without selection gizmos or alignment grids
-          renderSceneAtTime(ctx, canvas.width, canvas.height, layers, elapsed, duration, {
-            canvasBg,
-            showGuides: false,
-            selectedLayerId: null,
-            hideSelectionGizmo: true,
-          });
+        // Render deterministic frame at exact timestamp frameTime
+        renderSceneAtTime(ctx, canvas.width, canvas.height, layers, frameTime, duration, {
+          canvasBg,
+          showGuides: false,
+          selectedLayerId: null,
+          hideSelectionGizmo: true,
+        });
 
-          requestAnimationFrame(step);
+        // Request track capture if browser supports manual capture
+        if (typeof videoTrack?.requestFrame === 'function') {
+          try {
+            videoTrack.requestFrame();
+          } catch {
+            // ignore
+          }
+        }
+
+        currentFrame++;
+
+        if (currentFrame <= totalFrames) {
+          // Deliver next frame at accurate frame cadence so encoder captures each frame
+          setTimeout(renderNextFrame, frameIntervalMs);
         } else {
-          // Render final frame
+          // Render final duration frame
           renderSceneAtTime(ctx, canvas.width, canvas.height, layers, duration, duration, {
             canvasBg,
             showGuides: false,
@@ -130,18 +160,27 @@ export class VideoExporter {
             hideSelectionGizmo: true,
           });
 
-          onProgress(100, duration, duration);
+          if (typeof videoTrack?.requestFrame === 'function') {
+            try {
+              videoTrack.requestFrame();
+            } catch {
+              // ignore
+            }
+          }
 
-          // Allow the recorder buffer to ingest last frame before stopping
+          onProgress(100, duration, duration, fps);
+
+          // Allow recorder buffer to flush trailing frames
           setTimeout(() => {
             if (this.recorder && this.recorder.state !== 'inactive') {
               this.recorder.stop();
             }
-          }, 150);
+          }, Math.max(250, Math.round(frameIntervalMs * 4)));
         }
       };
 
-      requestAnimationFrame(step);
+      // Kick off deterministic frame encoding
+      renderNextFrame();
     } catch (err: unknown) {
       onError(err instanceof Error ? err : new Error(String(err)));
     }
