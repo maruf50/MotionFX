@@ -48,6 +48,8 @@ interface MotionContextType {
   isResolutionModalOpen: boolean;
   exportProgress: ExportProgress;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
+  editingTextLayerId: string | null;
+  setEditingTextLayerId: (id: string | null) => void;
   // Canvas Resolution
   setCanvasResolution: (res: CanvasResolution, scaleLayers?: boolean) => void;
   setIsResolutionModalOpen: (open: boolean) => void;
@@ -330,6 +332,7 @@ export function scaleLayerToResolution(layer: Layer, scaleX: number, scaleY: num
 export function MotionProvider({ children }: { children: React.ReactNode }) {
   const [layers, setLayers] = useState<Layer[]>([]);
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
+  const [editingTextLayerId, setEditingTextLayerId] = useState<string | null>(null);
   const [selectedLayerIds, setSelectedLayerIdsState] = useState<string[]>([]);
   const [selectedKeyframe, setSelectedKeyframe] = useState<SelectedKeyframeRef | null>(null);
   const [currentTime, setCurrentTimeState] = useState<number>(0);
@@ -581,9 +584,10 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         showGuides,
         selectedLayerId,
         hideSelectionGizmo: exportProgress.isExporting,
+        editingTextLayerId,
       });
     },
-    [layers, duration, canvasBg, showGuides, selectedLayerId, exportProgress.isExporting]
+    [layers, duration, canvasBg, showGuides, selectedLayerId, exportProgress.isExporting, editingTextLayerId]
   );
 
   const requestRender = useCallback(() => {
@@ -2004,6 +2008,8 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
       value={{
         layers,
         selectedLayerId,
+        editingTextLayerId,
+        setEditingTextLayerId,
         selectedLayerIds,
         selectedLayer,
         selectedKeyframe,

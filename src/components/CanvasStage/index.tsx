@@ -16,7 +16,6 @@ import {
   RefreshCw,
   Sliders,
   Type,
-  Edit3,
 } from 'lucide-react';
 import { useMotion } from '@/context/MotionContext';
 import {
@@ -46,10 +45,15 @@ export function CanvasStage() {
     importTemplateLayer,
     canvasResolution,
     setIsResolutionModalOpen,
+    editingTextLayerId,
+    setEditingTextLayerId,
   } = useMotion();
 
   const isDraggingRef = useRef<boolean>(false);
   const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const hasMovedDuringDragRef = useRef<boolean>(false);
+  const pendingTextEditRef = useRef<string | null>(null);
   const draggingPointRef = useRef<{
     layerId: string;
     pointIdx: number;
@@ -79,7 +83,6 @@ export function CanvasStage() {
   const [canvasCursor, setCanvasCursor] = useState<string>('crosshair');
 
   // On-Canvas Inline Text Editing State
-  const [editingTextLayerId, setEditingTextLayerId] = useState<string | null>(null);
   const [editingTextValue, setEditingTextValue] = useState<string>('');
   const inlineTextareaRef = useRef<HTMLInputElement | null>(null);
 
@@ -94,13 +97,14 @@ export function CanvasStage() {
       updateLayer(editingTextLayerId, { text: editingTextValue });
       setEditingTextLayerId(null);
     }
-  }, [editingTextLayerId, editingTextValue, recordSnapshot, updateLayer]);
+  }, [editingTextLayerId, editingTextValue, recordSnapshot, updateLayer, setEditingTextLayerId]);
 
-  // Focus and select text when entering inline editing mode
+  // Focus and position cursor when entering inline editing mode
   useEffect(() => {
     if (editingTextLayerId && inlineTextareaRef.current) {
       inlineTextareaRef.current.focus();
-      inlineTextareaRef.current.select();
+      const len = inlineTextareaRef.current.value.length;
+      inlineTextareaRef.current.setSelectionRange(len, len);
     }
   }, [editingTextLayerId]);
 
@@ -303,12 +307,6 @@ export function CanvasStage() {
       const hh = (dims.height * Math.abs(tr.scaleY)) / 2 + 12;
 
       if (pt.x >= tr.x - hw && pt.x <= tr.x + hw && pt.y >= tr.y - hh && pt.y <= tr.y + hh) {
-        if (layer.type === 'text' && selectedLayerId === layer.id) {
-          // Clicking an already selected text layer starts inline editing!
-          setEditingTextLayerId(layer.id);
-          setEditingTextValue(layer.text || '');
-          return;
-        }
         if (editingTextLayerId && editingTextLayerId !== layer.id) {
           commitInlineText();
         }
@@ -316,6 +314,9 @@ export function CanvasStage() {
         transformDragModeRef.current = 'move';
         isDraggingRef.current = true;
         dragOffsetRef.current = { x: pt.x - tr.x, y: pt.y - tr.y };
+        dragStartPosRef.current = { x: pt.x, y: pt.y };
+        hasMovedDuringDragRef.current = false;
+        pendingTextEditRef.current = layer.type === 'text' ? layer.id : null;
         recordSnapshot();
         return;
       }
@@ -350,6 +351,12 @@ export function CanvasStage() {
         if (layer.type === 'text') {
           setEditingTextLayerId(layer.id);
           setEditingTextValue(layer.text || '');
+          setTimeout(() => {
+            if (inlineTextareaRef.current) {
+              inlineTextareaRef.current.focus();
+              inlineTextareaRef.current.select();
+            }
+          }, 10);
         }
         return;
       }
@@ -551,6 +558,14 @@ export function CanvasStage() {
         (transformDragModeRef.current === 'move' || isDraggingRef.current) &&
         selectedLayerId
       ) {
+        if (dragStartPosRef.current) {
+          const dist = Math.hypot(pt.x - dragStartPosRef.current.x, pt.y - dragStartPosRef.current.y);
+          if (dist > 3) {
+            hasMovedDuringDragRef.current = true;
+            pendingTextEditRef.current = null;
+          }
+        }
+
         const canvas = canvasRef.current;
         if (!canvas) return;
 
@@ -585,6 +600,17 @@ export function CanvasStage() {
     };
 
     const handleGlobalMouseUp = () => {
+      if (!hasMovedDuringDragRef.current && pendingTextEditRef.current) {
+        const textLayerId = pendingTextEditRef.current;
+        const textLayer = layers.find((l) => l.id === textLayerId);
+        if (textLayer) {
+          setEditingTextLayerId(textLayerId);
+          setEditingTextValue(textLayer.text || '');
+        }
+      }
+      pendingTextEditRef.current = null;
+      dragStartPosRef.current = null;
+      hasMovedDuringDragRef.current = false;
       draggingPointRef.current = null;
       isDraggingRef.current = false;
       transformDragModeRef.current = null;
@@ -728,129 +754,65 @@ export function CanvasStage() {
           }}
         />
 
-        {/* Quick "Edit Text" Badge on Canvas when text layer is selected but not editing */}
-        {selectedLayer && selectedLayer.type === 'text' && !editingTextLayerId && selectedLayerWorldTr && (
-          <div
-            className="absolute z-20 pointer-events-auto -translate-x-1/2"
-            style={{
-              left: `${(selectedLayerWorldTr.x / canvasResolution.width) * 100}%`,
-              top: `${Math.max(4, ((selectedLayerWorldTr.y - ((selectedLayer.fontSize || 48) * 1.25 * Math.abs(selectedLayerWorldTr.scaleY)) / 2 - 36) / canvasResolution.height) * 100)}%`,
-            }}
-          >
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setEditingTextLayerId(selectedLayer.id);
-                setEditingTextValue(selectedLayer.text || '');
-              }}
-              className="px-2.5 py-1 rounded-full bg-purple-600/90 hover:bg-purple-600 text-white text-[11px] font-semibold shadow-xl border border-purple-400/50 backdrop-blur flex items-center gap-1.5 transition cursor-pointer hover:scale-105 active:scale-95"
-              title="Click to edit text directly on canvas"
-            >
-              <Edit3 className="w-3 h-3" />
-              <span>Edit Text</span>
-            </button>
-          </div>
-        )}
+        {/* On-Canvas Direct Inline Text Editor with Blinking Cursor */}
+        {editingTextLayerId && selectedLayer && selectedLayer.id === editingTextLayerId && selectedLayerWorldTr && (() => {
+          const canvas = canvasRef.current;
+          const rect = canvas?.getBoundingClientRect();
+          const screenScale = rect && canvasResolution.width > 0 ? rect.width / canvasResolution.width : 1;
+          const screenFontSize = Math.max(10, Math.round((selectedLayer.fontSize || 48) * Math.abs(selectedLayerWorldTr.scaleY) * screenScale));
+          const ctx = canvas?.getContext('2d');
+          let textW = 120;
+          if (ctx) {
+            const family = selectedLayer.fontFamily ? `"${selectedLayer.fontFamily}", ` : '';
+            const weight = selectedLayer.fontWeight || 'bold';
+            const style = selectedLayer.fontStyle === 'italic' ? 'italic ' : '';
+            ctx.font = `${style}${weight} ${selectedLayer.fontSize || 48}px ${family}"Geist", "Inter", -apple-system, sans-serif`;
+            textW = ctx.measureText(editingTextValue || ' ').width;
+          }
+          const screenWidth = Math.max(60, Math.round(textW * Math.abs(selectedLayerWorldTr.scaleX) * screenScale + 36));
 
-        {/* On-Canvas Inline Textarea & Mini Toolbar Overlay */}
-        {editingTextLayerId && selectedLayer && selectedLayer.id === editingTextLayerId && selectedLayerWorldTr && (
-          <div
-            className="absolute z-30 pointer-events-auto flex flex-col items-center"
-            style={{
-              left: `${(selectedLayerWorldTr.x / canvasResolution.width) * 100}%`,
-              top: `${(selectedLayerWorldTr.y / canvasResolution.height) * 100}%`,
-              transform: `translate(-50%, -50%) rotate(${selectedLayerWorldTr.rotation}deg)`,
-            }}
-          >
-            {/* Floating Mini Toolbar Above Input */}
+          return (
             <div
-              className="mb-2 bg-[#161619]/95 border border-[#34343e] shadow-2xl rounded-xl px-2.5 py-1.5 flex items-center gap-2 backdrop-blur-md"
-              style={{ transform: `rotate(${-selectedLayerWorldTr.rotation}deg)` }}
-            >
-              <div className="w-32">
-                <GoogleFontPicker
-                  value={selectedLayer.fontFamily || 'Inter'}
-                  onChange={(fontFamily) => updateLayer(selectedLayer.id, { fontFamily })}
-                  compact={true}
-                />
-              </div>
-
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() =>
-                    updateLayer(selectedLayer.id, {
-                      fontSize: Math.max(12, (selectedLayer.fontSize || 48) - 4),
-                    })
-                  }
-                  className="w-5 h-5 rounded bg-[#25252c] hover:bg-[#303038] text-zinc-300 text-xs font-bold flex items-center justify-center cursor-pointer"
-                  title="Smaller (-4px)"
-                >
-                  -
-                </button>
-                <span className="font-mono text-[11px] text-zinc-300 w-8 text-center">
-                  {selectedLayer.fontSize || 48}
-                </span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    updateLayer(selectedLayer.id, {
-                      fontSize: (selectedLayer.fontSize || 48) + 4,
-                    })
-                  }
-                  className="w-5 h-5 rounded bg-[#25252c] hover:bg-[#303038] text-zinc-300 text-xs font-bold flex items-center justify-center cursor-pointer"
-                  title="Larger (+4px)"
-                >
-                  +
-                </button>
-              </div>
-
-              <input
-                type="color"
-                value={selectedLayer.fill || '#ffffff'}
-                onChange={(e) => updateLayer(selectedLayer.id, { fill: e.target.value })}
-                className="w-5 h-5 rounded cursor-pointer bg-transparent border-0 p-0"
-                title="Text Color"
-              />
-
-              <button
-                type="button"
-                onClick={commitInlineText}
-                className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-1 transition cursor-pointer"
-                title="Finish Editing (or press Enter)"
-              >
-                <Check className="w-3.5 h-3.5" />
-                <span>Done</span>
-              </button>
-            </div>
-
-            {/* Inline Input Box */}
-            <input
-              ref={inlineTextareaRef}
-              type="text"
-              value={editingTextValue}
-              onChange={(e) => setEditingTextValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  commitInlineText();
-                } else if (e.key === 'Escape') {
-                  e.preventDefault();
-                  setEditingTextLayerId(null);
-                }
-              }}
-              className="bg-[#0f0f12]/95 border-2 border-purple-500 rounded-xl px-4 py-2 text-white shadow-2xl outline-none text-center min-w-[200px] max-w-[420px] backdrop-blur-md font-bold"
+              className="absolute z-30 pointer-events-auto"
               style={{
-                fontFamily: `"${selectedLayer.fontFamily || 'Inter'}", sans-serif`,
-                fontWeight: selectedLayer.fontWeight || 'bold',
-                fontStyle: selectedLayer.fontStyle || 'normal',
-                color: selectedLayer.fill || '#ffffff',
-                fontSize: '18px',
+                left: `${(selectedLayerWorldTr.x / canvasResolution.width) * 100}%`,
+                top: `${(selectedLayerWorldTr.y / canvasResolution.height) * 100}%`,
+                transform: `translate(-50%, -50%) rotate(${selectedLayerWorldTr.rotation}deg)`,
+                width: `${screenWidth}px`,
               }}
-            />
-          </div>
-        )}
+            >
+              <input
+                ref={inlineTextareaRef}
+                type="text"
+                value={editingTextValue}
+                onChange={(e) => {
+                  setEditingTextValue(e.target.value);
+                  updateLayer(selectedLayer.id, { text: e.target.value }, true);
+                }}
+                onBlur={commitInlineText}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === 'Escape') {
+                    e.preventDefault();
+                    commitInlineText();
+                  }
+                }}
+                autoFocus
+                className="w-full text-center bg-transparent border-none outline-none ring-0 p-0 m-0 cursor-text select-text"
+                style={{
+                  fontFamily: selectedLayer.fontFamily
+                    ? `"${selectedLayer.fontFamily}", "Geist", "Inter", -apple-system, sans-serif`
+                    : '"Geist", "Inter", -apple-system, sans-serif',
+                  fontSize: `${screenFontSize}px`,
+                  fontWeight: selectedLayer.fontWeight || 'bold',
+                  fontStyle: selectedLayer.fontStyle || 'normal',
+                  color: selectedLayer.fill || '#ffffff',
+                  caretColor: selectedLayer.fill || '#a855f7',
+                  lineHeight: '1.25',
+                }}
+              />
+            </div>
+          );
+        })()}
       </div>
 
       {/* Interactive Transform HUD: Scale & Rotate Controls for Selected Layer */}

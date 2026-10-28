@@ -11,6 +11,7 @@ export interface RenderOptions {
   selectedLayerId: string | null;
   hideSelectionGizmo?: boolean;
   onImageLoad?: () => void;
+  editingTextLayerId?: string | null;
 }
 
 /**
@@ -148,6 +149,11 @@ export function renderSceneAtTime(
     if (layer.type === 'shape') {
       renderShapeLayer(ctx, layer, time, options.onImageLoad, tr);
     } else if (layer.type === 'text') {
+      if (options.editingTextLayerId && options.editingTextLayerId === layer.id) {
+        // Skip canvas text rendering during inline editing to allow native HTML input with blinking caret
+        ctx.restore();
+        continue;
+      }
       ctx.save();
       ctx.scale(tr.scaleX, tr.scaleY);
       renderTextLayer(ctx, layer, time, totalDuration, tr);
@@ -163,6 +169,7 @@ export function renderSceneAtTime(
   if (!options.hideSelectionGizmo && options.selectedLayerId) {
     const selected = layers.find(l => l.id === options.selectedLayerId);
     if (selected && selected.visible) {
+      const isEditingText = Boolean(options.editingTextLayerId && options.editingTextLayerId === selected.id);
       const tr = getLayerWorldTransformAtTime(selected, layers, time);
       const dims = getLayerDimensions(ctx, selected);
       const pad = 8;
@@ -174,61 +181,64 @@ export function renderSceneAtTime(
       ctx.rotate((tr.rotation * Math.PI) / 180);
 
       // Dashed bounding rectangle (crisp 1:1 pixel scale, never stretched or thickened)
-      ctx.strokeStyle = '#6366f1';
+      ctx.strokeStyle = isEditingText ? 'rgba(168, 85, 247, 0.7)' : '#6366f1';
       ctx.lineWidth = 1.5;
       ctx.setLineDash([5, 4]);
       ctx.strokeRect(-hw, -hh, hw * 2, hh * 2);
       ctx.setLineDash([]);
 
-      // 1. Rotation Stem Line and Rotation Handle Knob (Above top edge)
-      const rotStemLength = 26;
-      const rotY = -hh - rotStemLength;
+      // If actively editing text inline, hide rotation knob and scale handles so input text is unobstructed
+      if (!isEditingText) {
+        // 1. Rotation Stem Line and Rotation Handle Knob (Above top edge)
+        const rotStemLength = 26;
+        const rotY = -hh - rotStemLength;
 
-      ctx.strokeStyle = '#818cf8';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(0, -hh);
-      ctx.lineTo(0, rotY);
-      ctx.stroke();
-
-      // Rotation Knob Circle (true circle of constant radius)
-      const rRad = 6;
-      ctx.fillStyle = '#ffffff';
-      ctx.strokeStyle = '#4f46e5';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(0, rotY, rRad, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-
-      // Rotation Knob Center Accent
-      ctx.fillStyle = '#6366f1';
-      ctx.beginPath();
-      ctx.arc(0, rotY, 2.5, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 2. Eight Scale Handles (4 Corners + 4 Edge Midpoints, true 10x10 px squares)
-      const hs = 5; // handle half-size
-      const scaleHandles = [
-        // Corners
-        { x: -hw, y: -hh, isCorner: true },
-        { x: hw, y: -hh, isCorner: true },
-        { x: hw, y: hh, isCorner: true },
-        { x: -hw, y: hh, isCorner: true },
-        // Edges
-        { x: 0, y: -hh, isCorner: false },
-        { x: hw, y: 0, isCorner: false },
-        { x: 0, y: hh, isCorner: false },
-        { x: -hw, y: 0, isCorner: false },
-      ];
-
-      scaleHandles.forEach(({ x, y, isCorner }) => {
-        ctx.fillStyle = isCorner ? '#ffffff' : '#e0e7ff';
-        ctx.strokeStyle = isCorner ? '#4338ca' : '#6366f1';
+        ctx.strokeStyle = '#818cf8';
         ctx.lineWidth = 1.5;
-        ctx.fillRect(x - hs, y - hs, hs * 2, hs * 2);
-        ctx.strokeRect(x - hs, y - hs, hs * 2, hs * 2);
-      });
+        ctx.beginPath();
+        ctx.moveTo(0, -hh);
+        ctx.lineTo(0, rotY);
+        ctx.stroke();
+
+        // Rotation Knob Circle (true circle of constant radius)
+        const rRad = 6;
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#4f46e5';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, rotY, rRad, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Rotation Knob Center Accent
+        ctx.fillStyle = '#6366f1';
+        ctx.beginPath();
+        ctx.arc(0, rotY, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 2. Eight Scale Handles (4 Corners + 4 Edge Midpoints, true 10x10 px squares)
+        const hs = 5; // handle half-size
+        const scaleHandles = [
+          // Corners
+          { x: -hw, y: -hh, isCorner: true },
+          { x: hw, y: -hh, isCorner: true },
+          { x: hw, y: hh, isCorner: true },
+          { x: -hw, y: hh, isCorner: true },
+          // Edges
+          { x: 0, y: -hh, isCorner: false },
+          { x: hw, y: 0, isCorner: false },
+          { x: 0, y: hh, isCorner: false },
+          { x: -hw, y: 0, isCorner: false },
+        ];
+
+        scaleHandles.forEach(({ x, y, isCorner }) => {
+          ctx.fillStyle = isCorner ? '#ffffff' : '#e0e7ff';
+          ctx.strokeStyle = isCorner ? '#4338ca' : '#6366f1';
+          ctx.lineWidth = 1.5;
+          ctx.fillRect(x - hs, y - hs, hs * 2, hs * 2);
+          ctx.strokeRect(x - hs, y - hs, hs * 2, hs * 2);
+        });
+      }
 
       // 3. Center Anchor Indicator
       ctx.fillStyle = '#f59e0b';
