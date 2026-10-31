@@ -8,11 +8,18 @@ import { TemplatesBrowserPanel } from './TemplatesBrowserPanel';
 
 type SidebarTab = 'elements' | 'layers' | 'templates';
 
-export function LeftSidebar() {
+interface LeftSidebarProps {
+  width?: number;
+}
+
+export function LeftSidebar({ width }: LeftSidebarProps) {
   const [activeTab, setActiveTab] = useState<SidebarTab>('elements');
 
   return (
-    <aside className="w-80 bg-[#161619] border-r border-[#242428] flex flex-col shrink-0 z-20 overflow-hidden select-none">
+    <aside
+      style={width ? { width: `${width}px` } : undefined}
+      className={`${width ? '' : 'w-80 '}bg-[#161619] border-r border-[#242428] flex flex-col shrink-0 z-20 overflow-hidden select-none`}
+    >
       {/* Sidebar Mode Tabs */}
       <div className="grid grid-cols-3 bg-[#111113] p-1 border-b border-[#242428]">
         <button

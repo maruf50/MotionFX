@@ -6,7 +6,11 @@ import { TransportControls } from './TransportControls';
 import { TimeRuler } from './TimeRuler';
 import { TimelineTracks } from './TimelineTracks';
 
-export function Timeline() {
+interface TimelineProps {
+  height?: number;
+}
+
+export function Timeline({ height }: TimelineProps) {
   const {
     currentTime,
     duration,
@@ -102,7 +106,10 @@ export function Timeline() {
   const playheadPct = Math.min(100, Math.max(0, (currentTime / duration) * 100));
 
   return (
-    <section className="h-64 bg-[#141417] border-t border-[#242428] flex flex-col shrink-0 z-30 select-none">
+    <section
+      style={height ? { height: `${height}px` } : undefined}
+      className={`${height ? '' : 'h-64 '}bg-[#141417] border-t border-[#242428] flex flex-col shrink-0 z-30 select-none`}
+    >
       <TransportControls />
 
       <div
@@ -137,23 +144,24 @@ export function Timeline() {
         className="flex-1 flex min-h-0 overflow-hidden relative"
       >
         <div className="flex-1 flex flex-col min-w-0 relative">
-          <div className="flex flex-1 min-h-0">
+          {/* Top Sticky Header: Track Header + TimeRuler */}
+          <div className="h-7 shrink-0 flex items-center border-b border-[#242428] bg-[#121214] z-20">
             {/* Left track names spacer alignment with TimeRuler */}
-            <div className="w-64 border-r border-[#242428] bg-[#161619] shrink-0 flex flex-col">
-              <div className="h-7 border-b border-[#242428] px-3 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-zinc-500 bg-[#121214]">
-                <span>Timeline</span>
-                <span className="font-mono text-purple-400">FPS: 60</span>
-              </div>
+            <div className="w-64 border-r border-[#242428] bg-[#161619] shrink-0 h-full px-3 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+              <span>Timeline Tracks</span>
+              <span className="font-mono text-purple-400">FPS: 60</span>
             </div>
 
             {/* Right ruler pane */}
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 h-full">
               <TimeRuler />
             </div>
           </div>
 
-          {/* Timeline Tracks Lane area */}
-          <TimelineTracks />
+          {/* Timeline Tracks Lane area (Scrollable) */}
+          <div className="flex-1 min-h-0 overflow-hidden relative">
+            <TimelineTracks />
+          </div>
 
           {/* Purple Playhead Indicator Line (Realtime cursor follow) */}
           <div

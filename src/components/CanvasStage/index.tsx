@@ -735,7 +735,7 @@ export function CanvasStage() {
 
       {/* Stage Canvas Frame */}
       <div
-        className="relative shadow-2xl shadow-black rounded-lg overflow-hidden border border-[#242428] canvas-checkerboard flex items-center justify-center max-w-full max-h-[50vh]"
+        className="relative shadow-2xl shadow-black rounded-lg overflow-hidden border border-[#242428] canvas-checkerboard flex items-center justify-center max-w-full max-h-[calc(100%-80px)]"
         style={{
           aspectRatio: `${canvasResolution.width} / ${canvasResolution.height}`,
         }}
@@ -747,7 +747,7 @@ export function CanvasStage() {
           onMouseDown={handleMouseDown}
           onDoubleClick={handleDoubleClick}
           onMouseMove={handleCanvasMouseMove}
-          className="block max-w-full max-h-[50vh] w-auto h-auto"
+          className="block max-w-full max-h-full w-auto h-auto"
           style={{
             aspectRatio: `${canvasResolution.width} / ${canvasResolution.height}`,
             cursor: canvasCursor,

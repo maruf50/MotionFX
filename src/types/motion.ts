@@ -133,6 +133,13 @@ export interface Layer {
   pathTrackWidth?: number;
   pathTrackDashed?: boolean;
   isPenEditing?: boolean;
+  // Base transform properties (used when keyframes are empty)
+  x?: number;
+  y?: number;
+  scaleX?: number;
+  scaleY?: number;
+  rotation?: number;
+  opacity?: number;
   // Animatable tracks
   keyframes: Record<AnimatableProp, Keyframe[]>;
 }

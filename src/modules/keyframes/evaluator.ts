@@ -10,8 +10,13 @@ export function uid(prefix: string = 'lyr'): string {
  * using the layer's configured easing interpolation.
  */
 export function getInterpolatedValue(layer: Layer, prop: AnimatableProp, t: number): number {
-  const kfs = layer.keyframes[prop];
-  if (!kfs || kfs.length === 0) return 0;
+  const kfs = layer.keyframes?.[prop];
+  if (!kfs || kfs.length === 0) {
+    if (prop === 'scaleX' || prop === 'scaleY' || prop === 'opacity') {
+      return (layer[prop] as number | undefined) ?? 1;
+    }
+    return (layer[prop] as number | undefined) ?? 0;
+  }
   if (kfs.length === 1 || t <= kfs[0].time) return kfs[0].value;
   if (t >= kfs[kfs.length - 1].time) return kfs[kfs.length - 1].value;
 
@@ -123,18 +128,26 @@ export function setOrUpdateKeyframe(
   value: number
 ): Layer {
   const roundedTime = Math.round(time * 20) / 20; // 0.05s precision
-  const list = [...layer.keyframes[prop]];
+  const list = [...(layer.keyframes?.[prop] || [])];
   const existingIdx = list.findIndex(k => Math.abs(k.time - roundedTime) < 0.04);
 
   if (existingIdx !== -1) {
     list[existingIdx] = { time: roundedTime, value };
   } else {
+    // If keyframes were empty and time > 0.05s, anchor at time 0 with layer's base value
+    if (list.length === 0 && roundedTime > 0.05) {
+      const baseVal =
+        (layer[prop] as number | undefined) ??
+        (prop === 'scaleX' || prop === 'scaleY' || prop === 'opacity' ? 1 : 0);
+      list.push({ time: 0, value: baseVal });
+    }
     list.push({ time: roundedTime, value });
     list.sort((a, b) => a.time - b.time);
   }
 
   return {
     ...layer,
+    [prop]: value,
     keyframes: {
       ...layer.keyframes,
       [prop]: list,
@@ -143,18 +156,20 @@ export function setOrUpdateKeyframe(
 }
 
 /**
- * Removes a keyframe at `index` on `prop` if there's more than 1 keyframe left.
+ * Removes a keyframe at `index` on `prop`. Allows removing down to 0 keyframes.
  */
 export function removeKeyframeAtIndex(
   layer: Layer,
   prop: AnimatableProp,
   index: number
 ): Layer {
-  const list = [...layer.keyframes[prop]];
-  if (list.length <= 1) return layer;
+  const list = [...(layer.keyframes?.[prop] || [])];
+  if (index < 0 || index >= list.length) return layer;
+  const removedVal = list[index].value;
   list.splice(index, 1);
   return {
     ...layer,
+    [prop]: list.length > 0 ? (layer[prop] ?? list[0].value) : removedVal,
     keyframes: {
       ...layer.keyframes,
       [prop]: list,

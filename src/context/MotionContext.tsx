@@ -85,6 +85,10 @@ interface MotionContextType {
   toggleGroupExpand: (groupId: string) => void;
   // Drag-and-drop layer reordering
   reorderLayersBatch: (sourceIndex: number, targetIndex: number) => void;
+  // Auto Keyframe
+  isAutoKeyframe: boolean;
+  toggleAutoKeyframe: () => void;
+  setIsAutoKeyframe: (val: boolean) => void;
   // Keyframes
   setAnimPropValue: (
     layerId: string,
@@ -94,14 +98,22 @@ interface MotionContextType {
   ) => void;
   toggleKeyframe: (layerId: string, prop: AnimatableProp) => void;
   keyAllTransformProps: (layerId: string) => void;
-  selectKeyframe: (ref: SelectedKeyframeRef | null) => void;
+  selectedKeyframes: SelectedKeyframeRef[];
+  selectKeyframe: (ref: SelectedKeyframeRef | null, multi?: boolean) => void;
+  selectMultipleKeyframes: (refs: SelectedKeyframeRef[]) => void;
+  clearSelectedKeyframes: () => void;
   deleteSelectedKeyframe: () => void;
+  deleteSelectedKeyframes: () => void;
   deleteAllKeyframes: (layerId: string) => void;
   moveKeyframeTime: (
     layerId: string,
     prop: AnimatableProp,
     index: number,
     newTime: number,
+    skipSnapshot?: boolean
+  ) => void;
+  moveMultipleKeyframes: (
+    moves: { layerId: string; prop: AnimatableProp; index: number; newTime: number }[],
     skipSnapshot?: boolean
   ) => void;
   // Transport & playback
@@ -335,6 +347,38 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
   const [editingTextLayerId, setEditingTextLayerId] = useState<string | null>(null);
   const [selectedLayerIds, setSelectedLayerIdsState] = useState<string[]>([]);
   const [selectedKeyframe, setSelectedKeyframe] = useState<SelectedKeyframeRef | null>(null);
+  const [selectedKeyframes, setSelectedKeyframes] = useState<SelectedKeyframeRef[]>([]);
+  const [isAutoKeyframe, setIsAutoKeyframeState] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        return localStorage.getItem('motionfx_auto_keyframe') === 'true';
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  });
+
+  const toggleAutoKeyframe = useCallback(() => {
+    setIsAutoKeyframeState((prev) => {
+      const next = !prev;
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('motionfx_auto_keyframe', String(next));
+        } catch {}
+      }
+      return next;
+    });
+  }, []);
+
+  const setIsAutoKeyframe = useCallback((val: boolean) => {
+    setIsAutoKeyframeState(val);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('motionfx_auto_keyframe', String(val));
+      } catch {}
+    }
+  }, []);
   const [currentTime, setCurrentTimeState] = useState<number>(0);
   const [duration, setDurationState] = useState<number>(5.0);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
@@ -797,13 +841,19 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         pathTrackColor: shapeType === 'pathFollower' ? 'rgba(99, 102, 241, 0.4)' : undefined,
         pathTrackWidth: shapeType === 'pathFollower' ? 2.5 : undefined,
         pathTrackDashed: shapeType === 'pathFollower' ? true : undefined,
+        x: centerX + offset - Math.round(40 * sx),
+        y: centerY + offset - Math.round(40 * sy),
+        scaleX: 1,
+        scaleY: 1,
+        rotation: 0,
+        opacity: 1,
         keyframes: {
-          x: [{ time: 0, value: centerX + offset - Math.round(40 * sx) }],
-          y: [{ time: 0, value: centerY + offset - Math.round(40 * sy) }],
-          scaleX: [{ time: 0, value: 1 }],
-          scaleY: [{ time: 0, value: 1 }],
-          rotation: [{ time: 0, value: 0 }],
-          opacity: [{ time: 0, value: 1 }],
+          x: [],
+          y: [],
+          scaleX: [],
+          scaleY: [],
+          rotation: [],
+          opacity: [],
         },
       };
 
@@ -849,13 +899,19 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         borderStyle: 'solid',
         animateDash: false,
         easing: 'easeOutCubic',
+        x: centerX + offset - Math.round(30 * sx),
+        y: centerY + offset - Math.round(30 * sy),
+        scaleX: 1,
+        scaleY: 1,
+        rotation: 0,
+        opacity: 1,
         keyframes: {
-          x: [{ time: 0, value: centerX + offset - Math.round(30 * sx) }],
-          y: [{ time: 0, value: centerY + offset - Math.round(30 * sy) }],
-          scaleX: [{ time: 0, value: 1 }],
-          scaleY: [{ time: 0, value: 1 }],
-          rotation: [{ time: 0, value: 0 }],
-          opacity: [{ time: 0, value: 1 }],
+          x: [],
+          y: [],
+          scaleX: [],
+          scaleY: [],
+          rotation: [],
+          opacity: [],
         },
       };
 
@@ -896,13 +952,19 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         easing: 'easeOutCubic',
         width: Math.max(80, Math.round(340 * sx)),
         height: Math.max(20, Math.round(60 * sy)),
+        x: centerX,
+        y: centerY,
+        scaleX: 1,
+        scaleY: 1,
+        rotation: 0,
+        opacity: 1,
         keyframes: {
-          x: [{ time: 0, value: centerX }],
-          y: [{ time: 0, value: centerY }],
-          scaleX: [{ time: 0, value: 1 }],
-          scaleY: [{ time: 0, value: 1 }],
-          rotation: [{ time: 0, value: 0 }],
-          opacity: [{ time: 0, value: 1 }],
+          x: [],
+          y: [],
+          scaleX: [],
+          scaleY: [],
+          rotation: [],
+          opacity: [],
         },
       };
 
@@ -937,13 +999,19 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         borderStyle: 'none',
         animateDash: false,
         easing: 'easeOutCubic',
+        x: centerX,
+        y: centerY,
+        scaleX: 1,
+        scaleY: 1,
+        rotation: 0,
+        opacity: 1,
         keyframes: {
-          x: [{ time: 0, value: centerX }],
-          y: [{ time: 0, value: centerY }],
-          scaleX: [{ time: 0, value: 1 }],
-          scaleY: [{ time: 0, value: 1 }],
-          rotation: [{ time: 0, value: 0 }],
-          opacity: [{ time: 0, value: 1 }],
+          x: [],
+          y: [],
+          scaleX: [],
+          scaleY: [],
+          rotation: [],
+          opacity: [],
         },
       };
 
@@ -1456,10 +1524,39 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         pushUndo(false);
       }
       setLayers((prev) =>
-        prev.map((l) => (l.id === layerId ? setOrUpdateKeyframe(l, prop, currentTime, value) : l))
+        prev.map((l) => {
+          if (l.id !== layerId) return l;
+
+          if (isAutoKeyframe) {
+            return setOrUpdateKeyframe(l, prop, currentTime, value);
+          }
+
+          // Auto keyframe is OFF:
+          // Check if there is an existing keyframe at currentTime (within 0.04s)
+          const kfs = l.keyframes?.[prop] || [];
+          const existingIdx = kfs.findIndex((k) => Math.abs(k.time - currentTime) < 0.04);
+          if (existingIdx !== -1) {
+            const updatedKfs = [...kfs];
+            updatedKfs[existingIdx] = { ...updatedKfs[existingIdx], value };
+            return {
+              ...l,
+              [prop]: value,
+              keyframes: {
+                ...l.keyframes,
+                [prop]: updatedKfs,
+              },
+            };
+          }
+
+          // No keyframe at current time: update base value without creating a keyframe
+          return {
+            ...l,
+            [prop]: value,
+          };
+        })
       );
     },
-    [currentTime, pushUndo]
+    [currentTime, isAutoKeyframe, pushUndo]
   );
 
   const toggleKeyframe = useCallback(
@@ -1468,9 +1565,9 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
       setLayers((prev) =>
         prev.map((layer) => {
           if (layer.id !== layerId) return layer;
-          const kfs = layer.keyframes[prop];
+          const kfs = layer.keyframes?.[prop] || [];
           const idx = kfs.findIndex((k) => Math.abs(k.time - currentTime) < 0.04);
-          if (idx !== -1 && kfs.length > 1) {
+          if (idx !== -1) {
             return removeKeyframeAtIndex(layer, prop, idx);
           } else {
             const currentVal = getInterpolatedValue(layer, prop, currentTime);
@@ -1502,22 +1599,106 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
     [currentTime, pushUndo]
   );
 
-  const selectKeyframe = useCallback((ref: SelectedKeyframeRef | null) => {
-    setSelectedKeyframe(ref);
+  const selectKeyframe = useCallback(
+    (ref: SelectedKeyframeRef | null, multi: boolean = false) => {
+      if (!ref) {
+        setSelectedKeyframe(null);
+        setSelectedKeyframes([]);
+        return;
+      }
+      if (multi) {
+        setSelectedKeyframes((prev) => {
+          const exists = prev.some(
+            (k) => k.layerId === ref.layerId && k.prop === ref.prop && k.index === ref.index
+          );
+          if (exists) {
+            const filtered = prev.filter(
+              (k) => !(k.layerId === ref.layerId && k.prop === ref.prop && k.index === ref.index)
+            );
+            setSelectedKeyframe(filtered.length > 0 ? filtered[0] : null);
+            return filtered;
+          } else {
+            setSelectedKeyframe(ref);
+            return [...prev, ref];
+          }
+        });
+      } else {
+        setSelectedKeyframe(ref);
+        setSelectedKeyframes([ref]);
+      }
+    },
+    []
+  );
+
+  const selectMultipleKeyframes = useCallback((refs: SelectedKeyframeRef[]) => {
+    setSelectedKeyframes(refs);
+    if (refs.length > 0) {
+      setSelectedKeyframe(refs[0]);
+    } else {
+      setSelectedKeyframe(null);
+    }
   }, []);
 
-  const deleteSelectedKeyframe = useCallback(() => {
-    if (!selectedKeyframe) return;
+  const clearSelectedKeyframes = useCallback(() => {
+    setSelectedKeyframe(null);
+    setSelectedKeyframes([]);
+  }, []);
+
+  const deleteSelectedKeyframes = useCallback(() => {
+    const targets =
+      selectedKeyframes.length > 0
+        ? selectedKeyframes
+        : selectedKeyframe
+          ? [selectedKeyframe]
+          : [];
+    if (targets.length === 0) return;
+
     pushUndo(true);
-    const { layerId, prop, index } = selectedKeyframe;
+
+    const grouped = new Map<string, number[]>();
+    targets.forEach(({ layerId, prop, index }) => {
+      const key = `${layerId}:::${prop}`;
+      const list = grouped.get(key) || [];
+      list.push(index);
+      grouped.set(key, list);
+    });
+
     setLayers((prev) =>
-      prev.map((l) => {
-        if (l.id !== layerId) return l;
-        return removeKeyframeAtIndex(l, prop, index);
+      prev.map((layer) => {
+        let updatedKeyframes = { ...layer.keyframes };
+        let changed = false;
+
+        (Object.keys(updatedKeyframes) as AnimatableProp[]).forEach((prop) => {
+          const key = `${layer.id}:::${prop}`;
+          const indices = grouped.get(key);
+          if (indices && indices.length > 0) {
+            changed = true;
+            const sortedIndices = [...new Set(indices)].sort((a, b) => b - a);
+            let list = [...(updatedKeyframes[prop] || [])];
+            sortedIndices.forEach((idx) => {
+              if (idx >= 0 && idx < list.length) {
+                list.splice(idx, 1);
+              }
+            });
+            updatedKeyframes[prop] = list;
+          }
+        });
+
+        if (!changed) return layer;
+        return {
+          ...layer,
+          keyframes: updatedKeyframes,
+        };
       })
     );
+
     setSelectedKeyframe(null);
-  }, [selectedKeyframe, pushUndo]);
+    setSelectedKeyframes([]);
+  }, [selectedKeyframes, selectedKeyframe, pushUndo]);
+
+  const deleteSelectedKeyframe = useCallback(() => {
+    deleteSelectedKeyframes();
+  }, [deleteSelectedKeyframes]);
 
   const deleteAllKeyframes = useCallback(
     (layerId: string) => {
@@ -1528,18 +1709,25 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
           const cur = getLayerTransformAtTime(l, currentTime);
           return {
             ...l,
+            x: Math.round(cur.x),
+            y: Math.round(cur.y),
+            scaleX: Math.round(cur.scaleX * 100) / 100,
+            scaleY: Math.round(cur.scaleY * 100) / 100,
+            rotation: Math.round(cur.rotation),
+            opacity: Math.round(cur.opacity * 100) / 100,
             keyframes: {
-              x: [{ time: 0, value: Math.round(cur.x) }],
-              y: [{ time: 0, value: Math.round(cur.y) }],
-              scaleX: [{ time: 0, value: Math.round(cur.scaleX * 100) / 100 }],
-              scaleY: [{ time: 0, value: Math.round(cur.scaleY * 100) / 100 }],
-              rotation: [{ time: 0, value: Math.round(cur.rotation) }],
-              opacity: [{ time: 0, value: Math.round(cur.opacity * 100) / 100 }],
+              x: [],
+              y: [],
+              scaleX: [],
+              scaleY: [],
+              rotation: [],
+              opacity: [],
             },
           };
         })
       );
       setSelectedKeyframe(null);
+      setSelectedKeyframes([]);
     },
     [currentTime, pushUndo]
   );
@@ -1569,6 +1757,41 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
               ...layer.keyframes,
               [prop]: list,
             },
+          };
+        })
+      );
+    },
+    [pushUndo]
+  );
+
+  const moveMultipleKeyframes = useCallback(
+    (
+      moves: { layerId: string; prop: AnimatableProp; index: number; newTime: number }[],
+      skipSnapshot: boolean = false
+    ) => {
+      if (moves.length === 0) return;
+      if (!skipSnapshot) {
+        pushUndo(false);
+      }
+      setLayers((prev) =>
+        prev.map((layer) => {
+          const layerMoves = moves.filter((m) => m.layerId === layer.id);
+          if (layerMoves.length === 0) return layer;
+
+          let updatedKeyframes = { ...layer.keyframes };
+          layerMoves.forEach(({ prop, index, newTime }) => {
+            const list = [...(updatedKeyframes[prop] || [])];
+            if (list[index]) {
+              const rounded = Math.round(newTime * 20) / 20;
+              list[index] = { ...list[index], time: rounded };
+              list.sort((a, b) => a.time - b.time);
+              updatedKeyframes[prop] = list;
+            }
+          });
+
+          return {
+            ...layer,
+            keyframes: updatedKeyframes,
           };
         })
       );
@@ -1768,13 +1991,19 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         borderStyle: 'solid',
         animateDash: false,
         easing: 'easeOutCubic',
+        x: Math.round(curRes.width / 2),
+        y: Math.round(curRes.height / 2),
+        scaleX: 1,
+        scaleY: 1,
+        rotation: 0,
+        opacity: 1,
         keyframes: {
-          x: [{ time: 0, value: Math.round(curRes.width / 2) }],
-          y: [{ time: 0, value: Math.round(curRes.height / 2) }],
-          scaleX: [{ time: 0, value: 1 }],
-          scaleY: [{ time: 0, value: 1 }],
-          rotation: [{ time: 0, value: 0 }],
-          opacity: [{ time: 0, value: 1 }],
+          x: [],
+          y: [],
+          scaleX: [],
+          scaleY: [],
+          rotation: [],
+          opacity: [],
         },
       };
 
@@ -1969,13 +2198,19 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
             borderStyle: 'solid',
             animateDash: false,
             easing: 'easeOutCubic',
+            x: Math.round(activeRes.width / 2),
+            y: Math.round(activeRes.height / 2),
+            scaleX: 1,
+            scaleY: 1,
+            rotation: 0,
+            opacity: 1,
             keyframes: {
-              x: [{ time: 0, value: Math.round(activeRes.width / 2) }],
-              y: [{ time: 0, value: Math.round(activeRes.height / 2) }],
-              scaleX: [{ time: 0, value: 1 }],
-              scaleY: [{ time: 0, value: 1 }],
-              rotation: [{ time: 0, value: 0 }],
-              opacity: [{ time: 0, value: 1 }],
+              x: [],
+              y: [],
+              scaleX: [],
+              scaleY: [],
+              rotation: [],
+              opacity: [],
             },
           };
 
@@ -2046,13 +2281,21 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         ungroupLayer,
         toggleGroupExpand,
         reorderLayersBatch,
+        isAutoKeyframe,
+        toggleAutoKeyframe,
+        setIsAutoKeyframe,
+        selectedKeyframes,
+        selectMultipleKeyframes,
+        clearSelectedKeyframes,
         setAnimPropValue,
         toggleKeyframe,
         keyAllTransformProps,
         selectKeyframe,
         deleteSelectedKeyframe,
+        deleteSelectedKeyframes,
         deleteAllKeyframes,
         moveKeyframeTime,
+        moveMultipleKeyframes,
         setCurrentTime,
         setDuration,
         togglePlay,

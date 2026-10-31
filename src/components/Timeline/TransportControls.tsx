@@ -28,7 +28,10 @@ export function TransportControls() {
     selectedLayerId,
     keyAllTransformProps,
     selectedKeyframe,
-    deleteSelectedKeyframe,
+    selectedKeyframes,
+    deleteSelectedKeyframes,
+    isAutoKeyframe,
+    toggleAutoKeyframe,
   } = useMotion();
 
   const [customInput, setCustomInput] = useState<string>(duration.toString());
@@ -136,19 +139,58 @@ export function TransportControls() {
           onClick={() => selectedLayerId && keyAllTransformProps(selectedLayerId)}
           disabled={!selectedLayerId}
           className="text-xs px-2.5 py-1 rounded bg-[#1c1c20] hover:bg-[#25252b] disabled:opacity-30 disabled:cursor-not-allowed text-zinc-200 hover:text-purple-300 border border-[#28282e] hover:border-purple-500/40 flex items-center gap-1.5 transition cursor-pointer"
+          title="Insert keyframes for all transform properties at current playhead"
         >
           <Diamond className="w-3 h-3 fill-purple-400 text-purple-400" />
           <span>Add Keyframe at Playhead</span>
         </button>
 
+        {/* Auto Keyframe Toggle */}
         <button
-          onClick={deleteSelectedKeyframe}
-          disabled={!selectedKeyframe}
+          onClick={toggleAutoKeyframe}
+          className={`text-xs px-2.5 py-1 rounded border flex items-center gap-1.5 transition cursor-pointer ${
+            isAutoKeyframe
+              ? 'bg-rose-950/40 text-rose-300 border-rose-500/60 shadow-sm shadow-rose-950/50'
+              : 'bg-[#1c1c20] hover:bg-[#25252b] text-zinc-400 hover:text-zinc-200 border-[#28282e]'
+          }`}
+          title={
+            isAutoKeyframe
+              ? 'Auto-keyframe is ENABLED: Every transform change automatically creates a keyframe at playhead'
+              : 'Auto-keyframe is DISABLED: Transform changes modify base properties without adding keyframes'
+          }
+        >
+          <span
+            className={`w-2 h-2 rounded-full transition-colors ${
+              isAutoKeyframe ? 'bg-rose-500 animate-pulse' : 'bg-zinc-600'
+            }`}
+          />
+          <span className="font-medium">Auto Keyframe</span>
+          <span
+            className={`text-[9px] px-1 py-0.2 rounded font-mono uppercase font-bold ${
+              isAutoKeyframe ? 'bg-rose-500/20 text-rose-300' : 'bg-zinc-800 text-zinc-500'
+            }`}
+          >
+            {isAutoKeyframe ? 'ON' : 'OFF'}
+          </span>
+        </button>
+
+        {/* Delete Keyframe(s) */}
+        <button
+          onClick={deleteSelectedKeyframes}
+          disabled={!selectedKeyframe && selectedKeyframes.length === 0}
           className="text-xs px-2.5 py-1 rounded bg-[#1c1c20] hover:bg-rose-950/50 text-zinc-300 hover:text-rose-300 disabled:opacity-30 disabled:cursor-not-allowed border border-[#28282e] hover:border-rose-900/40 transition flex items-center gap-1 cursor-pointer"
-          title="Delete the currently selected keyframe"
+          title={
+            selectedKeyframes.length > 1
+              ? `Delete ${selectedKeyframes.length} selected keyframes`
+              : 'Delete the selected keyframe'
+          }
         >
           <X className="w-3.5 h-3.5" />
-          <span>Delete Keyframe</span>
+          <span>
+            {selectedKeyframes.length > 1
+              ? `Delete Keyframes (${selectedKeyframes.length})`
+              : 'Delete Keyframe'}
+          </span>
         </button>
       </div>
 

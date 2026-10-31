@@ -12,13 +12,20 @@ import { PathFollowerInspectorSection } from './PathFollowerInspectorSection';
 import { TextEffectSection } from './TextEffectSection';
 import { MultiSelectSection } from './MultiSelectSection';
 
-export function RightInspector() {
+interface RightInspectorProps {
+  width?: number;
+}
+
+export function RightInspector({ width }: RightInspectorProps) {
   const { selectedLayer, selectedLayerIds, updateLayer } = useMotion();
 
   const isMultiSelect = selectedLayerIds.length > 1;
 
   return (
-    <aside className="w-80 bg-[#161619] border-l border-[#242428] flex flex-col shrink-0 z-20 overflow-hidden">
+    <aside
+      style={width ? { width: `${width}px` } : undefined}
+      className={`${width ? '' : 'w-80 '}bg-[#161619] border-l border-[#242428] flex flex-col shrink-0 z-20 overflow-hidden`}
+    >
       {/* Inspector Header */}
       <div className="px-4 py-2 border-b border-[#242428] flex items-center justify-between">
         <div className="flex items-center gap-2">
