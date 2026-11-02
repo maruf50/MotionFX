@@ -86,6 +86,9 @@ interface MotionContextType {
   splitLayerAtCurrentTime: (layerId?: string) => void;
   trimLayerInToCurrentTime: (layerId?: string) => void;
   trimLayerOutToCurrentTime: (layerId?: string) => void;
+  // Top-level Layer Transitions (Fade In/Out & Scale In/Out)
+  toggleFadeInOut: (layerId?: string, durationSec?: number) => void;
+  toggleScaleInOut: (layerId?: string, durationSec?: number) => void;
   // Parenting & Grouping hierarchy
   setLayerParent: (layerId: string, parentId: string | null) => void;
   createGroup: (name?: string, layerIds?: string[]) => string;
@@ -1804,6 +1807,50 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
     [pushUndo]
   );
 
+  // Top-level Layer Transitions (Fade In/Out & Scale In/Out - does not touch normal keyframes)
+  const toggleFadeInOut = useCallback(
+    (layerId?: string, durationSec: number = 0.5) => {
+      const targetId = layerId || selectedLayerIdRef.current;
+      if (!targetId) return;
+
+      pushUndo(true);
+      setLayers((prev) =>
+        prev.map((l) => {
+          if (l.id !== targetId) return l;
+          const nextState = !l.fadeInOut;
+          return {
+            ...l,
+            fadeInOut: nextState,
+            fadeDuration: l.fadeDuration || durationSec,
+          };
+        })
+      );
+    },
+    [pushUndo]
+  );
+
+  const toggleScaleInOut = useCallback(
+    (layerId?: string, durationSec: number = 0.5) => {
+      const targetId = layerId || selectedLayerIdRef.current;
+      if (!targetId) return;
+
+      pushUndo(true);
+      setLayers((prev) =>
+        prev.map((l) => {
+          if (l.id !== targetId) return l;
+          const nextState = !l.scaleInOut;
+          return {
+            ...l,
+            scaleInOut: nextState,
+            scaleDuration: l.scaleDuration || durationSec,
+            scaleStartValue: l.scaleStartValue ?? 0,
+          };
+        })
+      );
+    },
+    [pushUndo]
+  );
+
   // Parenting & Grouping hierarchy
   const setLayerParent = useCallback(
     (layerId: string, parentId: string | null) => {
@@ -3298,6 +3345,8 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         splitLayerAtCurrentTime,
         trimLayerInToCurrentTime,
         trimLayerOutToCurrentTime,
+        toggleFadeInOut,
+        toggleScaleInOut,
         setLayerParent,
         createGroup,
         addLayersToGroup,

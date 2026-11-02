@@ -366,6 +366,16 @@ export interface Layer {
   // Timeline in/out range (After Effects style layer bar & trimming)
   startTime?: number; // in seconds, defaults to 0
   endTime?: number;   // in seconds, defaults to composition duration
+  // Top-level Layer Transitions (Fade In/Out & Scale In/Out - applied on top level without modifying normal keyframes)
+  fadeInOut?: boolean;
+  fadeDuration?: number; // in seconds (defaults to 0.5s or half of layer duration)
+  fadeInOnly?: boolean;
+  fadeOutOnly?: boolean;
+  scaleInOut?: boolean;
+  scaleDuration?: number; // in seconds (defaults to 0.5s or half of layer duration)
+  scaleStartValue?: number; // starting scale factor (defaults to 0)
+  scaleInOnly?: boolean;
+  scaleOutOnly?: boolean;
   // Animatable tracks
   keyframes: Partial<Record<AnimatableProp, Keyframe[]>>;
 }

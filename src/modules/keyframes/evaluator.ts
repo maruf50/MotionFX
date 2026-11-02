@@ -64,15 +64,78 @@ export function getInterpolatedValue(layer: Layer, prop: AnimatableProp, t: numb
 
 /**
  * Returns the full 2D transform state for a layer at timestamp `t`.
+ * Applies top-level Fade In/Out and Scale In/Out transitions without modifying
+ * or overwriting the layer's normal keyframes.
  */
 export function getLayerTransformAtTime(layer: Layer, t: number): TransformState {
+  let x = getInterpolatedValue(layer, 'x', t);
+  let y = getInterpolatedValue(layer, 'y', t);
+  let scaleX = getInterpolatedValue(layer, 'scaleX', t);
+  let scaleY = getInterpolatedValue(layer, 'scaleY', t);
+  let rotation = getInterpolatedValue(layer, 'rotation', t);
+  let opacity = Math.max(0, Math.min(1, getInterpolatedValue(layer, 'opacity', t)));
+
+  const start = layer.startTime ?? 0;
+  const end = layer.endTime ?? 5.0;
+  const layerSpan = Math.max(0.001, end - start);
+
+  // 1. Top-Level Fade In / Out Transition (modulates opacity without touching keyframes)
+  if (layer.fadeInOut) {
+    const fadeDur = Math.min(layer.fadeDuration ?? 0.5, layerSpan / 2);
+    if (fadeDur > 0) {
+      const tRel = t - start;
+      const tFromEnd = end - t;
+      const easeFn = Easings[layer.easing] || Easings.easeOutCubic;
+
+      let factorIn = 1.0;
+      let factorOut = 1.0;
+
+      if (!layer.fadeOutOnly && tRel >= 0 && tRel < fadeDur) {
+        factorIn = easeFn(Math.max(0, Math.min(1, tRel / fadeDur)));
+      }
+      if (!layer.fadeInOnly && tFromEnd >= 0 && tFromEnd < fadeDur) {
+        factorOut = easeFn(Math.max(0, Math.min(1, tFromEnd / fadeDur)));
+      }
+
+      const fadeMultiplier = Math.max(0, Math.min(1, factorIn * factorOut));
+      opacity = opacity * fadeMultiplier;
+    }
+  }
+
+  // 2. Top-Level Scale In / Out Transition (modulates scale without touching keyframes)
+  if (layer.scaleInOut) {
+    const scaleDur = Math.min(layer.scaleDuration ?? 0.5, layerSpan / 2);
+    const startVal = layer.scaleStartValue ?? 0;
+    if (scaleDur > 0) {
+      const tRel = t - start;
+      const tFromEnd = end - t;
+      const easeFn = Easings[layer.easing] || Easings.easeOutCubic;
+
+      let factorIn = 1.0;
+      let factorOut = 1.0;
+
+      if (!layer.scaleOutOnly && tRel >= 0 && tRel < scaleDur) {
+        const p = easeFn(Math.max(0, Math.min(1, tRel / scaleDur)));
+        factorIn = startVal + (1.0 - startVal) * p;
+      }
+      if (!layer.scaleInOnly && tFromEnd >= 0 && tFromEnd < scaleDur) {
+        const p = easeFn(Math.max(0, Math.min(1, tFromEnd / scaleDur)));
+        factorOut = startVal + (1.0 - startVal) * p;
+      }
+
+      const scaleMultiplier = Math.max(0, factorIn * factorOut);
+      scaleX = scaleX * scaleMultiplier;
+      scaleY = scaleY * scaleMultiplier;
+    }
+  }
+
   return {
-    x: getInterpolatedValue(layer, 'x', t),
-    y: getInterpolatedValue(layer, 'y', t),
-    scaleX: getInterpolatedValue(layer, 'scaleX', t),
-    scaleY: getInterpolatedValue(layer, 'scaleY', t),
-    rotation: getInterpolatedValue(layer, 'rotation', t),
-    opacity: Math.max(0, Math.min(1, getInterpolatedValue(layer, 'opacity', t))),
+    x,
+    y,
+    scaleX,
+    scaleY,
+    rotation,
+    opacity,
   };
 }
 

@@ -12,6 +12,8 @@ import {
   Clock,
   ChevronDown,
   Scissors,
+  Sparkles,
+  Maximize2,
 } from 'lucide-react';
 import { useMotion } from '@/context/MotionContext';
 
@@ -27,6 +29,7 @@ export function TransportControls() {
     duration,
     setDuration,
     selectedLayerId,
+    selectedLayer,
     keyAllTransformProps,
     selectedKeyframe,
     selectedKeyframes,
@@ -36,6 +39,8 @@ export function TransportControls() {
     splitLayerAtCurrentTime,
     trimLayerInToCurrentTime,
     trimLayerOutToCurrentTime,
+    toggleFadeInOut,
+    toggleScaleInOut,
   } = useMotion();
 
   const [customInput, setCustomInput] = useState<string>(duration.toString());
@@ -230,6 +235,64 @@ export function TransportControls() {
         >
           <span className="hidden sm:inline font-medium">Trim Out</span>
           <span className="font-mono font-bold text-[11px] text-cyan-400">]</span>
+        </button>
+
+        <div className="h-4 w-[1px] bg-[#242428] mx-0.5"></div>
+
+        {/* Top-Level Fade In/Out Transition */}
+        <button
+          onClick={() => toggleFadeInOut()}
+          disabled={!selectedLayerId}
+          className={`text-xs px-2 py-1 rounded border transition flex items-center gap-1.5 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed ${
+            selectedLayer?.fadeInOut
+              ? 'bg-amber-950/40 text-amber-300 border-amber-500/60 shadow-sm shadow-amber-950/50'
+              : 'bg-[#1c1c20] hover:bg-[#25252b] text-zinc-400 hover:text-zinc-200 border-[#28282e]'
+          }`}
+          title={
+            selectedLayer?.fadeInOut
+              ? 'Fade In & Out is ACTIVE: Smooth top-level opacity ramp (does not overwrite normal keyframes)'
+              : 'Add Top-Level Fade In & Out transition to selected layer'
+          }
+        >
+          <Sparkles
+            className={`w-3.5 h-3.5 ${
+              selectedLayer?.fadeInOut ? 'text-amber-400 fill-amber-400/40' : 'text-zinc-400'
+            }`}
+          />
+          <span className="hidden sm:inline font-medium">Fade In/Out</span>
+          {selectedLayer?.fadeInOut && (
+            <span className="text-[9px] px-1 py-0.2 rounded font-mono font-bold bg-amber-500/20 text-amber-300">
+              ON
+            </span>
+          )}
+        </button>
+
+        {/* Top-Level Scale In/Out Transition */}
+        <button
+          onClick={() => toggleScaleInOut()}
+          disabled={!selectedLayerId}
+          className={`text-xs px-2 py-1 rounded border transition flex items-center gap-1.5 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed ${
+            selectedLayer?.scaleInOut
+              ? 'bg-cyan-950/40 text-cyan-300 border-cyan-500/60 shadow-sm shadow-cyan-950/50'
+              : 'bg-[#1c1c20] hover:bg-[#25252b] text-zinc-400 hover:text-zinc-200 border-[#28282e]'
+          }`}
+          title={
+            selectedLayer?.scaleInOut
+              ? 'Scale In & Out is ACTIVE: Smooth top-level scale ramp (does not overwrite normal keyframes)'
+              : 'Add Top-Level Scale In & Out transition to selected layer'
+          }
+        >
+          <Maximize2
+            className={`w-3.5 h-3.5 ${
+              selectedLayer?.scaleInOut ? 'text-cyan-400' : 'text-zinc-400'
+            }`}
+          />
+          <span className="hidden sm:inline font-medium">Scale In/Out</span>
+          {selectedLayer?.scaleInOut && (
+            <span className="text-[9px] px-1 py-0.2 rounded font-mono font-bold bg-cyan-500/20 text-cyan-300">
+              ON
+            </span>
+          )}
         </button>
       </div>
 

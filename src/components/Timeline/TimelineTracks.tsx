@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { Sparkles, Maximize2 } from 'lucide-react';
 import { useMotion } from '@/context/MotionContext';
 import { AnimatableProp, SelectedKeyframeRef } from '@/types/motion';
 
@@ -532,7 +533,7 @@ export function TimelineTracks() {
                     <div className="w-0.5 h-3 bg-white/70 group-hover/bar:bg-white rounded-full"></div>
                   </div>
 
-                  {/* Inner Label */}
+                  {/* Inner Label & Transition Badges */}
                   <div className="flex-1 h-full px-2 flex items-center gap-1.5 overflow-hidden pointer-events-none">
                     <span className="text-[11px] font-medium truncate tracking-tight">
                       {layer.name}
@@ -540,6 +541,20 @@ export function TimelineTracks() {
                     <span className="text-[9px] font-mono opacity-60 shrink-0 hidden sm:inline">
                       {(end - start).toFixed(1)}s
                     </span>
+
+                    {/* Transition Badges */}
+                    {layer.fadeInOut && (
+                      <span className="text-[9px] px-1 py-0.2 rounded bg-amber-400/25 text-amber-200 font-mono font-medium shrink-0 flex items-center gap-0.5">
+                        <Sparkles className="w-2.5 h-2.5 text-amber-300" />
+                        Fade
+                      </span>
+                    )}
+                    {layer.scaleInOut && (
+                      <span className="text-[9px] px-1 py-0.2 rounded bg-cyan-400/25 text-cyan-200 font-mono font-medium shrink-0 flex items-center gap-0.5">
+                        <Maximize2 className="w-2.5 h-2.5 text-cyan-300" />
+                        Scale
+                      </span>
+                    )}
                   </div>
 
                   {/* Right Trim Handle */}

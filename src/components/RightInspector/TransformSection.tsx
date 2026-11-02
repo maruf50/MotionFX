@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Diamond, Sliders } from 'lucide-react';
+import { Diamond, Sliders, Sparkles, Maximize2 } from 'lucide-react';
 import { useMotion } from '@/context/MotionContext';
 import { AnimatableProp, EasingType } from '@/types/motion';
 import { getLayerTransformAtTime, hasKeyframeAtTime } from '@/modules/keyframes/evaluator';
@@ -15,6 +15,8 @@ export function TransformSection() {
     toggleKeyframe,
     keyAllTransformProps,
     updateLayer,
+    toggleFadeInOut,
+    toggleScaleInOut,
   } = useMotion();
 
   if (!selectedLayer) return null;
@@ -232,6 +234,97 @@ export function TransformSection() {
             </option>
           ))}
         </select>
+      </div>
+
+      {/* Layer In/Out Transitions (Top-Level) */}
+      <div className="pt-2 border-t border-[#28282e] space-y-2">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 block">
+          In / Out Transitions (Top-Level)
+        </span>
+
+        {/* Fade In/Out Row */}
+        <div className="bg-[#121214] p-2 rounded border border-[#242428] space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-zinc-300 flex items-center gap-1.5 font-medium">
+              <Sparkles className="w-3 h-3 text-amber-400" />
+              Fade In / Out
+            </span>
+            <button
+              onClick={() => toggleFadeInOut(selectedLayer.id)}
+              className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold transition cursor-pointer ${
+                selectedLayer.fadeInOut
+                  ? 'bg-amber-500/25 text-amber-300 border border-amber-500/50'
+                  : 'bg-[#202026] text-zinc-500 hover:text-zinc-300 border border-transparent'
+              }`}
+            >
+              {selectedLayer.fadeInOut ? 'ON' : 'OFF'}
+            </button>
+          </div>
+
+          {selectedLayer.fadeInOut && (
+            <div className="flex items-center justify-between gap-2 pt-1">
+              <span className="text-[10px] text-zinc-500">Duration:</span>
+              <div className="flex items-center gap-1.5 flex-1 max-w-[140px]">
+                <input
+                  type="range"
+                  min="0.1"
+                  max="2.0"
+                  step="0.05"
+                  value={selectedLayer.fadeDuration ?? 0.5}
+                  onChange={(e) =>
+                    updateLayer(selectedLayer.id, { fadeDuration: parseFloat(e.target.value) || 0.5 })
+                  }
+                  className="w-full accent-amber-500 cursor-pointer h-1 bg-[#282830] rounded"
+                />
+                <span className="text-[10px] font-mono text-zinc-300 w-8 text-right">
+                  {(selectedLayer.fadeDuration ?? 0.5).toFixed(2)}s
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Scale In/Out Row */}
+        <div className="bg-[#121214] p-2 rounded border border-[#242428] space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-zinc-300 flex items-center gap-1.5 font-medium">
+              <Maximize2 className="w-3 h-3 text-cyan-400" />
+              Scale In / Out
+            </span>
+            <button
+              onClick={() => toggleScaleInOut(selectedLayer.id)}
+              className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold transition cursor-pointer ${
+                selectedLayer.scaleInOut
+                  ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-500/50'
+                  : 'bg-[#202026] text-zinc-500 hover:text-zinc-300 border border-transparent'
+              }`}
+            >
+              {selectedLayer.scaleInOut ? 'ON' : 'OFF'}
+            </button>
+          </div>
+
+          {selectedLayer.scaleInOut && (
+            <div className="flex items-center justify-between gap-2 pt-1">
+              <span className="text-[10px] text-zinc-500">Duration:</span>
+              <div className="flex items-center gap-1.5 flex-1 max-w-[140px]">
+                <input
+                  type="range"
+                  min="0.1"
+                  max="2.0"
+                  step="0.05"
+                  value={selectedLayer.scaleDuration ?? 0.5}
+                  onChange={(e) =>
+                    updateLayer(selectedLayer.id, { scaleDuration: parseFloat(e.target.value) || 0.5 })
+                  }
+                  className="w-full accent-cyan-500 cursor-pointer h-1 bg-[#282830] rounded"
+                />
+                <span className="text-[10px] font-mono text-zinc-300 w-8 text-right">
+                  {(selectedLayer.scaleDuration ?? 0.5).toFixed(2)}s
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
