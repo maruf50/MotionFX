@@ -16,6 +16,11 @@ import {
   Image as ImageIcon,
   FolderPlus,
   Layers,
+  BarChart3,
+  Grid,
+  Route,
+  GitBranch,
+  MousePointer,
 } from 'lucide-react';
 import { TEMPLATES } from '@/modules/templates';
 import { Layer } from '@/types/motion';
@@ -31,8 +36,16 @@ export function TemplatesBrowserPanel() {
   const [expandedTemplateId, setExpandedTemplateId] = useState<string | null>('bento-grid');
 
   const getLayerIcon = (layer: Layer) => {
-    if (layer.type === 'text') return <Type className="w-3.5 h-3.5 text-zinc-300" />;
+    if (layer.type === 'text') return <Type className="w-3.5 h-3.5 text-blue-300" />;
     if (layer.type === 'image') return <ImageIcon className="w-3.5 h-3.5 text-zinc-300" />;
+    if (layer.shapeType === 'graph') return <BarChart3 className="w-3.5 h-3.5 text-emerald-400" />;
+    if (layer.shapeType === 'card') return <Layers className="w-3.5 h-3.5 text-purple-400" />;
+    if (layer.shapeType === 'array') return <Grid className="w-3.5 h-3.5 text-indigo-400" />;
+    if (layer.shapeType === 'pathDraw') return <Route className="w-3.5 h-3.5 text-rose-400" />;
+    if (layer.shapeType === 'pathFollower') return <Sparkles className="w-3.5 h-3.5 text-amber-400" />;
+    if (layer.shapeType === 'branching') return <GitBranch className="w-3.5 h-3.5 text-cyan-400" />;
+    if (layer.shapeType === 'cursor') return <MousePointer className="w-3.5 h-3.5 text-sky-400" />;
+    if (layer.shapeType === 'button') return <Square className="w-3.5 h-3.5 text-purple-300" />;
     if (layer.shapeType === 'line') return <Minus className="w-3.5 h-3.5 text-zinc-300" />;
     if (layer.shapeType === 'circle') return <Circle className="w-3.5 h-3.5 text-zinc-300" />;
     if (layer.shapeType === 'star') return <Star className="w-3.5 h-3.5 text-zinc-300" />;

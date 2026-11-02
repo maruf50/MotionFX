@@ -335,10 +335,10 @@ export function Header() {
           </button>
 
           {isTmplMenuOpen && (
-            <div className="absolute top-full left-0 mt-1 w-60 bg-[#18181c] border border-[#2f2f38] rounded-lg shadow-2xl z-50 p-1.5 space-y-1">
-              <div className="px-2 py-1 text-[10px] font-mono text-zinc-400 uppercase border-b border-[#242428] flex items-center justify-between">
-                <span>Templates</span>
-                <span className="text-[9px] text-purple-400">Safe in New Comp</span>
+            <div className="absolute top-full left-0 mt-1 w-64 max-h-96 overflow-y-auto bg-[#18181c] border border-[#2f2f38] rounded-lg shadow-2xl z-50 p-1.5 space-y-1">
+              <div className="px-2 py-1 text-[10px] font-mono text-zinc-400 uppercase border-b border-[#242428] flex items-center justify-between sticky top-0 bg-[#18181c] z-10">
+                <span>Motion Templates ({TEMPLATES.length})</span>
+                <span className="text-[9px] text-purple-400">Open in Comp</span>
               </div>
               {TEMPLATES.map((tmpl) => (
                 <button
@@ -348,10 +348,19 @@ export function Header() {
                     loadTemplate(tmpl.id, true);
                     setIsTmplMenuOpen(false);
                   }}
-                  className="w-full text-left px-2 py-1.5 rounded hover:bg-[#23232a] text-xs text-zinc-200 hover:text-white flex items-center justify-between transition cursor-pointer"
+                  className="w-full text-left px-2 py-1.5 rounded hover:bg-[#23232a] text-xs text-zinc-200 hover:text-white flex items-center justify-between transition cursor-pointer group"
                 >
-                  <span className="font-medium truncate">{tmpl.name}</span>
-                  <span className="text-[9px] font-mono text-zinc-500 shrink-0">{tmpl.duration}s</span>
+                  <div className="min-w-0 pr-2">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-medium truncate">{tmpl.name}</span>
+                      {tmpl.badge && (
+                        <span className="text-[8px] font-mono px-1 py-0.2 rounded bg-purple-950/70 text-purple-300 border border-purple-700/50">
+                          {tmpl.badge}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-[9px] font-mono text-zinc-500 shrink-0 group-hover:text-purple-300">{tmpl.duration}s</span>
                 </button>
               ))}
             </div>
