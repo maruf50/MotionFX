@@ -1,5 +1,6 @@
 import { Layer, PathPoint } from '@/types/motion';
 import { getInterpolatedValue } from '../keyframes/evaluator';
+import { resolveColorOrGradient } from './gradients';
 
 interface Point {
   x: number;
@@ -157,6 +158,14 @@ export function renderPathDrawShape(
   const { total, cumulative } = getPathLengths(allPts);
 
   ctx.save();
+  const resolvedStroke = resolveColorOrGradient(
+    ctx,
+    strokeColor,
+    -layer.width / 2,
+    -layer.height / 2,
+    layer.width || 300,
+    layer.height || 200
+  );
 
   // Background Guide Track (subtle faint trace of full path)
   ctx.beginPath();
@@ -189,7 +198,7 @@ export function renderPathDrawShape(
       }
     }
     ctx.lineWidth = strokeW;
-    ctx.strokeStyle = strokeColor;
+    ctx.strokeStyle = resolvedStroke;
     ctx.lineCap = 'round';
     ctx.shadowColor = strokeColor;
     ctx.shadowBlur = 10;
@@ -203,7 +212,7 @@ export function renderPathDrawShape(
       ctx.lineTo(allPts[i].x, allPts[i].y);
     }
     ctx.lineWidth = strokeW;
-    ctx.strokeStyle = strokeColor;
+    ctx.strokeStyle = resolvedStroke;
     ctx.setLineDash([strokeW * 3, strokeW * 2]);
     ctx.lineDashOffset = -time * 60;
     ctx.stroke();
@@ -216,7 +225,7 @@ export function renderPathDrawShape(
       ctx.lineTo(allPts[i].x, allPts[i].y);
     }
     ctx.lineWidth = strokeW;
-    ctx.strokeStyle = strokeColor;
+    ctx.strokeStyle = resolvedStroke;
     ctx.globalAlpha = pulseAlpha;
     ctx.shadowColor = strokeColor;
     ctx.shadowBlur = 14;
@@ -254,7 +263,7 @@ export function renderPathDrawShape(
     }
 
     ctx.lineWidth = strokeW;
-    ctx.strokeStyle = strokeColor;
+    ctx.strokeStyle = resolvedStroke;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 

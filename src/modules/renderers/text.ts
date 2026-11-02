@@ -2,6 +2,7 @@ import { Layer } from '@/types/motion';
 import { Easings } from '../easing/easings';
 import { loadGoogleFont } from '../fonts/googleFonts';
 import { getInterpolatedValue } from '../keyframes/evaluator';
+import { resolveColorOrGradient } from './gradients';
 
 const GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*<>[]{}';
 
@@ -35,7 +36,8 @@ export function renderTextLayer(
   ctx.font = `${style}${weight} ${fontSize}px ${family}"Geist", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillStyle = layer.fill || '#ffffff';
+  const estWidth = Math.max(40, ctx.measureText(str).width);
+  ctx.fillStyle = resolveColorOrGradient(ctx, layer.fill || '#ffffff', -estWidth / 2, -fontSize / 2, estWidth, fontSize);
 
   if (effect === 'none') {
     const displayStr = hasTextKf
@@ -45,7 +47,7 @@ export function renderTextLayer(
     if (layer.borderWidth > 0 && layer.borderStyle !== 'none' && layer.stroke) {
       const avgScale = (Math.abs(tr?.scaleX ?? 1) + Math.abs(tr?.scaleY ?? 1)) / 2 || 1;
       ctx.lineWidth = layer.borderWidth / avgScale;
-      ctx.strokeStyle = layer.stroke;
+      ctx.strokeStyle = resolveColorOrGradient(ctx, layer.stroke, -estWidth / 2, -fontSize / 2, estWidth, fontSize);
       ctx.strokeText(displayStr, 0, 0);
     }
     return;

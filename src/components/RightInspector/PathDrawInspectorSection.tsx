@@ -5,6 +5,7 @@ import { Route, Type, Diamond, PenTool, Sparkles } from 'lucide-react';
 import { useMotion } from '@/context/MotionContext';
 import { PathDrawType, PathDrawTextAnim, PathAnimStyle } from '@/types/motion';
 import { getInterpolatedValue } from '@/modules/keyframes/evaluator';
+import { ColorPickerWithAlpha } from './ColorPickerWithAlpha';
 
 export function PathDrawInspectorSection() {
   const {
@@ -247,17 +248,12 @@ export function PathDrawInspectorSection() {
             </span>
           </div>
         </div>
-        <div>
-          <label className="text-[11px] text-zinc-400 block mb-1">Path Color</label>
-          <div className="flex items-center gap-1.5">
-            <input
-              type="color"
-              value={strokeColor}
-              onChange={(e) => updateLayer(selectedLayer.id, { pathDrawColor: e.target.value })}
-              className="w-7 h-7 rounded border border-[#3a3a44] bg-transparent cursor-pointer"
-            />
-            <span className="text-[10px] font-mono text-zinc-400 uppercase">{strokeColor}</span>
-          </div>
+        <div className="col-span-2">
+          <ColorPickerWithAlpha
+            label="Path Color"
+            color={strokeColor}
+            onChange={(val) => updateLayer(selectedLayer.id, { pathDrawColor: val, stroke: val })}
+          />
         </div>
       </div>
 

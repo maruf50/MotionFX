@@ -1,5 +1,6 @@
 import { Layer, GraphDataItem } from '@/types/motion';
 import { getInterpolatedValue } from '../keyframes/evaluator';
+import { resolveColorOrGradient } from './gradients';
 
 const DEFAULT_PALETTE = ['#6366f1', '#8b5cf6', '#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#06b6d4'];
 
@@ -44,34 +45,36 @@ export function renderGraphShape(
   const axisColor = layer.graphAxisColor || 'rgba(255, 255, 255, 0.22)';
   const textColor = layer.graphTextColor || '#d4d4d8';
 
-  // Optional background card styling if layer has fill or border
-  if (layer.fill && layer.fill !== 'transparent') {
-    ctx.save();
-    ctx.fillStyle = layer.fill;
-    const r = layer.borderRadius ?? 12;
-    if (typeof ctx.roundRect === 'function') {
-      ctx.beginPath();
-      ctx.roundRect(-w / 2, -h / 2, w, h, r);
-      ctx.fill();
-    } else {
-      ctx.fillRect(-w / 2, -h / 2, w, h);
+  // Optional background card styling if explicitly activated
+  if (layer.graphShowCard) {
+    if (layer.fill && layer.fill !== 'transparent') {
+      ctx.save();
+      ctx.fillStyle = resolveColorOrGradient(ctx, layer.fill, -w / 2, -h / 2, w, h);
+      const r = layer.borderRadius ?? 12;
+      if (typeof ctx.roundRect === 'function') {
+        ctx.beginPath();
+        ctx.roundRect(-w / 2, -h / 2, w, h, r);
+        ctx.fill();
+      } else {
+        ctx.fillRect(-w / 2, -h / 2, w, h);
+      }
+      ctx.restore();
     }
-    ctx.restore();
-  }
 
-  if (layer.borderWidth && layer.borderWidth > 0 && layer.stroke && layer.stroke !== 'transparent') {
-    ctx.save();
-    ctx.strokeStyle = layer.stroke;
-    ctx.lineWidth = layer.borderWidth;
-    const r = layer.borderRadius ?? 12;
-    if (typeof ctx.roundRect === 'function') {
-      ctx.beginPath();
-      ctx.roundRect(-w / 2, -h / 2, w, h, r);
-      ctx.stroke();
-    } else {
-      ctx.strokeRect(-w / 2, -h / 2, w, h);
+    if (layer.borderWidth && layer.borderWidth > 0 && layer.stroke && layer.stroke !== 'transparent') {
+      ctx.save();
+      ctx.strokeStyle = resolveColorOrGradient(ctx, layer.stroke, -w / 2, -h / 2, w, h);
+      ctx.lineWidth = layer.borderWidth;
+      const r = layer.borderRadius ?? 12;
+      if (typeof ctx.roundRect === 'function') {
+        ctx.beginPath();
+        ctx.roundRect(-w / 2, -h / 2, w, h, r);
+        ctx.stroke();
+      } else {
+        ctx.strokeRect(-w / 2, -h / 2, w, h);
+      }
+      ctx.restore();
     }
-    ctx.restore();
   }
 
   // 1. PIE / DONUT GRAPH
@@ -245,7 +248,7 @@ function renderColumnGraph(
 
     // Draw Column Bar
     ctx.save();
-    ctx.fillStyle = itemColor;
+    ctx.fillStyle = resolveColorOrGradient(ctx, itemColor, x, y, colW, currentH);
     drawBarCapsule(ctx, x, y, colW, currentH, radius, false);
     ctx.restore();
 
@@ -305,7 +308,7 @@ function renderBarGraph(
 
     // Draw Horizontal Bar
     ctx.save();
-    ctx.fillStyle = itemColor;
+    ctx.fillStyle = resolveColorOrGradient(ctx, itemColor, left, y, currentW, barH);
     drawBarCapsule(ctx, left, y, currentW, barH, radius, true);
     ctx.restore();
 
@@ -362,54 +365,57 @@ function renderLineAreaGraph(
   const points = data.map((d, i) => {
     const x = left + (n === 1 ? plotW / 2 : (i / (n - 1)) * plotW);
     const targetY = bottom - (d.value / maxVal) * plotH;
-    // Animate point y emerging from baseline
-    const y = bottom - (bottom - targetY) * progress;
-    return { x, y, origY: targetY, item: d, i };
+    return { x, y: targetY, origY: targetY, item: d, i };
   });
 
   const primaryColor = data[0]?.color || '#6366f1';
+  // Compute left-to-right growth sweep position based on progress
+  const currentX = left + plotW * progress;
 
-  // Area under curve with gradient fill
-  if (isArea && points.length > 1) {
+  // Clip Line and Area so they grow smoothly from left to right (0 position to end)
+  if (points.length > 1 && progress > 0.001) {
     ctx.save();
-    const grad = ctx.createLinearGradient(0, top, 0, bottom);
-    grad.addColorStop(0, primaryColor + '99'); // ~60% alpha
-    grad.addColorStop(1, primaryColor + '05'); // ~2% alpha
-    ctx.fillStyle = grad;
-
     ctx.beginPath();
-    ctx.moveTo(points[0].x, bottom);
-    ctx.lineTo(points[0].x, points[0].y);
+    ctx.rect(left - 4, top - 20, Math.max(0, currentX - left + 6), plotH + 40);
+    ctx.clip();
 
-    if (curvature === 'smooth') {
-      for (let i = 0; i < points.length - 1; i++) {
-        const p0 = points[i];
-        const p1 = points[i + 1];
-        const cpx = (p0.x + p1.x) / 2;
-        ctx.bezierCurveTo(cpx, p0.y, cpx, p1.y, p1.x, p1.y);
+    // Area under curve with gradient fill
+    if (isArea) {
+      const grad = ctx.createLinearGradient(0, top, 0, bottom);
+      grad.addColorStop(0, primaryColor + '99'); // ~60% alpha
+      grad.addColorStop(1, primaryColor + '05'); // ~2% alpha
+      ctx.fillStyle = grad;
+
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, bottom);
+      ctx.lineTo(points[0].x, points[0].y);
+
+      if (curvature === 'smooth') {
+        for (let i = 0; i < points.length - 1; i++) {
+          const p0 = points[i];
+          const p1 = points[i + 1];
+          const cpx = (p0.x + p1.x) / 2;
+          ctx.bezierCurveTo(cpx, p0.y, cpx, p1.y, p1.x, p1.y);
+        }
+      } else if (curvature === 'step') {
+        for (let i = 0; i < points.length - 1; i++) {
+          const p0 = points[i];
+          const p1 = points[i + 1];
+          ctx.lineTo(p1.x, p0.y);
+          ctx.lineTo(p1.x, p1.y);
+        }
+      } else {
+        for (let i = 1; i < points.length; i++) {
+          ctx.lineTo(points[i].x, points[i].y);
+        }
       }
-    } else if (curvature === 'step') {
-      for (let i = 0; i < points.length - 1; i++) {
-        const p0 = points[i];
-        const p1 = points[i + 1];
-        ctx.lineTo(p1.x, p0.y);
-        ctx.lineTo(p1.x, p1.y);
-      }
-    } else {
-      for (let i = 1; i < points.length; i++) {
-        ctx.lineTo(points[i].x, points[i].y);
-      }
+
+      ctx.lineTo(points[points.length - 1].x, bottom);
+      ctx.closePath();
+      ctx.fill();
     }
 
-    ctx.lineTo(points[points.length - 1].x, bottom);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-  }
-
-  // Draw Line Stroke
-  if (points.length > 1) {
-    ctx.save();
+    // Draw Line Stroke
     ctx.strokeStyle = primaryColor;
     ctx.lineWidth = lineWidth;
     ctx.lineCap = 'round';
@@ -442,14 +448,17 @@ function renderLineAreaGraph(
     ctx.restore();
   }
 
-  // Draw Dots and Values
+  // Draw Dots and Values as line progresses across X
   points.forEach((pt) => {
     const dotColor = pt.item.color || primaryColor;
+    const isReached = currentX >= pt.x - 2;
 
-    if (showDots) {
+    if (showDots && isReached) {
+      const popAge = Math.min(1, Math.max(0, (currentX - (pt.x - 2)) / 16));
       ctx.save();
+      ctx.globalAlpha = popAge;
       ctx.beginPath();
-      ctx.arc(pt.x, pt.y, dotSize, 0, Math.PI * 2);
+      ctx.arc(pt.x, pt.y, dotSize * (0.6 + 0.4 * popAge), 0, Math.PI * 2);
       ctx.fillStyle = dotColor;
       ctx.fill();
       ctx.strokeStyle = '#ffffff';
@@ -458,14 +467,15 @@ function renderLineAreaGraph(
       ctx.restore();
     }
 
-    if (showValues && progress > 0.2) {
+    if (showValues && isReached) {
+      const popAge = Math.min(1, Math.max(0, (currentX - (pt.x - 2)) / 16));
       ctx.save();
+      ctx.globalAlpha = popAge;
       ctx.fillStyle = textColor;
       ctx.font = '600 10px monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'bottom';
-      const animVal = Math.round(pt.item.value * progress);
-      ctx.fillText(`${animVal}`, pt.x, pt.y - (dotSize + 3));
+      ctx.fillText(`${pt.item.value}`, pt.x, pt.y - (dotSize + 3));
       ctx.restore();
     }
 
@@ -520,41 +530,49 @@ function renderComboGraph(
     const x = left + i * (colW + spacing) + colW / 2;
     const secVal = d.secondaryValue ?? d.value * 0.6;
     const targetY = bottom - (secVal / maxSecVal) * plotH;
-    const y = bottom - (bottom - targetY) * progress;
-    return { x, y, secVal };
+    return { x, y: targetY, secVal };
   });
 
   const lineColor = '#f59e0b'; // Amber highlight for combo line
+  const currentLineX = left + plotW * progress;
 
-  ctx.save();
-  ctx.strokeStyle = lineColor;
-  ctx.lineWidth = lineWidth + 0.5;
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  ctx.beginPath();
-  ctx.moveTo(linePoints[0].x, linePoints[0].y);
+  if (progress > 0.001) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(left - 4, top - 20, Math.max(0, currentLineX - left + 6), plotH + 40);
+    ctx.clip();
 
-  if (curvature === 'smooth') {
-    for (let i = 0; i < linePoints.length - 1; i++) {
-      const p0 = linePoints[i];
-      const p1 = linePoints[i + 1];
-      const cpx = (p0.x + p1.x) / 2;
-      ctx.bezierCurveTo(cpx, p0.y, cpx, p1.y, p1.x, p1.y);
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = lineWidth + 0.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(linePoints[0].x, linePoints[0].y);
+
+    if (curvature === 'smooth') {
+      for (let i = 0; i < linePoints.length - 1; i++) {
+        const p0 = linePoints[i];
+        const p1 = linePoints[i + 1];
+        const cpx = (p0.x + p1.x) / 2;
+        ctx.bezierCurveTo(cpx, p0.y, cpx, p1.y, p1.x, p1.y);
+      }
+    } else {
+      for (let i = 1; i < linePoints.length; i++) {
+        ctx.lineTo(linePoints[i].x, linePoints[i].y);
+      }
     }
-  } else {
-    for (let i = 1; i < linePoints.length; i++) {
-      ctx.lineTo(linePoints[i].x, linePoints[i].y);
-    }
+    ctx.stroke();
+    ctx.restore();
   }
-  ctx.stroke();
-  ctx.restore();
 
   // Draw Dots on line
   linePoints.forEach((pt) => {
-    if (showDots) {
+    if (showDots && currentLineX >= pt.x - 2) {
+      const popAge = Math.min(1, Math.max(0, (currentLineX - (pt.x - 2)) / 16));
       ctx.save();
+      ctx.globalAlpha = popAge;
       ctx.beginPath();
-      ctx.arc(pt.x, pt.y, dotSize, 0, Math.PI * 2);
+      ctx.arc(pt.x, pt.y, dotSize * (0.6 + 0.4 * popAge), 0, Math.PI * 2);
       ctx.fillStyle = lineColor;
       ctx.fill();
       ctx.strokeStyle = '#ffffff';

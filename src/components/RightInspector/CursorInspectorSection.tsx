@@ -5,6 +5,7 @@ import { MousePointer, Sparkles, Diamond, PenTool, Compass, Navigation } from 'l
 import { useMotion } from '@/context/MotionContext';
 import { CursorType, CursorPathMode, CursorClickAnim } from '@/types/motion';
 import { getInterpolatedValue } from '@/modules/keyframes/evaluator';
+import { ColorPickerWithAlpha } from './ColorPickerWithAlpha';
 
 export function CursorInspectorSection() {
   const {
@@ -332,17 +333,12 @@ export function CursorInspectorSection() {
             className="w-full accent-purple-500 cursor-pointer"
           />
         </div>
-        <div>
-          <label className="text-[11px] text-zinc-400 block mb-1">Cursor Color</label>
-          <div className="flex items-center gap-1.5">
-            <input
-              type="color"
-              value={color}
-              onChange={(e) => updateLayer(selectedLayer.id, { cursorColor: e.target.value, fill: e.target.value })}
-              className="w-7 h-7 rounded border border-[#3a3a44] bg-transparent cursor-pointer"
-            />
-            <span className="text-[10px] font-mono text-zinc-400 uppercase">{color}</span>
-          </div>
+        <div className="col-span-2">
+          <ColorPickerWithAlpha
+            label="Cursor Color"
+            color={color}
+            onChange={(val) => updateLayer(selectedLayer.id, { cursorColor: val, fill: val })}
+          />
         </div>
       </div>
 

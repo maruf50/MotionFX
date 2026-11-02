@@ -87,15 +87,48 @@ export interface ArrayElementItem {
 }
 
 // Card Stack types
-export type CardAnimType = 'fan' | 'swipe' | 'stackShift' | 'cascade' | 'flip' | 'float';
-export type CardShape = 'rounded' | 'chamfer' | 'rect' | 'pill' | 'glass';
+export type CardAnimType =
+  | 'circularArray'
+  | 'linearArray'
+  | 'fallingStack'
+  | 'stackSpread'
+  | 'queue'
+  | 'stack'
+  | 'fan'
+  | 'swipe'
+  | 'stackShift'
+  | 'cascade'
+  | 'flip'
+  | 'float';
+
+export type CardShape =
+  | 'squircle'
+  | 'rounded'
+  | 'rect'
+  | 'circle'
+  | 'pill'
+  | 'triangle'
+  | 'star'
+  | 'hexagon'
+  | 'chamfer'
+  | 'glass';
+
+export type CardImageMask =
+  | 'none'
+  | 'circle'
+  | 'rect'
+  | 'triangle'
+  | 'star'
+  | 'hexagon'
+  | 'squircle';
 
 export interface CardItem {
   id: string;
-  title: string;
+  title?: string;
   subtitle?: string;
   badge?: string;
   imageSrc?: string;
+  imageMask?: CardImageMask;
   shape?: CardShape;
   color?: string;
   gradientEnd?: string;
@@ -304,7 +337,10 @@ export interface Layer {
   cardSubtitle?: string;
   cardBadge?: string;
   cardImageSrc?: string | null;
+  cardImageMask?: CardImageMask;
+  cardShowContent?: boolean;
   cardColor?: string;
+  cardGradientEnd?: string;
   cardShape?: CardShape;
   cardBorderRadius?: number;
   cardBorderWidth?: number;
@@ -430,6 +466,7 @@ export interface Layer {
   filterWobbleSpeed?: number; // 1 to 20
   filterWobbleAmount?: number; // 2 to 30
   // Graph Shape & Motion properties
+  graphShowCard?: boolean; // Toggle background card shape and border frame
   graphType?: GraphType; // 'column' | 'bar' | 'line' | 'area' | 'pie' | 'combo'
   graphData?: GraphDataItem[];
   graphProgress?: number; // 0 to 100% (keyframable via 'graphProgress')

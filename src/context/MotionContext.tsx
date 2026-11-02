@@ -1053,18 +1053,28 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         width: Math.max(10, Math.round(baseW * us)),
         height: Math.max(10, Math.round(baseH * us)),
         sides: shapeType === 'star' ? 5 : shapeType === 'polygon' ? 6 : undefined,
-        fill: shapeType === 'line' ? 'transparent' : shapeType === 'graph' ? 'rgba(20, 20, 26, 0.75)' : color,
+        fill:
+          shapeType === 'line' || shapeType === 'graph'
+            ? 'transparent'
+            : shapeType === 'card'
+            ? color
+            : color,
         stroke:
           shapeType === 'line'
             ? color
-            : shapeType === 'bar'
+            : shapeType === 'bar' || shapeType === 'graph'
             ? 'transparent'
-            : shapeType === 'graph'
-            ? 'rgba(255, 255, 255, 0.12)'
             : shapeType === 'branching'
             ? color
+            : shapeType === 'card'
+            ? 'rgba(255, 255, 255, 0.25)'
             : '#ffffff',
-        borderWidth: Math.max(1, Math.round(baseBorderW * us)),
+        borderWidth:
+          shapeType === 'graph'
+            ? 0
+            : shapeType === 'card'
+            ? Math.max(1, Math.round(2 * us))
+            : Math.max(1, Math.round(baseBorderW * us)),
         borderRadius: Math.max(0, Math.round(baseRadius * us)),
         borderStyle: 'solid',
         animateDash: false,
@@ -1139,14 +1149,22 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         arrayElementSpawnMode: shapeType === 'array' ? 'cycle' : undefined,
         // Card Stack defaults
         cardCount: shapeType === 'card' ? 3 : undefined,
-        cardTitle: shapeType === 'card' ? 'Motion Card' : undefined,
-        cardSubtitle: shapeType === 'card' ? 'Interactive Card Stack' : undefined,
-        cardBadge: shapeType === 'card' ? 'FEATURED' : undefined,
-        cardAnimType: shapeType === 'card' ? 'fan' : undefined,
+        cardTitle: shapeType === 'card' ? '' : undefined,
+        cardSubtitle: shapeType === 'card' ? '' : undefined,
+        cardBadge: shapeType === 'card' ? '' : undefined,
+        cardShape: shapeType === 'card' ? 'squircle' : undefined,
+        cardAnimType: shapeType === 'card' ? 'stackSpread' : undefined,
         cardAnimDuration: shapeType === 'card' ? 3.0 : undefined,
-        cardSpread: shapeType === 'card' ? 24 : undefined,
-        cardBorderRadius: shapeType === 'card' ? 16 : undefined,
-        cardColor: shapeType === 'card' ? '#181822' : undefined,
+        cardSpread: shapeType === 'card' ? 32 : undefined,
+        cardBorderRadius: shapeType === 'card' ? 22 : undefined,
+        cardBorderWidth: shapeType === 'card' ? 2 : undefined,
+        cardBorderColor: shapeType === 'card' ? 'rgba(255, 255, 255, 0.25)' : undefined,
+        cardBorderStyle: shapeType === 'card' ? 'solid' : undefined,
+        cardColor: shapeType === 'card' ? color : undefined,
+        cardGradientEnd: shapeType === 'card' ? '#181826' : undefined,
+        cardShowContent: shapeType === 'card' ? false : undefined,
+        cardImageMask: shapeType === 'card' ? 'none' : undefined,
+        cardProgress: shapeType === 'card' ? 100 : undefined,
         // Path Draw defaults
         pathDrawType: shapeType === 'pathDraw' ? 'wave' : undefined,
         pathDrawStrokeWidth: shapeType === 'pathDraw' ? 4 : undefined,
@@ -1196,6 +1214,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         showCursorPath: shapeType === 'cursor' ? true : undefined,
         cursorPathColor: shapeType === 'cursor' ? 'rgba(168, 85, 247, 0.45)' : undefined,
         // Graph defaults
+        graphShowCard: shapeType === 'graph' ? false : undefined,
         graphType: shapeType === 'graph' ? 'column' : undefined,
         graphData: shapeType === 'graph' ? [
           { id: '1', label: 'Mon', value: 45, color: '#6366f1', secondaryValue: 20 },

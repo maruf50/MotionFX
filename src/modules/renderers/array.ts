@@ -1,6 +1,7 @@
 import { Layer, ArrayElementItem, ArrayItemShape } from '@/types/motion';
 import { drawRoundedRect } from './shapes';
 import { getInterpolatedValue } from '../keyframes/evaluator';
+import { resolveColorOrGradient } from './gradients';
 
 const VIBRANT_PALETTE = [
   '#6366f1',
@@ -29,15 +30,16 @@ function drawItemShape(
   borderColor?: string
 ) {
   const itemSize = hs * 2;
-  ctx.fillStyle = color;
+  ctx.fillStyle = resolveColorOrGradient(ctx, color, -hs, -hs, itemSize, itemSize);
+  const resolvedBorder = borderColor ? resolveColorOrGradient(ctx, borderColor, -hs, -hs, itemSize, itemSize) : undefined;
 
   if (shape === 'circle') {
     ctx.beginPath();
     ctx.arc(0, 0, hs, 0, Math.PI * 2);
     ctx.fill();
-    if (borderWidth > 0 && borderColor) {
+    if (borderWidth > 0 && resolvedBorder) {
       ctx.lineWidth = borderWidth;
-      ctx.strokeStyle = borderColor;
+      ctx.strokeStyle = resolvedBorder;
       ctx.stroke();
     }
   } else if (shape === 'square') {
@@ -247,9 +249,10 @@ export function renderArrayShape(
   layer: Layer,
   time: number,
   onImageLoad?: () => void,
-  tr?: { scaleX: number; scaleY: number }
+  tr?: { scaleX?: number; scaleY?: number; opacity?: number }
 ) {
   const safeTime = Math.max(0, time);
+  const layerOpacity = tr?.opacity !== undefined ? tr.opacity : (ctx.globalAlpha || 1.0);
   const rows = Math.max(1, Math.min(24, layer.arrayRows ?? 4));
   const cols = Math.max(1, Math.min(24, layer.arrayCols ?? 5));
   const gap = Math.max(1, layer.arrayGap ?? 14);
@@ -372,22 +375,22 @@ export function renderArrayShape(
             ? (itemP / 0.7) * 1.18
             : 1.18 - ((itemP - 0.7) / 0.3) * 0.18;
         ctx.scale(scale * cellScale, scale * cellScale);
-        ctx.globalAlpha = Math.min(1, itemP * 2);
+        ctx.globalAlpha = Math.min(1, itemP * 2) * layerOpacity;
       } else if (animType === 'fade') {
         ctx.scale(cellScale, cellScale);
-        ctx.globalAlpha = itemP;
+        ctx.globalAlpha = itemP * layerOpacity;
       } else if (animType === 'drop') {
         const dropOffset = (1 - itemP) * 35;
         ctx.translate(0, -dropOffset);
         ctx.scale(cellScale, cellScale);
-        ctx.globalAlpha = itemP;
+        ctx.globalAlpha = itemP * layerOpacity;
       } else if (animType === 'wave' || animType === 'ripple') {
         const waveScale = (0.4 + 0.6 * itemP) * cellScale;
         ctx.scale(waveScale, waveScale);
-        ctx.globalAlpha = Math.min(1, itemP * 1.5);
+        ctx.globalAlpha = Math.min(1, itemP * 1.5) * layerOpacity;
       } else {
         ctx.scale(itemP * cellScale, itemP * cellScale);
-        ctx.globalAlpha = itemP;
+        ctx.globalAlpha = itemP * layerOpacity;
       }
 
       // Render custom element layer if configured in pool

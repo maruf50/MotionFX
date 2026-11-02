@@ -1,6 +1,7 @@
 import { Layer, BranchCurvature, BranchDirection, BranchEndShape } from '@/types/motion';
 import { applyStrokeStyle } from './shapes';
 import { getInterpolatedValue } from '../keyframes/evaluator';
+import { resolveColorOrGradient } from './gradients';
 
 /**
  * Draws an end marker at (x, y) with rotation angle.
@@ -23,8 +24,8 @@ function drawEndMarker(
   ctx.translate(x, y);
   ctx.rotate(angle);
 
-  ctx.fillStyle = color;
-  ctx.strokeStyle = strokeColor;
+  ctx.fillStyle = resolveColorOrGradient(ctx, color, -size, -size, size * 2, size * 2);
+  ctx.strokeStyle = resolveColorOrGradient(ctx, strokeColor, -size, -size, size * 2, size * 2);
   ctx.lineWidth = 2;
 
   if (shape === 'circle') {
@@ -237,7 +238,7 @@ export function renderBranchingShape(
 
   ctx.save();
   applyStrokeStyle(ctx, layer, safeTime);
-  ctx.strokeStyle = strokeColor;
+  ctx.strokeStyle = resolveColorOrGradient(ctx, strokeColor, -layer.width / 2, -layer.height / 2, layer.width, layer.height);
   ctx.lineWidth = strokeWidth;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';

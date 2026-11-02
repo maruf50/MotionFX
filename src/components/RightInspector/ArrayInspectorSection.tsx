@@ -19,6 +19,7 @@ import {
 import { useMotion } from '@/context/MotionContext';
 import { ArrayItemShape, ArrayAnimType, ArrayElementItem, ArrayElementKind } from '@/types/motion';
 import { getInterpolatedValue, uid } from '@/modules/keyframes/evaluator';
+import { ColorPickerWithAlpha } from './ColorPickerWithAlpha';
 
 export function ArrayInspectorSection() {
   const {
@@ -502,65 +503,48 @@ export function ArrayInspectorSection() {
             </div>
           </div>
 
-          {/* Border Width & Color */}
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-[11px] text-zinc-400 block mb-1">Border Thickness</label>
-              <div className="relative flex items-center">
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={borderWidth}
-                  onChange={(e) =>
-                    updateLayer(selectedLayer.id, {
-                      arrayItemBorderWidth: Math.max(0, parseInt(e.target.value, 10) || 0),
-                      borderWidth: Math.max(0, parseInt(e.target.value, 10) || 0),
-                    })
-                  }
-                  className="w-full bg-[#121214] border border-[#2c2c32] focus:border-purple-500 rounded px-2 py-1 pr-7 text-xs font-mono text-white outline-none"
-                  placeholder="Border"
-                />
-                <span className="absolute right-2 text-[10px] font-mono text-zinc-500 pointer-events-none">
-                  px
-                </span>
-              </div>
-            </div>
-            <div>
-              <label className="text-[11px] text-zinc-400 block mb-1">Border Color</label>
-              <div className="flex items-center gap-1.5">
-                <input
-                  type="color"
-                  value={borderColor}
-                  onChange={(e) =>
-                    updateLayer(selectedLayer.id, {
-                      arrayItemBorderColor: e.target.value,
-                      stroke: e.target.value,
-                    })
-                  }
-                  className="w-7 h-7 rounded border border-[#3a3a44] bg-transparent cursor-pointer"
-                />
-                <span className="text-[10px] font-mono text-zinc-400 uppercase">{borderColor}</span>
-              </div>
+          {/* Border Width */}
+          <div>
+            <label className="text-[11px] text-zinc-400 block mb-1">Border Thickness</label>
+            <div className="relative flex items-center">
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={borderWidth}
+                onChange={(e) =>
+                  updateLayer(selectedLayer.id, {
+                    arrayItemBorderWidth: Math.max(0, parseInt(e.target.value, 10) || 0),
+                    borderWidth: Math.max(0, parseInt(e.target.value, 10) || 0),
+                  })
+                }
+                className="w-full bg-[#121214] border border-[#2c2c32] focus:border-purple-500 rounded px-2 py-1 pr-7 text-xs font-mono text-white outline-none"
+                placeholder="Border"
+              />
+              <span className="absolute right-2 text-[10px] font-mono text-zinc-500 pointer-events-none">
+                px
+              </span>
             </div>
           </div>
 
-          {/* Color & Palette Mode */}
-          <div className="grid grid-cols-2 gap-2 pt-1 border-t border-[#28282e]">
-            <div>
-              <label className="text-[11px] text-zinc-400 block mb-1">Fill Color</label>
-              <div className="flex items-center gap-1.5">
-                <input
-                  type="color"
-                  value={baseColor}
-                  onChange={(e) => updateLayer(selectedLayer.id, { fill: e.target.value })}
-                  className="w-7 h-7 rounded border border-[#3a3a44] bg-transparent cursor-pointer"
-                />
-                <span className="text-[10px] font-mono text-zinc-400 uppercase">{baseColor}</span>
-              </div>
-            </div>
-            <div className="flex flex-col justify-end">
-              <label className="flex items-center gap-2 cursor-pointer text-xs text-zinc-300 pb-1.5">
+          <div className="pt-1 border-t border-[#28282e] space-y-2">
+            <ColorPickerWithAlpha
+              label="Item Fill Color"
+              color={baseColor}
+              onChange={(val) => updateLayer(selectedLayer.id, { fill: val })}
+            />
+            <ColorPickerWithAlpha
+              label="Border Color"
+              color={borderColor}
+              onChange={(val) =>
+                updateLayer(selectedLayer.id, {
+                  arrayItemBorderColor: val,
+                  stroke: val,
+                })
+              }
+            />
+            <div className="flex items-center justify-between pt-1">
+              <label className="flex items-center gap-2 cursor-pointer text-xs text-zinc-300">
                 <input
                   type="checkbox"
                   checked={isRandomColor}
@@ -569,7 +553,7 @@ export function ArrayInspectorSection() {
                 />
                 <span className="flex items-center gap-1">
                   <Palette className="w-3 h-3 text-purple-400" />
-                  Vibrant Colors
+                  Vibrant Multi-Color Mode
                 </span>
               </label>
             </div>

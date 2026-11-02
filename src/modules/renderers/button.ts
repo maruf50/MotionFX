@@ -1,6 +1,7 @@
 import { Layer, ButtonIcon } from '@/types/motion';
 import { drawRoundedRect } from './shapes';
 import { getInterpolatedValue } from '../keyframes/evaluator';
+import { resolveColorOrGradient } from './gradients';
 
 /**
  * Draws chamfered (angled / cut) corners on a rectangle.
@@ -344,7 +345,7 @@ export function renderButtonShape(
     ctx.restore();
   } else {
     // Solid / Pill / Floating / Chamfer
-    ctx.fillStyle = effectiveColor;
+    ctx.fillStyle = resolveColorOrGradient(ctx, effectiveColor, -hw, -hh, w, h);
     ctx.fill();
   }
 
@@ -361,7 +362,7 @@ export function renderButtonShape(
     } else {
       ctx.setLineDash([]);
     }
-    ctx.strokeStyle = borderColor;
+    ctx.strokeStyle = resolveColorOrGradient(ctx, borderColor, -hw, -hh, w, h);
     ctx.lineWidth = borderWidth;
     ctx.stroke();
     ctx.restore();

@@ -1,13 +1,14 @@
 import { Layer } from '@/types/motion';
 import { getInterpolatedValue } from '../keyframes/evaluator';
 import { buildSampledPath, getPointAtProgress } from './pathFollower';
+import { resolveColorOrGradient } from './gradients';
 
 /**
  * Draws standard vector cursor shapes.
  */
 function drawCursorGlyph(ctx: CanvasRenderingContext2D, type: string, size: number, color: string) {
   ctx.save();
-  ctx.fillStyle = color;
+  ctx.fillStyle = resolveColorOrGradient(ctx, color, -size / 2, -size / 2, size, size);
   ctx.strokeStyle = '#000000';
   ctx.lineWidth = 1.5;
   ctx.lineCap = 'round';

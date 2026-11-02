@@ -28,6 +28,7 @@ import {
 import { useMotion } from '@/context/MotionContext';
 import { TEMPLATES } from '@/modules/templates';
 import { getAspectRatioString } from '@/components/ResolutionModal';
+import { ColorPickerWithAlpha } from '@/components/RightInspector/ColorPickerWithAlpha';
 
 export function Header() {
   const {
@@ -69,10 +70,12 @@ export function Header() {
   const [isFileMenuOpen, setIsFileMenuOpen] = useState(false);
   const [isCompMenuOpen, setIsCompMenuOpen] = useState(false);
   const [isTmplMenuOpen, setIsTmplMenuOpen] = useState(false);
+  const [isBgPickerOpen, setIsBgPickerOpen] = useState(false);
 
   const fileMenuRef = useRef<HTMLDivElement | null>(null);
   const compMenuRef = useRef<HTMLDivElement | null>(null);
   const tmplMenuRef = useRef<HTMLDivElement | null>(null);
+  const bgPickerRef = useRef<HTMLDivElement | null>(null);
 
   // Close menus on outside click
   useEffect(() => {
@@ -85,6 +88,9 @@ export function Header() {
       }
       if (tmplMenuRef.current && !tmplMenuRef.current.contains(e.target as Node)) {
         setIsTmplMenuOpen(false);
+      }
+      if (bgPickerRef.current && !bgPickerRef.current.contains(e.target as Node)) {
+        setIsBgPickerOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -368,17 +374,33 @@ export function Header() {
       </div>
 
       {/* Center Canvas Background & Guides */}
-      <div className="hidden xl:flex items-center gap-3 bg-[#101012] px-3 py-1 rounded-md border border-[#242428]">
-        <label className="text-[11px] text-zinc-400 flex items-center gap-1.5 cursor-pointer">
-          <span>BG:</span>
-          <input
-            type="color"
-            value={canvasBg}
-            onChange={(e) => setCanvasBg(e.target.value)}
-            className="w-4 h-4 rounded cursor-pointer bg-transparent border-0"
-            title="Canvas Background Color"
-          />
-        </label>
+      <div className="hidden xl:flex items-center gap-3 bg-[#101012] px-3 py-1 rounded-md border border-[#242428] relative">
+        <div ref={bgPickerRef} className="relative flex items-center">
+          <button
+            type="button"
+            onClick={() => setIsBgPickerOpen(!isBgPickerOpen)}
+            className="text-[11px] text-zinc-400 flex items-center gap-1.5 cursor-pointer hover:text-zinc-200 transition"
+            title="Canvas Background Color & Gradients"
+          >
+            <span>BG:</span>
+            <div
+              className="w-4 h-4 rounded border border-white/30 shadow-inner overflow-hidden"
+              style={{
+                background: canvasBg,
+              }}
+            />
+          </button>
+
+          {isBgPickerOpen && (
+            <div className="absolute top-full left-0 mt-2 z-50 w-72 shadow-2xl">
+              <ColorPickerWithAlpha
+                label="Canvas Background Color"
+                color={canvasBg}
+                onChange={setCanvasBg}
+              />
+            </div>
+          )}
+        </div>
         <button
           onClick={() => setIsResolutionModalOpen(true)}
           className="flex items-center gap-1.5 px-2 py-0.5 rounded hover:bg-[#1c1c20] text-xs font-mono text-zinc-300 hover:text-purple-300 border border-transparent hover:border-[#2f2f36] transition cursor-pointer"

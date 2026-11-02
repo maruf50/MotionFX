@@ -8,6 +8,7 @@ import { renderPathDrawShape } from './pathDraw';
 import { renderButtonShape } from './button';
 import { renderCursorShape } from './cursor';
 import { renderGraphShape } from './graph';
+import { resolveColorOrGradient } from './gradients';
 
 /**
  * Applies stroke styles (solid, dashed, dotted) and marching ants offset.
@@ -237,13 +238,13 @@ export function renderShapeLayer(
         ctx.closePath();
       }
       if (layer.fill && layer.fill !== 'transparent') {
-        ctx.fillStyle = layer.fill;
+        ctx.fillStyle = resolveColorOrGradient(ctx, layer.fill, -hw, -hh, w, h);
         ctx.fill();
       }
       if (layer.borderWidth > 0 && layer.borderStyle !== 'none' && layer.stroke && layer.stroke !== 'transparent') {
         const avgScale = (absSx + absSy) / 2 || 1;
         ctx.lineWidth = Math.max(1, layer.borderWidth / avgScale);
-        ctx.strokeStyle = layer.stroke;
+        ctx.strokeStyle = resolveColorOrGradient(ctx, layer.stroke, -hw, -hh, w, h);
         ctx.stroke();
       }
       ctx.restore();
@@ -257,13 +258,13 @@ export function renderShapeLayer(
         ctx.save();
         ctx.scale(absSx, absSy);
         if (layer.fill && layer.fill !== 'transparent') {
-          ctx.fillStyle = layer.fill;
+          ctx.fillStyle = resolveColorOrGradient(ctx, layer.fill, -hw, -hh, w, h);
           ctx.fill(path);
         }
         if (layer.borderWidth > 0 && layer.borderStyle !== 'none' && layer.stroke) {
           const avgScale = (absSx + absSy) / 2 || 1;
           ctx.lineWidth = layer.borderWidth / avgScale;
-          ctx.strokeStyle = layer.stroke;
+          ctx.strokeStyle = resolveColorOrGradient(ctx, layer.stroke, -hw, -hh, w, h);
           ctx.stroke(path);
         }
         ctx.restore();
@@ -281,7 +282,7 @@ export function renderShapeLayer(
     ctx.lineTo(hw, 0);
     const strokeW = Math.max(1, layer.borderWidth || 3);
     ctx.lineWidth = strokeW;
-    ctx.strokeStyle = layer.stroke || layer.fill || '#ffffff';
+    ctx.strokeStyle = resolveColorOrGradient(ctx, layer.stroke || layer.fill || '#ffffff', -hw, -strokeW / 2, w, strokeW);
     ctx.lineCap = 'round';
     ctx.stroke();
     ctx.restore();
@@ -307,14 +308,14 @@ export function renderShapeLayer(
 
   // Fill
   if (layer.fill && layer.fill !== 'transparent') {
-    ctx.fillStyle = layer.fill;
+    ctx.fillStyle = resolveColorOrGradient(ctx, layer.fill, -hw, -hh, w, h);
     ctx.fill();
   }
 
   // Border / Stroke (Guaranteed non-scaling stroke width)
   if (layer.borderWidth > 0 && layer.borderStyle !== 'none' && layer.stroke) {
     ctx.lineWidth = layer.borderWidth;
-    ctx.strokeStyle = layer.stroke;
+    ctx.strokeStyle = resolveColorOrGradient(ctx, layer.stroke, -hw, -hh, w, h);
     ctx.stroke();
   }
 

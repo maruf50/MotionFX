@@ -1,6 +1,7 @@
 import { Layer } from '@/types/motion';
 import { drawRoundedRect, applyStrokeStyle } from './shapes';
 import { getInterpolatedValue } from '../keyframes/evaluator';
+import { resolveColorOrGradient } from './gradients';
 
 /**
  * Renders the Bar shape (Horizontal, Vertical, Radial Gauge, Pill).
@@ -42,7 +43,7 @@ export function renderBarShape(
     ctx.beginPath();
     ctx.arc(0, 0, radius, 0, Math.PI * 2);
     ctx.lineWidth = thickness;
-    ctx.strokeStyle = trackColor;
+    ctx.strokeStyle = resolveColorOrGradient(ctx, trackColor, -radius, -radius, radius * 2, radius * 2);
     ctx.lineCap = 'round';
     ctx.stroke();
 
@@ -51,7 +52,7 @@ export function renderBarShape(
       ctx.beginPath();
       ctx.arc(0, 0, radius, startAngle, startAngle + sweepAngle, false);
       ctx.lineWidth = thickness;
-      ctx.strokeStyle = fillColor;
+      ctx.strokeStyle = resolveColorOrGradient(ctx, fillColor, -radius, -radius, radius * 2, radius * 2);
       ctx.lineCap = 'round';
       ctx.stroke();
     }
@@ -62,7 +63,7 @@ export function renderBarShape(
       ctx.arc(0, 0, Math.max(1, radius + thickness / 2), 0, Math.PI * 2);
       ctx.arc(0, 0, Math.max(1, radius - thickness / 2), 0, Math.PI * 2);
       ctx.lineWidth = layer.borderWidth / avgScale;
-      ctx.strokeStyle = layer.stroke;
+      ctx.strokeStyle = resolveColorOrGradient(ctx, layer.stroke, -radius, -radius, radius * 2, radius * 2);
       ctx.stroke();
     }
 
@@ -79,7 +80,7 @@ export function renderBarShape(
     const radius = Math.min(layer.borderRadius ?? 8, hw);
 
     // 1. Background Track
-    ctx.fillStyle = trackColor;
+    ctx.fillStyle = resolveColorOrGradient(ctx, trackColor, -hw, -hh, layer.width, layer.height);
     drawRoundedRect(ctx, -hw, -hh, layer.width, layer.height, radius);
     ctx.fill();
 
@@ -93,7 +94,7 @@ export function renderBarShape(
       drawRoundedRect(ctx, -hw, -hh, layer.width, layer.height, radius);
       ctx.clip();
 
-      ctx.fillStyle = fillColor;
+      ctx.fillStyle = resolveColorOrGradient(ctx, fillColor, -hw, fillY, layer.width, fillHeight);
       drawRoundedRect(ctx, -hw, fillY, layer.width, fillHeight, radius);
       ctx.fill();
 
@@ -106,7 +107,7 @@ export function renderBarShape(
     // 3. Border (non-scaling)
     if (layer.borderWidth > 0 && layer.borderStyle !== 'none' && layer.stroke) {
       ctx.lineWidth = layer.borderWidth / avgScale;
-      ctx.strokeStyle = layer.stroke;
+      ctx.strokeStyle = resolveColorOrGradient(ctx, layer.stroke, -hw, -hh, layer.width, layer.height);
       drawRoundedRect(ctx, -hw, -hh, layer.width, layer.height, radius);
       ctx.stroke();
     }
@@ -125,7 +126,7 @@ export function renderBarShape(
     const radius = isPill ? hh : Math.min(layer.borderRadius ?? 12, hh);
 
     // 1. Background Track
-    ctx.fillStyle = trackColor;
+    ctx.fillStyle = resolveColorOrGradient(ctx, trackColor, -hw, -hh, layer.width, layer.height);
     drawRoundedRect(ctx, -hw, -hh, layer.width, layer.height, radius);
     ctx.fill();
 
@@ -138,7 +139,7 @@ export function renderBarShape(
       drawRoundedRect(ctx, -hw, -hh, layer.width, layer.height, radius);
       ctx.clip();
 
-      ctx.fillStyle = fillColor;
+      ctx.fillStyle = resolveColorOrGradient(ctx, fillColor, -hw, -hh, fillWidth, layer.height);
       drawRoundedRect(ctx, -hw, -hh, fillWidth, layer.height, radius);
       ctx.fill();
 
@@ -151,7 +152,7 @@ export function renderBarShape(
     // 3. Border (non-scaling)
     if (layer.borderWidth > 0 && layer.borderStyle !== 'none' && layer.stroke) {
       ctx.lineWidth = layer.borderWidth / avgScale;
-      ctx.strokeStyle = layer.stroke;
+      ctx.strokeStyle = resolveColorOrGradient(ctx, layer.stroke, -hw, -hh, layer.width, layer.height);
       drawRoundedRect(ctx, -hw, -hh, layer.width, layer.height, radius);
       ctx.stroke();
     }

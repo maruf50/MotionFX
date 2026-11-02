@@ -24,6 +24,7 @@ import { FollowerType, PathPoint } from '@/types/motion';
 import { PATH_PRESETS } from '@/modules/renderers/pathFollower';
 import { STICKER_PRESETS } from '@/modules/assets/stickers';
 import { getInterpolatedValue } from '@/modules/keyframes/evaluator';
+import { ColorPickerWithAlpha } from './ColorPickerWithAlpha';
 
 const EMOJI_PRESETS = ['✨', '🚀', '🔥', '⭐', '💎', '💫', '🟣', '⚡', '🛸', '🎯'];
 
@@ -428,21 +429,18 @@ export function PathFollowerInspectorSection() {
           />
         </div>
 
-        <div className="bg-[#121214] p-1.5 rounded border border-[#2c2c32] flex items-center justify-between self-end">
-          <span className="text-[11px] text-zinc-300">Item Color</span>
-          <input
-            type="color"
-            value={selectedLayer.followerColor || selectedLayer.fill || '#38bdf8'}
-            onChange={(e) =>
-              updateLayer(selectedLayer.id, {
-                followerColor: e.target.value,
-                fill: e.target.value,
-              })
-            }
-            className="w-5 h-5 rounded cursor-pointer bg-transparent border-0"
-          />
-        </div>
       </div>
+
+      <ColorPickerWithAlpha
+        label="Follower Item Color"
+        color={selectedLayer.followerColor || selectedLayer.fill || '#38bdf8'}
+        onChange={(val) =>
+          updateLayer(selectedLayer.id, {
+            followerColor: val,
+            fill: val,
+          })
+        }
+      />
 
       {/* Customizable Fade-Away Transition Section */}
       <div className="pt-2 border-t border-[#242428] space-y-2">
@@ -535,32 +533,26 @@ export function PathFollowerInspectorSection() {
 
         {showTrack && (
           <div className="space-y-2">
-            <div className="grid grid-cols-2 gap-2">
-              <div className="bg-[#121214] p-1.5 rounded border border-[#2c2c32] flex items-center justify-between">
-                <span className="text-[10px] text-zinc-300">Track Color</span>
-                <input
-                  type="color"
-                  value={selectedLayer.pathTrackColor || '#6366f1'}
-                  onChange={(e) =>
-                    updateLayer(selectedLayer.id, { pathTrackColor: e.target.value })
-                  }
-                  className="w-4 h-4 rounded cursor-pointer bg-transparent border-0"
-                />
-              </div>
+            <ColorPickerWithAlpha
+              label="Track Color"
+              color={selectedLayer.pathTrackColor || '#6366f1'}
+              onChange={(val) =>
+                updateLayer(selectedLayer.id, { pathTrackColor: val })
+              }
+            />
 
-              <div className="flex items-center justify-between bg-[#121214] px-2 py-1 rounded border border-[#2c2c32]">
-                <span className="text-[10px] text-zinc-300">Dashed Flow</span>
-                <input
-                  type="checkbox"
-                  checked={selectedLayer.pathTrackDashed ?? true}
-                  onChange={(e) =>
-                    updateLayer(selectedLayer.id, {
-                      pathTrackDashed: e.target.checked,
-                    })
-                  }
-                  className="rounded accent-purple-500 cursor-pointer"
-                />
-              </div>
+            <div className="flex items-center justify-between bg-[#121214] px-2 py-1.5 rounded border border-[#2c2c32]">
+              <span className="text-[10px] text-zinc-300">Dashed Flow</span>
+              <input
+                type="checkbox"
+                checked={selectedLayer.pathTrackDashed ?? true}
+                onChange={(e) =>
+                  updateLayer(selectedLayer.id, {
+                    pathTrackDashed: e.target.checked,
+                  })
+                }
+                className="rounded accent-purple-500 cursor-pointer"
+              />
             </div>
 
             <div>

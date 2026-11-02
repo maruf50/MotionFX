@@ -1,6 +1,7 @@
 import { Layer, PathPoint, FollowerType } from '@/types/motion';
 import { drawPolygonOrStar } from './shapes';
 import { getInterpolatedValue } from '../keyframes/evaluator';
+import { resolveColorOrGradient } from './gradients';
 
 // Image cache for follower images
 const imageCache: Record<string, HTMLImageElement> = {};
@@ -207,6 +208,7 @@ function drawFollowerItem(
   onImageLoad?: () => void
 ) {
   const hs = Math.max(1, size / 2);
+  ctx.fillStyle = resolveColorOrGradient(ctx, color, -hs, -hs, size, size);
 
   if (type === 'circle') {
     ctx.fillStyle = color;
@@ -320,7 +322,14 @@ export function renderPathFollower(
       }
     });
 
-    ctx.strokeStyle = trackColor;
+    ctx.strokeStyle = resolveColorOrGradient(
+      ctx,
+      trackColor,
+      -layer.width / 2,
+      -layer.height / 2,
+      layer.width || 300,
+      layer.height || 200
+    );
     ctx.lineWidth = trackWidth;
     ctx.lineCap = 'round';
     if (trackDashed) {

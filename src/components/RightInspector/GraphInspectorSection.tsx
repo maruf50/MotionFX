@@ -514,13 +514,74 @@ export function GraphInspectorSection() {
             </label>
           </div>
 
+          {/* Card Frame / Background Activation */}
+          <div className="pt-1.5 border-t border-[#242428] space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-zinc-300 font-medium">Card Frame / Background</span>
+              <input
+                type="checkbox"
+                checked={selectedLayer.graphShowCard ?? false}
+                onChange={(e) => {
+                  const active = e.target.checked;
+                  updateLayer(selectedLayer.id, {
+                    graphShowCard: active,
+                    fill: active ? (selectedLayer.fill && selectedLayer.fill !== 'transparent' ? selectedLayer.fill : 'rgba(20, 20, 26, 0.75)') : 'transparent',
+                    stroke: active ? (selectedLayer.stroke && selectedLayer.stroke !== 'transparent' ? selectedLayer.stroke : 'rgba(255, 255, 255, 0.12)') : 'transparent',
+                    borderWidth: active ? (selectedLayer.borderWidth || 1) : 0,
+                  });
+                }}
+                className="rounded accent-purple-500 cursor-pointer"
+              />
+            </div>
+
+            {selectedLayer.graphShowCard && (
+              <div className="space-y-2 pt-1 border-t border-[#242428]/60 bg-[#121215] p-2 rounded border border-[#26262e]">
+                <ColorPickerWithAlpha
+                  label="Card Background Color"
+                  color={selectedLayer.fill && selectedLayer.fill !== 'transparent' ? selectedLayer.fill : 'rgba(20, 20, 26, 0.75)'}
+                  onChange={(c) => updateLayer(selectedLayer.id, { fill: c })}
+                />
+                <ColorPickerWithAlpha
+                  label="Card Border Color"
+                  color={selectedLayer.stroke && selectedLayer.stroke !== 'transparent' ? selectedLayer.stroke : 'rgba(255, 255, 255, 0.12)'}
+                  onChange={(c) => updateLayer(selectedLayer.id, { stroke: c })}
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-zinc-400 block mb-0.5">Border Thickness</label>
+                    <div className="relative flex items-center">
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={selectedLayer.borderWidth ?? 1}
+                        onChange={(e) => updateLayer(selectedLayer.id, { borderWidth: Math.max(0, parseInt(e.target.value, 10) || 0) })}
+                        className="w-full bg-[#18181c] border border-[#2c2c32] rounded px-2 py-0.5 pr-6 text-xs font-mono text-white"
+                      />
+                      <span className="absolute right-1.5 text-[9px] font-mono text-zinc-500 pointer-events-none">px</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-zinc-400 block mb-0.5">Corner Radius</label>
+                    <div className="relative flex items-center">
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={selectedLayer.borderRadius ?? 12}
+                        onChange={(e) => updateLayer(selectedLayer.id, { borderRadius: Math.max(0, parseInt(e.target.value, 10) || 0) })}
+                        className="w-full bg-[#18181c] border border-[#2c2c32] rounded px-2 py-0.5 pr-6 text-xs font-mono text-white"
+                      />
+                      <span className="absolute right-1.5 text-[9px] font-mono text-zinc-500 pointer-events-none">px</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Color Pickers */}
           <div className="pt-1 border-t border-[#242428] space-y-2">
-            <ColorPickerWithAlpha
-              label="Card / Plot Background"
-              color={selectedLayer.fill || 'transparent'}
-              onChange={(c) => updateLayer(selectedLayer.id, { fill: c })}
-            />
             <ColorPickerWithAlpha
               label="Text & Label Color"
               color={selectedLayer.graphTextColor || '#d4d4d8'}

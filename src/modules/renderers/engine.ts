@@ -5,6 +5,7 @@ import { renderTextLayer } from './text';
 import { renderImageLayer } from './media';
 import { getBranchEndpoints } from './branching';
 import { applyLayerFilter } from './filters';
+import { resolveColorOrGradient } from './gradients';
 
 export interface RenderOptions {
   canvasBg: string;
@@ -115,7 +116,7 @@ export function renderSceneAtTime(
 ) {
   // 1. Background
   ctx.save();
-  ctx.fillStyle = options.canvasBg || '#090b10';
+  ctx.fillStyle = resolveColorOrGradient(ctx, options.canvasBg || '#090b10', 0, 0, canvasWidth, canvasHeight);
   ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
   // 2. Subtle Studio Grid & Center Marks if enabled & not exporting
