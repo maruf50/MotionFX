@@ -30,6 +30,21 @@ import { preloadPopularFonts } from '@/modules/fonts/googleFonts';
 
 type ScaleHandleType = 'tl' | 'tr' | 'br' | 'bl' | 't' | 'r' | 'b' | 'l';
 
+/**
+ * Returns scale factor to keep gizmos and interactive handles constant in physical screen size
+ * across all canvas aspect ratios and resolutions (horizontal, vertical, square, 4K).
+ */
+function getGizmoScale(canvas: HTMLCanvasElement | null, resolution?: { width: number; height: number }): number {
+  if (canvas && typeof canvas.getBoundingClientRect === 'function') {
+    const rect = canvas.getBoundingClientRect();
+    if (rect.height > 0) {
+      return canvas.height / rect.height;
+    }
+  }
+  const h = resolution?.height || 1080;
+  return Math.max(1, h / 540);
+}
+
 export function CanvasStage() {
   const {
     canvasRef,
@@ -51,6 +66,7 @@ export function CanvasStage() {
     toggleSnapping,
     mergeSelectedLayers,
     selectedLayerIds,
+    openProject,
   } = useMotion();
 
   const [snapGuides, setSnapGuides] = useState<{ x?: number; y?: number }>({});
@@ -137,6 +153,9 @@ export function CanvasStage() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Calculate gizmoScale to maintain constant hit test sizes regardless of resolution (vertical, 4k, square)
+    const gizmoScale = getGizmoScale(canvas, canvasResolution);
+
     // 1. If currently selected layer has pathPoints (pathFollower, custom pathDraw, or custom cursor), check if clicked an anchor or handle
     if (
       selectedLayer &&
@@ -164,14 +183,14 @@ export function CanvasStage() {
       for (let i = 0; i < selectedLayer.pathPoints.length; i++) {
         const p = selectedLayer.pathPoints[i];
         const wp = toWorld(p.x, p.y);
-        if (Math.hypot(pt.x - wp.x, pt.y - wp.y) <= 12) {
+        if (Math.hypot(pt.x - wp.x, pt.y - wp.y) <= 14 * gizmoScale) {
           draggingPointRef.current = { layerId: selectedLayer.id, pointIdx: i, handle: 'anchor' };
           recordSnapshot();
           return;
         }
         if (p.cp1x !== undefined && p.cp1y !== undefined) {
           const wcp1 = toWorld(p.cp1x, p.cp1y);
-          if (Math.hypot(pt.x - wcp1.x, pt.y - wcp1.y) <= 10) {
+          if (Math.hypot(pt.x - wcp1.x, pt.y - wcp1.y) <= 12 * gizmoScale) {
             draggingPointRef.current = { layerId: selectedLayer.id, pointIdx: i, handle: 'cp1' };
             recordSnapshot();
             return;
@@ -179,7 +198,7 @@ export function CanvasStage() {
         }
         if (p.cp2x !== undefined && p.cp2y !== undefined) {
           const wcp2 = toWorld(p.cp2x, p.cp2y);
-          if (Math.hypot(pt.x - wcp2.x, pt.y - wcp2.y) <= 10) {
+          if (Math.hypot(pt.x - wcp2.x, pt.y - wcp2.y) <= 12 * gizmoScale) {
             draggingPointRef.current = { layerId: selectedLayer.id, pointIdx: i, handle: 'cp2' };
             recordSnapshot();
             return;
@@ -238,7 +257,7 @@ export function CanvasStage() {
       for (let i = 0; i < endpoints.length; i++) {
         const ep = endpoints[i];
         const wp = toWorld(ep.x, ep.y);
-        if (Math.hypot(pt.x - wp.x, pt.y - wp.y) <= 14) {
+        if (Math.hypot(pt.x - wp.x, pt.y - wp.y) <= 16 * gizmoScale) {
           draggingPointRef.current = {
             layerId: selectedLayer.id,
             pointIdx: i,
@@ -254,7 +273,7 @@ export function CanvasStage() {
     if (selectedLayer && !selectedLayer.isPenEditing) {
       const tr = getLayerWorldTransformAtTime(selectedLayer, layers, currentTime);
       const dims = getLayerDimensions(ctx, selectedLayer);
-      const pad = 8;
+      const pad = 8 * gizmoScale;
       const hw = (dims.width * Math.abs(tr.scaleX)) / 2 + pad;
       const hh = (dims.height * Math.abs(tr.scaleY)) / 2 + pad;
 
@@ -266,10 +285,10 @@ export function CanvasStage() {
       const unrotX = dx * cos - dy * sin;
       const unrotY = dx * sin + dy * cos;
 
-      // A) Check Rotation Handle Knob at (0, -hh - 26)
-      const rotStemLength = 26;
+      // A) Check Rotation Handle Knob at (0, -hh - rotStemLength)
+      const rotStemLength = 28 * gizmoScale;
       const rotY = -hh - rotStemLength;
-      if (Math.hypot(unrotX, unrotY - rotY) <= 16) {
+      if (Math.hypot(unrotX, unrotY - rotY) <= 18 * gizmoScale) {
         transformDragModeRef.current = 'rotate';
         initialTransformRef.current = {
           rotation: tr.rotation,
@@ -296,7 +315,7 @@ export function CanvasStage() {
       ];
 
       for (const sh of scaleHandles) {
-        if (Math.hypot(unrotX - sh.x, unrotY - sh.y) <= 13) {
+        if (Math.hypot(unrotX - sh.x, unrotY - sh.y) <= 14 * gizmoScale) {
           transformDragModeRef.current = 'scale';
           scaleHandleRef.current = sh.key;
           initialTransformRef.current = {
@@ -396,7 +415,8 @@ export function CanvasStage() {
     if (selectedLayer && !selectedLayer.isPenEditing) {
       const tr = getLayerWorldTransformAtTime(selectedLayer, layers, currentTime);
       const dims = getLayerDimensions(ctx, selectedLayer);
-      const pad = 8;
+      const gizmoScale = getGizmoScale(canvas, canvasResolution);
+      const pad = 8 * gizmoScale;
       const hw = (dims.width * Math.abs(tr.scaleX)) / 2 + pad;
       const hh = (dims.height * Math.abs(tr.scaleY)) / 2 + pad;
 
@@ -409,8 +429,9 @@ export function CanvasStage() {
       const unrotY = dx * sin + dy * cos;
 
       // Rotation Handle Knob
-      const rotY = -hh - 26;
-      if (Math.hypot(unrotX, unrotY - rotY) <= 16) {
+      const rotStemLength = 28 * gizmoScale;
+      const rotY = -hh - rotStemLength;
+      if (Math.hypot(unrotX, unrotY - rotY) <= 18 * gizmoScale) {
         setCanvasCursor('grab');
         return;
       }
@@ -428,7 +449,7 @@ export function CanvasStage() {
       ];
 
       for (const sh of scaleHandles) {
-        if (Math.hypot(unrotX - sh.x, unrotY - sh.y) <= 13) {
+        if (Math.hypot(unrotX - sh.x, unrotY - sh.y) <= 14 * gizmoScale) {
           setCanvasCursor(sh.cursor);
           return;
         }
@@ -479,7 +500,8 @@ export function CanvasStage() {
         const unrotX = dx * cos - dy * sin;
         const unrotY = dx * sin + dy * cos;
 
-        const pad = 8;
+        const gizmoScale = getGizmoScale(canvasRef.current, canvasResolution);
+        const pad = 8 * gizmoScale;
         const baseW = Math.max(10, initialTransformRef.current.dims.width);
         const baseH = Math.max(10, initialTransformRef.current.dims.height);
         const handle = scaleHandleRef.current;
@@ -743,6 +765,17 @@ export function CanvasStage() {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDropTarget(false);
+
+    // 1. Check if user dropped a .json file directly from desktop/explorer
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      if (file.name.toLowerCase().endsWith('.json') || file.type === 'application/json') {
+        openProject(file);
+        return;
+      }
+    }
+
+    // 2. Check for internal template layer drag & drop
     const templateData =
       e.dataTransfer.getData('motionfx-template-layer') ||
       e.dataTransfer.getData('application/json');

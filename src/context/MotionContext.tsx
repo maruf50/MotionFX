@@ -34,6 +34,12 @@ import { VideoExporter } from '@/modules/export/videoExporter';
 import { renderSceneAtTime, renderSingleLayerToCanvas } from '@/modules/renderers/engine';
 import { DEFAULT_PATH_POINTS } from '@/modules/renderers/pathFollower';
 import { STICKER_PRESETS } from '@/modules/assets/stickers';
+import {
+  buildProjectJSON,
+  saveProjectToFile,
+  openProjectFromFile,
+  exportAnimationJSON,
+} from '@/modules/storage/projectFileSystem';
 
 interface MotionContextType {
   layers: Layer[];
@@ -191,6 +197,15 @@ interface MotionContextType {
   // Export
   startExport: (customFps?: number) => void;
   cancelExport: () => void;
+  // File System & Project Serialization
+  projectFileName: string;
+  setProjectFileName: (name: string) => void;
+  isSavingProject: boolean;
+  lastSavedTimestamp: number | null;
+  fileStatusMessage: { text: string; type: 'success' | 'info' | 'error' } | null;
+  saveProject: (saveAs?: boolean) => Promise<boolean>;
+  openProject: (file?: File) => Promise<boolean>;
+  exportAnimationJSONFile: () => void;
   // 50-step Undo / Redo Mechanism
   undo: () => void;
   redo: () => void;
@@ -1035,8 +1050,8 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         type: 'shape',
         shapeType,
         visible: true,
-        width: Math.max(10, Math.round(baseW * sx)),
-        height: Math.max(10, Math.round(baseH * sy)),
+        width: Math.max(10, Math.round(baseW * us)),
+        height: Math.max(10, Math.round(baseH * us)),
         sides: shapeType === 'star' ? 5 : shapeType === 'polygon' ? 6 : undefined,
         fill: shapeType === 'line' ? 'transparent' : shapeType === 'graph' ? 'rgba(20, 20, 26, 0.75)' : color,
         stroke:
@@ -1201,8 +1216,8 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         graphShowDots: shapeType === 'graph' ? true : undefined,
         graphDotSize: shapeType === 'graph' ? 4.5 : undefined,
         graphBarSpacing: shapeType === 'graph' ? 10 : undefined,
-        x: centerX + offset - Math.round(40 * sx),
-        y: centerY + offset - Math.round(40 * sy),
+        x: centerX + offset - Math.round(40 * us),
+        y: centerY + offset - Math.round(40 * us),
         scaleX: 1,
         scaleY: 1,
         rotation: 0,
@@ -1313,7 +1328,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
       const centerY = Math.round(res.height / 2);
       const offset = (layers.length % 5) * Math.round(20 * us);
 
-      const scaledPath = scaleSvgPath(pathData, sx, sy);
+      const scaledPath = scaleSvgPath(pathData, us, us);
 
       const newLayer: Layer = {
         id: uid('custom_shape'),
@@ -1322,8 +1337,8 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         shapeType: 'custom',
         pathData: scaledPath,
         visible: true,
-        width: Math.max(40, Math.round(width * sx)),
-        height: Math.max(40, Math.round(height * sy)),
+        width: Math.max(40, Math.round(width * us)),
+        height: Math.max(40, Math.round(height * us)),
         fill,
         stroke,
         borderWidth: Math.max(1, Math.round(3 * us)),
@@ -1331,8 +1346,8 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         borderStyle: 'solid',
         animateDash: false,
         easing: 'easeOutCubic',
-        x: centerX + offset - Math.round(30 * sx),
-        y: centerY + offset - Math.round(30 * sy),
+        x: centerX + offset - Math.round(30 * us),
+        y: centerY + offset - Math.round(30 * us),
         scaleX: 1,
         scaleY: 1,
         rotation: 0,
@@ -1385,8 +1400,8 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         startTime: 0,
         endTime: durationRef.current,
         easing: 'easeOutCubic',
-        width: Math.max(80, Math.round(340 * sx)),
-        height: Math.max(20, Math.round(60 * sy)),
+        width: Math.max(80, Math.round(340 * us)),
+        height: Math.max(20, Math.round(60 * us)),
         x: centerX,
         y: centerY,
         scaleX: 1,
@@ -1433,8 +1448,8 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         type: 'image',
         imageSrc: src,
         visible: true,
-        width: Math.max(20, Math.round(w * sx)),
-        height: Math.max(20, Math.round(h * sy)),
+        width: Math.max(20, Math.round(w * us)),
+        height: Math.max(20, Math.round(h * us)),
         fill: '#ffffff',
         stroke: '#ffffff',
         borderWidth: 0,
@@ -1470,6 +1485,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
       const res = canvasResolutionRef.current;
       const sx = res.width / 800;
       const sy = res.height / 450;
+      const us = Math.sqrt(sx * sy);
       const centerX = Math.round(res.width / 2);
       const centerY = Math.round(res.height / 2);
 
@@ -1483,8 +1499,8 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         stickerId: preset.id,
         imageSrc: preset.dataUrl,
         visible: true,
-        width: Math.max(30, Math.round(130 * sx)),
-        height: Math.max(30, Math.round(130 * sy)),
+        width: Math.max(30, Math.round(130 * us)),
+        height: Math.max(30, Math.round(130 * us)),
         fill: '#ffffff',
         stroke: '#ffffff',
         borderWidth: 0,
@@ -3202,6 +3218,235 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // File System State & Methods
+  const fileHandleRef = useRef<any>(null);
+  const [projectFileName, setProjectFileName] = useState<string>('Untitled Animation');
+  const [lastSavedTimestamp, setLastSavedTimestamp] = useState<number | null>(null);
+  const [isSavingProject, setIsSavingProject] = useState<boolean>(false);
+  const [fileStatusMessage, setFileStatusMessage] = useState<{
+    text: string;
+    type: 'success' | 'info' | 'error';
+  } | null>(null);
+
+  // Auto-dismiss status message after 3.5s
+  useEffect(() => {
+    if (!fileStatusMessage) return;
+    const timer = setTimeout(() => setFileStatusMessage(null), 3500);
+    return () => clearTimeout(timer);
+  }, [fileStatusMessage]);
+
+  const saveProject = useCallback(
+    async (saveAs: boolean = false): Promise<boolean> => {
+      try {
+        setIsSavingProject(true);
+        const projectData = buildProjectJSON({
+          projectName: projectFileName || activeCompositionName || 'Untitled Animation',
+          layers,
+          duration,
+          fps: exportFps,
+          canvasResolution,
+          canvasBg,
+          compositions,
+          activeCompositionId: activeCompId,
+        });
+
+        const result = await saveProjectToFile(projectData, fileHandleRef.current, saveAs);
+
+        if (result.aborted) {
+          setIsSavingProject(false);
+          return false;
+        }
+
+        if (result.success) {
+          if (result.handle) {
+            fileHandleRef.current = result.handle;
+          }
+          if (result.fileName) {
+            setProjectFileName(
+              result.fileName.replace(/\.motionfx\.json$/i, '').replace(/\.json$/i, '')
+            );
+          }
+          setLastSavedTimestamp(Date.now());
+          setFileStatusMessage({
+            type: 'success',
+            text: `Project saved as "${result.fileName}"`,
+          });
+          setIsSavingProject(false);
+          return true;
+        } else {
+          setFileStatusMessage({
+            type: 'error',
+            text: result.error || 'Failed to save project',
+          });
+          setIsSavingProject(false);
+          return false;
+        }
+      } catch (err: any) {
+        setFileStatusMessage({
+          type: 'error',
+          text: err?.message || 'Error saving project',
+        });
+        setIsSavingProject(false);
+        return false;
+      }
+    },
+    [
+      projectFileName,
+      activeCompositionName,
+      layers,
+      duration,
+      exportFps,
+      canvasResolution,
+      canvasBg,
+      compositions,
+      activeCompId,
+    ]
+  );
+
+  const openProject = useCallback(
+    async (fileInput?: File): Promise<boolean> => {
+      try {
+        const result = await openProjectFromFile(fileInput);
+
+        if (result.aborted) {
+          return false;
+        }
+
+        if (result.success && result.projectData) {
+          const data = result.projectData;
+          pushUndo(true);
+
+          if (result.handle) {
+            fileHandleRef.current = result.handle;
+          }
+          if (result.fileName) {
+            setProjectFileName(
+              result.fileName.replace(/\.motionfx\.json$/i, '').replace(/\.json$/i, '')
+            );
+          } else if (data.projectName) {
+            setProjectFileName(data.projectName);
+          }
+
+          // Apply layers
+          setLayers(data.layers);
+
+          // Apply duration
+          if (typeof data.duration === 'number' && data.duration > 0) {
+            setDurationState(data.duration);
+          }
+
+          // Apply resolution
+          if (data.canvasResolution?.width && data.canvasResolution?.height) {
+            setCanvasResolutionState(data.canvasResolution);
+          }
+
+          // Apply canvas background
+          if (data.canvasBg) {
+            setCanvasBg(data.canvasBg);
+          }
+
+          // Apply FPS
+          if (typeof data.fps === 'number' && data.fps > 0) {
+            setExportFpsState(data.fps);
+          }
+
+          // Apply compositions if available
+          if (Array.isArray(data.compositions) && data.compositions.length > 0) {
+            setCompositions(data.compositions);
+          }
+          if (data.activeCompositionId) {
+            setActiveCompId(data.activeCompositionId);
+          }
+
+          // Reset playhead & clear selection
+          setCurrentTime(0);
+          clearSelectedLayers();
+          setLastSavedTimestamp(Date.now());
+
+          setFileStatusMessage({
+            type: 'success',
+            text: `Opened "${result.fileName || data.projectName}" (${data.layers.length} layers)`,
+          });
+
+          return true;
+        } else {
+          setFileStatusMessage({
+            type: 'error',
+            text: result.error || 'Failed to open project file',
+          });
+          return false;
+        }
+      } catch (err: any) {
+        setFileStatusMessage({
+          type: 'error',
+          text: err?.message || 'Error opening project file',
+        });
+        return false;
+      }
+    },
+    [pushUndo, clearSelectedLayers, setCanvasBg]
+  );
+
+  const exportAnimationJSONFile = useCallback(() => {
+    const projectData = buildProjectJSON({
+      projectName: projectFileName || activeCompositionName || 'Untitled Animation',
+      layers,
+      duration,
+      fps: exportFps,
+      canvasResolution,
+      canvasBg,
+      compositions,
+      activeCompositionId: activeCompId,
+    });
+    exportAnimationJSON(projectData);
+    setFileStatusMessage({
+      type: 'info',
+      text: 'Exported animation JSON successfully',
+    });
+  }, [
+    projectFileName,
+    activeCompositionName,
+    layers,
+    duration,
+    exportFps,
+    canvasResolution,
+    canvasBg,
+    compositions,
+    activeCompId,
+  ]);
+
+  // Global File Keyboard Shortcuts: Ctrl+S (Save), Ctrl+Shift+S (Save As), Ctrl+O (Open)
+  useEffect(() => {
+    const handleGlobalShortcuts = (e: KeyboardEvent) => {
+      const isCmdOrCtrl = e.ctrlKey || e.metaKey;
+      if (!isCmdOrCtrl) return;
+
+      const target = e.target as HTMLElement | null;
+      const isTyping =
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable);
+
+      if (e.key === 's' || e.key === 'S') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          saveProject(true);
+        } else {
+          saveProject(false);
+        }
+      } else if (e.key === 'o' || e.key === 'O') {
+        if (!isTyping) {
+          e.preventDefault();
+          openProject();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalShortcuts);
+    return () => window.removeEventListener('keydown', handleGlobalShortcuts);
+  }, [saveProject, openProject]);
+
   // Initialize scene layers: restore from localStorage if present, or load Bento Grid on first visit
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -3300,10 +3545,10 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
             name: item.name || 'Merged Custom Vector',
             type: 'shape',
             shapeType: 'custom',
-            pathData: scaleSvgPath(item.pathData, sx, sy),
+            pathData: scaleSvgPath(item.pathData, us, us),
             visible: true,
-            width: Math.max(40, Math.round((item.width || 180) * sx)),
-            height: Math.max(40, Math.round((item.height || 180) * sy)),
+            width: Math.max(40, Math.round((item.width || 180) * us)),
+            height: Math.max(40, Math.round((item.height || 180) * us)),
             fill: item.fill || '#6366f1',
             stroke: item.stroke || '#ffffff',
             borderWidth: Math.max(1, Math.round(3 * us)),
@@ -3453,6 +3698,15 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         setIsExportSettingsOpen,
         startExport,
         cancelExport,
+        // File System & Project Serialization
+        projectFileName,
+        setProjectFileName,
+        isSavingProject,
+        lastSavedTimestamp,
+        fileStatusMessage,
+        saveProject,
+        openProject,
+        exportAnimationJSONFile,
         undo,
         redo,
         canUndo: undoStack.length > 0,

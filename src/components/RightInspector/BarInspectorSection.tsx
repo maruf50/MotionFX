@@ -199,25 +199,43 @@ export function BarInspectorSection() {
 
       {/* Thickness / Ring Width */}
       <div>
-        <div className="flex justify-between text-[11px] text-zinc-400 mb-1">
+        <div className="flex justify-between items-center text-[11px] text-zinc-400 mb-1.5">
           <span>{barShape === 'radial' ? 'Ring Thickness' : 'Track Height / Thickness'}</span>
-          <span className="font-mono text-white">
-            {selectedLayer.barThickness || 14}px
+          <div className="flex items-center gap-1">
+            {[8, 14, 24, 40].map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => updateLayer(selectedLayer.id, { barThickness: t })}
+                className={`px-1.5 py-0.5 rounded text-[9px] font-mono border transition cursor-pointer ${
+                  (selectedLayer.barThickness || 14) === t
+                    ? 'bg-purple-600/30 text-purple-200 border-purple-500/60 font-semibold'
+                    : 'bg-[#121214] text-zinc-400 border-[#2c2c32] hover:bg-[#1e1e24] hover:text-white'
+                }`}
+              >
+                {t}px
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="relative flex items-center">
+          <input
+            type="number"
+            min="1"
+            step="1"
+            value={selectedLayer.barThickness || 14}
+            onChange={(e) =>
+              updateLayer(selectedLayer.id, {
+                barThickness: Math.max(1, parseInt(e.target.value, 10) || 1),
+              })
+            }
+            className="w-full bg-[#121214] border border-[#2c2c32] focus:border-purple-500 rounded px-2.5 py-1.5 pr-8 text-xs font-mono text-white outline-none"
+            placeholder="Enter thickness (px)"
+          />
+          <span className="absolute right-2.5 text-[10px] font-mono text-zinc-500 pointer-events-none">
+            px
           </span>
         </div>
-        <input
-          type="range"
-          min="4"
-          max="80"
-          step="1"
-          value={selectedLayer.barThickness || 14}
-          onChange={(e) =>
-            updateLayer(selectedLayer.id, {
-              barThickness: parseInt(e.target.value, 10),
-            })
-          }
-          className="w-full accent-purple-500 cursor-pointer"
-        />
       </div>
 
       {/* Percentage Label Controls */}
@@ -236,43 +254,27 @@ export function BarInspectorSection() {
 
         {showLabel && (
           <div className="space-y-2 pt-1 border-t border-[#242428]/60">
-            <div>
-              <div className="flex justify-between text-[11px] text-zinc-400 mb-1">
-                <span>Text Font Size</span>
-                <span className="font-mono text-purple-300">
-                  {selectedLayer.barFontSize || 14}px
-                </span>
-              </div>
-              <input
-                type="range"
-                min="8"
-                max="72"
-                step="1"
-                value={selectedLayer.barFontSize || 14}
-                onChange={(e) =>
-                  updateLayer(selectedLayer.id, {
-                    barFontSize: parseInt(e.target.value, 10),
-                  })
-                }
-                className="w-full accent-purple-500 cursor-pointer"
-              />
-            </div>
-
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-[10px] text-zinc-400 block mb-1">Exact Size (px)</label>
-                <input
-                  type="number"
-                  min="8"
-                  max="120"
-                  value={selectedLayer.barFontSize || 14}
-                  onChange={(e) =>
-                    updateLayer(selectedLayer.id, {
-                      barFontSize: Math.max(8, parseInt(e.target.value, 10) || 14),
-                    })
-                  }
-                  className="w-full bg-[#121214] border border-[#2c2c32] focus:border-purple-500 rounded px-2 py-1 text-xs font-mono text-white outline-none"
-                />
+                <label className="text-[10px] text-zinc-400 block mb-1">Font Size (px)</label>
+                <div className="relative flex items-center">
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={selectedLayer.barFontSize || 14}
+                    onChange={(e) =>
+                      updateLayer(selectedLayer.id, {
+                        barFontSize: Math.max(1, parseInt(e.target.value, 10) || 14),
+                      })
+                    }
+                    className="w-full bg-[#121214] border border-[#2c2c32] focus:border-purple-500 rounded px-2 py-1 pr-7 text-xs font-mono text-white outline-none"
+                    placeholder="Size"
+                  />
+                  <span className="absolute right-2 text-[10px] font-mono text-zinc-500 pointer-events-none">
+                    px
+                  </span>
+                </div>
               </div>
 
               <div className="bg-[#121214] p-1.5 rounded border border-[#2c2c32] flex items-center justify-between self-end">

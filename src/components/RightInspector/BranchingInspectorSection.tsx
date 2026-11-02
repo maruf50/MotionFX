@@ -567,25 +567,43 @@ export function BranchingInspectorSection() {
 
       {/* Stroke Line Width */}
       <div>
-        <div className="flex justify-between text-[11px] text-zinc-400 mb-1">
+        <div className="flex justify-between items-center text-[11px] text-zinc-400 mb-1.5">
           <span>Line Thickness</span>
-          <span className="font-mono text-white">
-            {selectedLayer.borderWidth || 3}px
+          <div className="flex items-center gap-1">
+            {[1, 3, 6, 12].map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => updateLayer(selectedLayer.id, { borderWidth: t })}
+                className={`px-1.5 py-0.5 rounded text-[9px] font-mono border transition cursor-pointer ${
+                  (selectedLayer.borderWidth || 3) === t
+                    ? 'bg-purple-600/30 text-purple-200 border-purple-500/60 font-semibold'
+                    : 'bg-[#121214] text-zinc-400 border-[#2c2c32] hover:bg-[#1e1e24] hover:text-white'
+                }`}
+              >
+                {t}px
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="relative flex items-center">
+          <input
+            type="number"
+            min="1"
+            step="1"
+            value={selectedLayer.borderWidth || 3}
+            onChange={(e) =>
+              updateLayer(selectedLayer.id, {
+                borderWidth: Math.max(1, parseInt(e.target.value, 10) || 1),
+              })
+            }
+            className="w-full bg-[#121214] border border-[#2c2c32] focus:border-purple-500 rounded px-2.5 py-1.5 pr-8 text-xs font-mono text-white outline-none"
+            placeholder="Enter line thickness (px)"
+          />
+          <span className="absolute right-2.5 text-[10px] font-mono text-zinc-500 pointer-events-none">
+            px
           </span>
         </div>
-        <input
-          type="range"
-          min="1"
-          max="20"
-          step="1"
-          value={selectedLayer.borderWidth || 3}
-          onChange={(e) =>
-            updateLayer(selectedLayer.id, {
-              borderWidth: parseInt(e.target.value, 10),
-            })
-          }
-          className="w-full accent-purple-500 cursor-pointer"
-        />
       </div>
 
       {/* Flow Animation */}

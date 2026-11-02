@@ -669,22 +669,25 @@ export function CardInspectorSection() {
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <div className="flex items-center justify-between text-[10px] text-zinc-400 mb-1">
-                  <span>Border Width</span>
-                  <span className="font-mono text-zinc-300 font-semibold">{borderWidth}px</span>
+                <label className="text-[10px] text-zinc-400 block mb-1">Border Thickness</label>
+                <div className="relative flex items-center">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={borderWidth}
+                    onChange={(e) =>
+                      updateLayer(selectedLayer.id, {
+                        cardBorderWidth: Math.max(0, parseFloat(e.target.value) || 0),
+                      })
+                    }
+                    className="w-full bg-[#121214] border border-[#2c2c32] focus:border-purple-500 rounded px-2 py-1 pr-7 text-xs font-mono text-white outline-none"
+                    placeholder="Border"
+                  />
+                  <span className="absolute right-2 text-[10px] font-mono text-zinc-500 pointer-events-none">
+                    px
+                  </span>
                 </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="12"
-                  value={borderWidth}
-                  onChange={(e) =>
-                    updateLayer(selectedLayer.id, {
-                      cardBorderWidth: parseFloat(e.target.value) || 0,
-                    })
-                  }
-                  className="w-full accent-purple-500 cursor-pointer"
-                />
               </div>
 
               <div>

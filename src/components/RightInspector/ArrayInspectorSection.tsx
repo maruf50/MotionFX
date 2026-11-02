@@ -505,20 +505,26 @@ export function ArrayInspectorSection() {
           {/* Border Width & Color */}
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-[11px] text-zinc-400 block mb-1">Border Width: {borderWidth}px</label>
-              <input
-                type="range"
-                min="0"
-                max="10"
-                value={borderWidth}
-                onChange={(e) =>
-                  updateLayer(selectedLayer.id, {
-                    arrayItemBorderWidth: parseInt(e.target.value, 10) || 0,
-                    borderWidth: parseInt(e.target.value, 10) || 0,
-                  })
-                }
-                className="w-full accent-purple-500 cursor-pointer"
-              />
+              <label className="text-[11px] text-zinc-400 block mb-1">Border Thickness</label>
+              <div className="relative flex items-center">
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={borderWidth}
+                  onChange={(e) =>
+                    updateLayer(selectedLayer.id, {
+                      arrayItemBorderWidth: Math.max(0, parseInt(e.target.value, 10) || 0),
+                      borderWidth: Math.max(0, parseInt(e.target.value, 10) || 0),
+                    })
+                  }
+                  className="w-full bg-[#121214] border border-[#2c2c32] focus:border-purple-500 rounded px-2 py-1 pr-7 text-xs font-mono text-white outline-none"
+                  placeholder="Border"
+                />
+                <span className="absolute right-2 text-[10px] font-mono text-zinc-500 pointer-events-none">
+                  px
+                </span>
+              </div>
             </div>
             <div>
               <label className="text-[11px] text-zinc-400 block mb-1">Border Color</label>

@@ -229,17 +229,23 @@ export function PathDrawInspectorSection() {
       {/* Stroke Width & Color */}
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="text-[11px] text-zinc-400 block mb-1">Thickness: {strokeW}px</label>
-          <input
-            type="range"
-            min="1"
-            max="16"
-            value={strokeW}
-            onChange={(e) =>
-              updateLayer(selectedLayer.id, { pathDrawStrokeWidth: parseInt(e.target.value, 10) || 4 })
-            }
-            className="w-full accent-purple-500 cursor-pointer"
-          />
+          <label className="text-[11px] text-zinc-400 block mb-1">Thickness</label>
+          <div className="relative flex items-center">
+            <input
+              type="number"
+              min="1"
+              step="1"
+              value={strokeW}
+              onChange={(e) =>
+                updateLayer(selectedLayer.id, { pathDrawStrokeWidth: Math.max(1, parseInt(e.target.value, 10) || 1) })
+              }
+              className="w-full bg-[#121214] border border-[#2c2c32] focus:border-purple-500 rounded px-2 py-1 pr-7 text-xs font-mono text-white outline-none"
+              placeholder="Width"
+            />
+            <span className="absolute right-2 text-[10px] font-mono text-zinc-500 pointer-events-none">
+              px
+            </span>
+          </div>
         </div>
         <div>
           <label className="text-[11px] text-zinc-400 block mb-1">Path Color</label>
@@ -320,17 +326,23 @@ export function PathDrawInspectorSection() {
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-[11px] text-zinc-400 block mb-1">Font Size: {fontSize}px</label>
-                <input
-                  type="range"
-                  min="10"
-                  max="28"
-                  value={fontSize}
-                  onChange={(e) =>
-                    updateLayer(selectedLayer.id, { pathDrawTextFontSize: parseInt(e.target.value, 10) || 14 })
-                  }
-                  className="w-full accent-purple-500 cursor-pointer"
-                />
+                <label className="text-[11px] text-zinc-400 block mb-1">Font Size</label>
+                <div className="relative flex items-center">
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={fontSize}
+                    onChange={(e) =>
+                      updateLayer(selectedLayer.id, { pathDrawTextFontSize: Math.max(1, parseInt(e.target.value, 10) || 12) })
+                    }
+                    className="w-full bg-[#121214] border border-[#2c2c32] focus:border-purple-500 rounded px-2 py-1 pr-7 text-xs font-mono text-white outline-none"
+                    placeholder="Font size"
+                  />
+                  <span className="absolute right-2 text-[10px] font-mono text-zinc-500 pointer-events-none">
+                    px
+                  </span>
+                </div>
               </div>
               <div>
                 <label className="text-[11px] text-zinc-400 block mb-1">Text Color</label>

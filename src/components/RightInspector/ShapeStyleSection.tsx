@@ -173,17 +173,23 @@ export function ShapeStyleSection() {
       {/* Border Width & Style */}
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="text-[11px] text-zinc-400 block mb-1">Border Width</label>
-          <input
-            type="number"
-            min="0"
-            max="200"
-            value={selectedLayer.borderWidth}
-            onChange={(e) =>
-              updateLayer(selectedLayer.id, { borderWidth: parseFloat(e.target.value) || 0 })
-            }
-            className="w-full bg-[#121214] border border-[#2c2c32] focus:border-purple-500 rounded px-2 py-1 text-xs font-mono text-white outline-none"
-          />
+          <label className="text-[11px] text-zinc-400 block mb-1">Border Thickness (px)</label>
+          <div className="relative flex items-center">
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={selectedLayer.borderWidth}
+              onChange={(e) =>
+                updateLayer(selectedLayer.id, { borderWidth: Math.max(0, parseFloat(e.target.value) || 0) })
+              }
+              className="w-full bg-[#121214] border border-[#2c2c32] focus:border-purple-500 rounded px-2 py-1 pr-7 text-xs font-mono text-white outline-none"
+              placeholder="0"
+            />
+            <span className="absolute right-2 text-[10px] font-mono text-zinc-500 pointer-events-none">
+              px
+            </span>
+          </div>
         </div>
 
         <div>

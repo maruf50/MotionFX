@@ -441,17 +441,22 @@ export function GraphInspectorSection() {
           {(currentType === 'line' || currentType === 'area' || currentType === 'combo') && (
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-[10px] text-zinc-400 block mb-0.5">Line Stroke Width</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="12"
-                  value={selectedLayer.graphLineWidth ?? 3}
-                  onChange={(e) =>
-                    updateLayer(selectedLayer.id, { graphLineWidth: parseInt(e.target.value, 10) || 2 })
-                  }
-                  className="w-full bg-[#121214] border border-[#2c2c32] rounded px-2 py-0.5 text-xs font-mono text-white"
-                />
+                <label className="text-[10px] text-zinc-400 block mb-0.5">Line Stroke Thickness</label>
+                <div className="relative flex items-center">
+                  <input
+                    type="number"
+                    min="1"
+                    step="0.5"
+                    value={selectedLayer.graphLineWidth ?? 3}
+                    onChange={(e) =>
+                      updateLayer(selectedLayer.id, { graphLineWidth: Math.max(0.5, parseFloat(e.target.value) || 2) })
+                    }
+                    className="w-full bg-[#121214] border border-[#2c2c32] focus:border-purple-500 rounded px-2 py-0.5 pr-6 text-xs font-mono text-white outline-none"
+                  />
+                  <span className="absolute right-1.5 text-[9px] font-mono text-zinc-500 pointer-events-none">
+                    px
+                  </span>
+                </div>
               </div>
               <div>
                 <label className="text-[10px] text-zinc-400 block mb-0.5">Dot Point Radius</label>

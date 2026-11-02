@@ -218,7 +218,22 @@ export function renderSceneAtTime(
       const isEditingText = Boolean(options.editingTextLayerId && options.editingTextLayerId === selected.id);
       const tr = getLayerWorldTransformAtTime(selected, layers, time);
       const dims = getLayerDimensions(ctx, selected);
-      const pad = 8;
+
+      // Keep gizmo ratio and physical screen size constant across all resolutions (vertical, horizontal, square, 4k)
+      const canvas = ctx.canvas;
+      let gizmoScale = 1;
+      if (canvas && typeof canvas.getBoundingClientRect === 'function') {
+        const rect = canvas.getBoundingClientRect();
+        if (rect.height > 0) {
+          gizmoScale = canvasHeight / rect.height;
+        } else {
+          gizmoScale = Math.max(1, canvasHeight / 540);
+        }
+      } else {
+        gizmoScale = Math.max(1, canvasHeight / 540);
+      }
+
+      const pad = 8 * gizmoScale;
       const hw = (dims.width * Math.abs(tr.scaleX)) / 2 + pad;
       const hh = (dims.height * Math.abs(tr.scaleY)) / 2 + pad;
 
@@ -228,29 +243,29 @@ export function renderSceneAtTime(
 
       // Dashed bounding rectangle (crisp 1:1 pixel scale, never stretched or thickened)
       ctx.strokeStyle = isEditingText ? 'rgba(168, 85, 247, 0.7)' : '#6366f1';
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([5, 4]);
+      ctx.lineWidth = 1.5 * gizmoScale;
+      ctx.setLineDash([5 * gizmoScale, 4 * gizmoScale]);
       ctx.strokeRect(-hw, -hh, hw * 2, hh * 2);
       ctx.setLineDash([]);
 
       // If actively editing text inline, hide rotation knob and scale handles so input text is unobstructed
       if (!isEditingText) {
         // 1. Rotation Stem Line and Rotation Handle Knob (Above top edge)
-        const rotStemLength = 26;
+        const rotStemLength = 28 * gizmoScale;
         const rotY = -hh - rotStemLength;
 
         ctx.strokeStyle = '#818cf8';
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 1.5 * gizmoScale;
         ctx.beginPath();
         ctx.moveTo(0, -hh);
         ctx.lineTo(0, rotY);
         ctx.stroke();
 
         // Rotation Knob Circle (true circle of constant radius)
-        const rRad = 6;
+        const rRad = 7 * gizmoScale;
         ctx.fillStyle = '#ffffff';
         ctx.strokeStyle = '#4f46e5';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2 * gizmoScale;
         ctx.beginPath();
         ctx.arc(0, rotY, rRad, 0, Math.PI * 2);
         ctx.fill();
@@ -259,11 +274,11 @@ export function renderSceneAtTime(
         // Rotation Knob Center Accent
         ctx.fillStyle = '#6366f1';
         ctx.beginPath();
-        ctx.arc(0, rotY, 2.5, 0, Math.PI * 2);
+        ctx.arc(0, rotY, 2.8 * gizmoScale, 0, Math.PI * 2);
         ctx.fill();
 
-        // 2. Eight Scale Handles (4 Corners + 4 Edge Midpoints, true 10x10 px squares)
-        const hs = 5; // handle half-size
+        // 2. Eight Scale Handles (4 Corners + 4 Edge Midpoints)
+        const hs = 6 * gizmoScale; // handle half-size
         const scaleHandles = [
           // Corners
           { x: -hw, y: -hh, isCorner: true },
@@ -280,7 +295,7 @@ export function renderSceneAtTime(
         scaleHandles.forEach(({ x, y, isCorner }) => {
           ctx.fillStyle = isCorner ? '#ffffff' : '#e0e7ff';
           ctx.strokeStyle = isCorner ? '#4338ca' : '#6366f1';
-          ctx.lineWidth = 1.5;
+          ctx.lineWidth = 1.5 * gizmoScale;
           ctx.fillRect(x - hs, y - hs, hs * 2, hs * 2);
           ctx.strokeRect(x - hs, y - hs, hs * 2, hs * 2);
         });
@@ -289,10 +304,10 @@ export function renderSceneAtTime(
       // 3. Center Anchor Indicator
       ctx.fillStyle = '#f59e0b';
       ctx.beginPath();
-      ctx.arc(0, 0, 3.5, 0, Math.PI * 2);
+      ctx.arc(0, 0, 4 * gizmoScale, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 1 * gizmoScale;
       ctx.stroke();
 
       // If path follower, custom path draw, custom path cursor, or custom pen shape, render interactive anchor points & control handles
@@ -311,8 +326,8 @@ export function renderSceneAtTime(
             const cp1x = p.cp1x * tr.scaleX;
             const cp1y = p.cp1y * tr.scaleY;
             ctx.strokeStyle = 'rgba(236, 72, 153, 0.7)';
-            ctx.lineWidth = 1;
-            ctx.setLineDash([2, 2]);
+            ctx.lineWidth = 1.2 * gizmoScale;
+            ctx.setLineDash([2.5 * gizmoScale, 2.5 * gizmoScale]);
             ctx.beginPath();
             ctx.moveTo(px, py);
             ctx.lineTo(cp1x, cp1y);
@@ -320,7 +335,7 @@ export function renderSceneAtTime(
 
             ctx.fillStyle = '#ec4899';
             ctx.setLineDash([]);
-            const chs = 3.5;
+            const chs = 4 * gizmoScale;
             ctx.fillRect(cp1x - chs, cp1y - chs, chs * 2, chs * 2);
           }
           // cp2 line & handle
@@ -328,8 +343,8 @@ export function renderSceneAtTime(
             const cp2x = p.cp2x * tr.scaleX;
             const cp2y = p.cp2y * tr.scaleY;
             ctx.strokeStyle = 'rgba(236, 72, 153, 0.7)';
-            ctx.lineWidth = 1;
-            ctx.setLineDash([2, 2]);
+            ctx.lineWidth = 1.2 * gizmoScale;
+            ctx.setLineDash([2.5 * gizmoScale, 2.5 * gizmoScale]);
             ctx.beginPath();
             ctx.moveTo(px, py);
             ctx.lineTo(cp2x, cp2y);
@@ -337,7 +352,7 @@ export function renderSceneAtTime(
 
             ctx.fillStyle = '#ec4899';
             ctx.setLineDash([]);
-            const chs = 3.5;
+            const chs = 4 * gizmoScale;
             ctx.fillRect(cp2x - chs, cp2y - chs, chs * 2, chs * 2);
           }
 
@@ -345,8 +360,8 @@ export function renderSceneAtTime(
           ctx.setLineDash([]);
           ctx.fillStyle = '#06b6d4';
           ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 1.5;
-          const arcR = 5;
+          ctx.lineWidth = 1.5 * gizmoScale;
+          const arcR = 5.5 * gizmoScale;
           ctx.beginPath();
           ctx.arc(px, py, arcR, 0, Math.PI * 2);
           ctx.fill();
@@ -363,8 +378,8 @@ export function renderSceneAtTime(
           ctx.setLineDash([]);
           ctx.fillStyle = '#a855f7';
           ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 1.5;
-          const arcR = 5.5;
+          ctx.lineWidth = 1.5 * gizmoScale;
+          const arcR = 6 * gizmoScale;
           ctx.beginPath();
           ctx.arc(epx, epy, arcR, 0, Math.PI * 2);
           ctx.fill();

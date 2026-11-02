@@ -87,35 +87,43 @@ export function TextEffectSection() {
 
       {/* Font Size & Text Color */}
       <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <label className="text-[11px] text-zinc-400">Font Size</label>
-          <div className="flex items-center gap-1.5">
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-[11px] text-zinc-400 font-medium">Font Size</label>
+            <div className="flex items-center gap-1">
+              {[24, 48, 72, 120, 200].map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => updateLayer(selectedLayer.id, { fontSize: s })}
+                  className={`px-1.5 py-0.5 rounded text-[9px] font-mono border transition cursor-pointer ${
+                    (selectedLayer.fontSize || 48) === s
+                      ? 'bg-purple-600/30 text-purple-200 border-purple-500/60 font-semibold'
+                      : 'bg-[#121214] text-zinc-400 border-[#2c2c32] hover:bg-[#1e1e24] hover:text-white'
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="relative flex items-center">
             <input
               type="number"
-              min="8"
-              max="500"
-              step="2"
+              min="1"
+              step="1"
               value={selectedLayer.fontSize || 48}
               onChange={(e) =>
-                updateLayer(selectedLayer.id, { fontSize: parseInt(e.target.value, 10) || 36 })
+                updateLayer(selectedLayer.id, { fontSize: Math.max(1, parseInt(e.target.value, 10) || 12) })
               }
-              className="w-16 bg-[#121214] border border-[#2c2c32] focus:border-purple-500 rounded px-2 py-0.5 text-xs font-mono text-white outline-none text-right"
+              className="w-full bg-[#121214] border border-[#2c2c32] focus:border-purple-500 rounded px-2.5 py-1.5 pr-8 text-xs font-mono text-white outline-none"
+              placeholder="Enter font size (px)"
             />
-            <span className="text-[11px] text-zinc-400">px</span>
+            <span className="absolute right-2.5 text-[10px] font-mono text-zinc-500 pointer-events-none">
+              px
+            </span>
           </div>
         </div>
-
-        <input
-          type="range"
-          min="8"
-          max="500"
-          step="2"
-          value={selectedLayer.fontSize || 48}
-          onChange={(e) =>
-            updateLayer(selectedLayer.id, { fontSize: parseInt(e.target.value, 10) || 36 })
-          }
-          className="w-full accent-purple-500 cursor-pointer"
-        />
 
         {/* Text Color & Alpha */}
         <ColorPickerWithAlpha

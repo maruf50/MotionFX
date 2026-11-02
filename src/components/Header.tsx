@@ -19,6 +19,11 @@ import {
   Check,
   ChevronDown,
   Magnet,
+  FileJson,
+  FolderOpen,
+  Save,
+  Download,
+  FileDown,
 } from 'lucide-react';
 import { useMotion } from '@/context/MotionContext';
 import { TEMPLATES } from '@/modules/templates';
@@ -52,17 +57,29 @@ export function Header() {
     canUndo,
     canRedo,
     historyStepCount,
+    saveProject,
+    openProject,
+    exportAnimationJSONFile,
+    isSavingProject,
+    lastSavedTimestamp,
+    fileStatusMessage,
+    projectFileName,
   } = useMotion();
 
+  const [isFileMenuOpen, setIsFileMenuOpen] = useState(false);
   const [isCompMenuOpen, setIsCompMenuOpen] = useState(false);
   const [isTmplMenuOpen, setIsTmplMenuOpen] = useState(false);
 
+  const fileMenuRef = useRef<HTMLDivElement | null>(null);
   const compMenuRef = useRef<HTMLDivElement | null>(null);
   const tmplMenuRef = useRef<HTMLDivElement | null>(null);
 
   // Close menus on outside click
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
+      if (fileMenuRef.current && !fileMenuRef.current.contains(e.target as Node)) {
+        setIsFileMenuOpen(false);
+      }
       if (compMenuRef.current && !compMenuRef.current.contains(e.target as Node)) {
         setIsCompMenuOpen(false);
       }
@@ -90,6 +107,117 @@ export function Header() {
             </span>
           </div>
         </div>
+
+        <div className="h-4 w-[1px] bg-[#242428] mx-1.5 hidden md:block"></div>
+
+        {/* File System Menu (Save, Save As, Open, Export JSON) */}
+        <div ref={fileMenuRef} className="relative">
+          <button
+            type="button"
+            onClick={() => {
+              setIsFileMenuOpen(!isFileMenuOpen);
+              setIsCompMenuOpen(false);
+              setIsTmplMenuOpen(false);
+            }}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#1c1c20] hover:bg-[#25252b] border border-[#2c2c34] text-xs text-white transition cursor-pointer"
+            title="File Menu (Save, Save As, Open / Import, Export JSON)"
+          >
+            <FileJson className="w-3.5 h-3.5 text-purple-400" />
+            <span className="font-semibold">File</span>
+            <ChevronDown className="w-3 h-3 text-zinc-400" />
+          </button>
+
+          {isFileMenuOpen && (
+            <div className="absolute top-full left-0 mt-1 w-64 bg-[#18181c] border border-[#2f2f38] rounded-lg shadow-2xl z-50 p-1.5 space-y-1 select-none">
+              <div className="px-2 py-1 text-[10px] font-mono text-zinc-400 uppercase border-b border-[#242428] flex items-center justify-between">
+                <span>File System (JSON)</span>
+                {lastSavedTimestamp && (
+                  <span className="text-[9px] text-emerald-400 font-semibold">Saved</span>
+                )}
+              </div>
+
+              {/* Quick Save */}
+              <button
+                type="button"
+                onClick={() => {
+                  saveProject(false);
+                  setIsFileMenuOpen(false);
+                }}
+                disabled={isSavingProject}
+                className="w-full text-left px-2 py-1.5 rounded hover:bg-[#22222a] text-zinc-200 hover:text-white text-xs flex items-center justify-between transition cursor-pointer"
+              >
+                <span className="flex items-center gap-2">
+                  <Save className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Save Project</span>
+                </span>
+                <span className="text-[10px] font-mono text-zinc-500">Ctrl+S</span>
+              </button>
+
+              {/* Save As JSON */}
+              <button
+                type="button"
+                onClick={() => {
+                  saveProject(true);
+                  setIsFileMenuOpen(false);
+                }}
+                disabled={isSavingProject}
+                className="w-full text-left px-2 py-1.5 rounded hover:bg-[#22222a] text-zinc-200 hover:text-white text-xs flex items-center justify-between transition cursor-pointer"
+              >
+                <span className="flex items-center gap-2">
+                  <FileDown className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Save Project As...</span>
+                </span>
+                <span className="text-[10px] font-mono text-zinc-500">Ctrl+Shift+S</span>
+              </button>
+
+              {/* Open / Import JSON */}
+              <button
+                type="button"
+                onClick={() => {
+                  openProject();
+                  setIsFileMenuOpen(false);
+                }}
+                className="w-full text-left px-2 py-1.5 rounded hover:bg-[#22222a] text-zinc-200 hover:text-white text-xs flex items-center justify-between transition cursor-pointer"
+              >
+                <span className="flex items-center gap-2">
+                  <FolderOpen className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Open / Import JSON...</span>
+                </span>
+                <span className="text-[10px] font-mono text-zinc-500">Ctrl+O</span>
+              </button>
+
+              <div className="h-[1px] bg-[#242428] my-1" />
+
+              {/* Export Animation JSON */}
+              <button
+                type="button"
+                onClick={() => {
+                  exportAnimationJSONFile();
+                  setIsFileMenuOpen(false);
+                }}
+                className="w-full text-left px-2 py-1.5 rounded hover:bg-[#22222a] text-zinc-200 hover:text-white text-xs flex items-center justify-between transition cursor-pointer"
+              >
+                <span className="flex items-center gap-2">
+                  <Download className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Export Animation JSON</span>
+                </span>
+                <span className="text-[10px] font-mono text-zinc-500">.json</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Quick Save Action Button */}
+        <button
+          type="button"
+          onClick={() => saveProject(false)}
+          disabled={isSavingProject}
+          className="flex items-center gap-1.5 px-2 py-1 rounded bg-[#1c1c20] hover:bg-[#25252b] text-zinc-300 hover:text-white border border-[#2c2c34] text-xs transition cursor-pointer"
+          title="Quick Save Project (Ctrl+S)"
+        >
+          <Save className="w-3 h-3 text-emerald-400" />
+          <span className="hidden sm:inline">Save</span>
+        </button>
 
         <div className="h-4 w-[1px] bg-[#242428] mx-1.5 hidden md:block"></div>
 
@@ -277,6 +405,25 @@ export function Header() {
 
       {/* Right Action Tools: Undo, Redo, Export */}
       <div className="flex items-center gap-2">
+        {fileStatusMessage && (
+          <div
+            className={`px-2 py-0.5 rounded text-[11px] font-medium border flex items-center gap-1.5 shadow-md animate-in fade-in transition ${
+              fileStatusMessage.type === 'success'
+                ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40'
+                : fileStatusMessage.type === 'error'
+                ? 'bg-red-950/80 text-red-300 border-red-500/40'
+                : 'bg-indigo-950/80 text-indigo-300 border-indigo-500/40'
+            }`}
+          >
+            {fileStatusMessage.type === 'success' ? (
+              <Check className="w-3 h-3 text-emerald-400" />
+            ) : (
+              <FileJson className="w-3 h-3 text-purple-400" />
+            )}
+            <span className="max-w-[200px] truncate">{fileStatusMessage.text}</span>
+          </div>
+        )}
+
         <div className="flex items-center gap-1 bg-[#101012] p-1 rounded-md border border-[#242428]">
           <button
             onClick={undo}

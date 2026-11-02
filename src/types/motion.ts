@@ -500,3 +500,22 @@ export interface Composition {
   templateId?: string;
   createdAt?: number;
 }
+
+export interface MotionFXProjectFile {
+  format: 'motionfx-animation';
+  version: '1.0';
+  exportedAt: string;
+  projectName: string;
+  canvasResolution: CanvasResolution;
+  duration: number;
+  fps: number;
+  canvasBg: string;
+  layers: Layer[];
+  compositions?: Composition[];
+  activeCompositionId?: string;
+  metadata?: {
+    app: string;
+    totalLayers: number;
+    totalKeyframes: number;
+  };
+}
