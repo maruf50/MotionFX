@@ -31,6 +31,7 @@ import {
   Percent,
   GitBranch,
   Route,
+  Blend,
 } from 'lucide-react';
 import { useMotion } from '@/context/MotionContext';
 import { Layer } from '@/types/motion';
@@ -53,6 +54,7 @@ export function LayersStackPanel() {
     createGroup,
     addLayersToGroup,
     removeLayersFromGroup,
+    mergeSelectedLayers,
     ungroupLayer,
     toggleGroupExpand,
     deleteAllKeyframes,
@@ -366,6 +368,15 @@ export function LayersStackPanel() {
           </div>
 
           <div className="flex items-center gap-1">
+            <button
+              onClick={() => mergeSelectedLayers(selectedLayerIds)}
+              className="px-2 py-0.5 rounded bg-purple-600/30 hover:bg-purple-600/40 text-purple-200 border border-purple-500/50 text-[10px] font-semibold flex items-center gap-1 transition cursor-pointer"
+              title="Merge selected layers into one rasterized layer (Ctrl+E)"
+            >
+              <Blend className="w-3 h-3 text-purple-300" />
+              <span>Merge</span>
+            </button>
+
             <button
               onClick={() => handleCreateGroupWithActive()}
               className="px-2 py-0.5 rounded bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/40 text-[10px] font-semibold flex items-center gap-1 transition cursor-pointer"

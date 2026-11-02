@@ -22,7 +22,12 @@ import { Layer } from '@/types/motion';
 import { useMotion } from '@/context/MotionContext';
 
 export function TemplatesBrowserPanel() {
-  const { importTemplateLayer, importTemplateAsGroup, importAllTemplatesAsGroups } = useMotion();
+  const {
+    importTemplateLayer,
+    importTemplateAsGroup,
+    importAllTemplatesAsGroups,
+    loadTemplate,
+  } = useMotion();
   const [expandedTemplateId, setExpandedTemplateId] = useState<string | null>('bento-grid');
 
   const getLayerIcon = (layer: Layer) => {
@@ -87,6 +92,17 @@ export function TemplatesBrowserPanel() {
                   </p>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      loadTemplate(tmpl.id, true);
+                    }}
+                    className="px-2 py-0.5 rounded bg-[#202028] hover:bg-purple-900/40 text-[10px] font-medium text-zinc-300 hover:text-purple-200 border border-[#2e2e38] hover:border-purple-500/50 transition cursor-pointer"
+                    title={`Open ${tmpl.name} in its own composition without overwriting current scene`}
+                  >
+                    <span>Open as Comp</span>
+                  </button>
                   <button
                     type="button"
                     onClick={(e) => {

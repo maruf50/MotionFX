@@ -10,6 +10,7 @@ import {
   X,
   Layers,
   Check,
+  Blend,
 } from 'lucide-react';
 import { useMotion } from '@/context/MotionContext';
 
@@ -23,6 +24,7 @@ export function MultiSelectSection() {
     addLayersToGroup,
     removeLayersFromGroup,
     deleteLayersBatch,
+    mergeSelectedLayers,
   } = useMotion();
 
   const [selectedTargetGroupId, setSelectedTargetGroupId] = useState<string>('');
@@ -199,6 +201,28 @@ export function MultiSelectSection() {
             </button>
           </div>
         )}
+      </div>
+
+      {/* Merge Selected Layers Action */}
+      <div className="bg-[#1a1a1e] p-3 rounded border border-[#28282e] space-y-2">
+        <div className="text-[11px] font-semibold text-zinc-300 flex items-center justify-between">
+          <span className="flex items-center gap-1.5">
+            <Blend className="w-3.5 h-3.5 text-purple-400" />
+            Merge Layers
+          </span>
+          <span className="text-[10px] font-mono text-zinc-400">Ctrl+E</span>
+        </div>
+        <p className="text-[10px] text-zinc-400">
+          Combines all {selectedLayerIds.length} selected layers into a single rasterized image layer.
+        </p>
+        <button
+          type="button"
+          onClick={() => mergeSelectedLayers()}
+          className="w-full py-2 px-3 rounded bg-purple-600/25 hover:bg-purple-600/40 border border-purple-500/50 hover:border-purple-400 text-purple-200 hover:text-white text-xs font-semibold flex items-center justify-center gap-2 transition cursor-pointer shadow-sm"
+        >
+          <Blend className="w-4 h-4 text-purple-300" />
+          <span>Merge {selectedLayerIds.length} Layers</span>
+        </button>
       </div>
 
       {/* Batch Delete */}

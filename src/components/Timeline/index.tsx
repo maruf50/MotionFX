@@ -24,6 +24,9 @@ export function Timeline({ height }: TimelineProps) {
     undo,
     redo,
     importTemplateLayer,
+    splitLayerAtCurrentTime,
+    trimLayerInToCurrentTime,
+    trimLayerOutToCurrentTime,
   } = useMotion();
 
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -77,6 +80,33 @@ export function Timeline({ height }: TimelineProps) {
         return;
       }
 
+      // After Effects Shortcut: Split Layer at playhead (Ctrl+Shift+D / Cmd+Shift+D)
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'd') {
+        e.preventDefault();
+        if (selectedLayerId) {
+          splitLayerAtCurrentTime(selectedLayerId);
+        }
+        return;
+      }
+
+      // After Effects Shortcut: Set In-Point to playhead ([)
+      if (e.key === '[') {
+        e.preventDefault();
+        if (selectedLayerId) {
+          trimLayerInToCurrentTime(selectedLayerId);
+        }
+        return;
+      }
+
+      // After Effects Shortcut: Set Out-Point to playhead (])
+      if (e.key === ']') {
+        e.preventDefault();
+        if (selectedLayerId) {
+          trimLayerOutToCurrentTime(selectedLayerId);
+        }
+        return;
+      }
+
       if (e.code === 'Space') {
         e.preventDefault();
         togglePlay();
@@ -101,6 +131,9 @@ export function Timeline({ height }: TimelineProps) {
     deleteLayer,
     undo,
     redo,
+    splitLayerAtCurrentTime,
+    trimLayerInToCurrentTime,
+    trimLayerOutToCurrentTime,
   ]);
 
   const playheadPct = Math.min(100, Math.max(0, (currentTime / duration) * 100));

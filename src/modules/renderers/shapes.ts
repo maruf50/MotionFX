@@ -2,6 +2,11 @@ import { Layer } from '@/types/motion';
 import { renderBarShape } from './bar';
 import { renderBranchingShape } from './branching';
 import { renderPathFollower } from './pathFollower';
+import { renderArrayShape } from './array';
+import { renderCardShape } from './card';
+import { renderPathDrawShape } from './pathDraw';
+import { renderButtonShape } from './button';
+import { renderCursorShape } from './cursor';
 
 /**
  * Applies stroke styles (solid, dashed, dotted) and marching ants offset.
@@ -123,7 +128,7 @@ export function renderShapeLayer(
   layer: Layer,
   time: number,
   onImageLoad?: () => void,
-  tr?: { scaleX: number; scaleY: number }
+  tr?: { scaleX: number; scaleY: number; opacity?: number }
 ) {
   const shape = layer.shapeType || 'rect';
 
@@ -154,6 +159,41 @@ export function renderShapeLayer(
     ctx.restore();
     return;
   }
+  if (shape === 'array') {
+    ctx.save();
+    ctx.scale(sx, sy);
+    renderArrayShape(ctx, layer, time, onImageLoad, tr);
+    ctx.restore();
+    return;
+  }
+  if (shape === 'card') {
+    ctx.save();
+    ctx.scale(sx, sy);
+    renderCardShape(ctx, layer, time, onImageLoad, tr);
+    ctx.restore();
+    return;
+  }
+  if (shape === 'pathDraw') {
+    ctx.save();
+    ctx.scale(sx, sy);
+    renderPathDrawShape(ctx, layer, time, tr);
+    ctx.restore();
+    return;
+  }
+  if (shape === 'button') {
+    ctx.save();
+    ctx.scale(sx, sy);
+    renderButtonShape(ctx, layer, time, tr);
+    ctx.restore();
+    return;
+  }
+  if (shape === 'cursor') {
+    ctx.save();
+    ctx.scale(sx, sy);
+    renderCursorShape(ctx, layer, time, tr);
+    ctx.restore();
+    return;
+  }
 
   // Geometric shapes (rect, circle, pill, star, polygon, line, custom)
   ctx.save();
@@ -168,26 +208,62 @@ export function renderShapeLayer(
 
   applyStrokeStyle(ctx, layer, time);
 
-  if (shape === 'custom' && layer.pathData) {
-    try {
-      const path = new Path2D(layer.pathData);
+  if (shape === 'custom') {
+    if (layer.pathPoints && layer.pathPoints.length >= 2) {
       ctx.save();
       ctx.scale(absSx, absSy);
+      ctx.beginPath();
+      const pts = layer.pathPoints;
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) {
+        const p = pts[i];
+        if (p.cp1x !== undefined && p.cp1y !== undefined && p.cp2x !== undefined && p.cp2y !== undefined) {
+          ctx.bezierCurveTo(p.cp1x, p.cp1y, p.cp2x, p.cp2y, p.x, p.y);
+        } else if (p.cp1x !== undefined && p.cp1y !== undefined) {
+          ctx.quadraticCurveTo(p.cp1x, p.cp1y, p.x, p.y);
+        } else {
+          ctx.lineTo(p.x, p.y);
+        }
+      }
+      if (layer.pathClosed !== false) {
+        ctx.closePath();
+      }
       if (layer.fill && layer.fill !== 'transparent') {
         ctx.fillStyle = layer.fill;
-        ctx.fill(path);
+        ctx.fill();
       }
-      if (layer.borderWidth > 0 && layer.borderStyle !== 'none' && layer.stroke) {
+      if (layer.borderWidth > 0 && layer.borderStyle !== 'none' && layer.stroke && layer.stroke !== 'transparent') {
         const avgScale = (absSx + absSy) / 2 || 1;
-        ctx.lineWidth = layer.borderWidth / avgScale;
+        ctx.lineWidth = Math.max(1, layer.borderWidth / avgScale);
         ctx.strokeStyle = layer.stroke;
-        ctx.stroke(path);
+        ctx.stroke();
       }
       ctx.restore();
       ctx.restore();
       return;
-    } catch (e) {
-      console.warn('Error rendering custom Path2D shape:', e);
+    }
+
+    if (layer.pathData) {
+      try {
+        const path = new Path2D(layer.pathData);
+        ctx.save();
+        ctx.scale(absSx, absSy);
+        if (layer.fill && layer.fill !== 'transparent') {
+          ctx.fillStyle = layer.fill;
+          ctx.fill(path);
+        }
+        if (layer.borderWidth > 0 && layer.borderStyle !== 'none' && layer.stroke) {
+          const avgScale = (absSx + absSy) / 2 || 1;
+          ctx.lineWidth = layer.borderWidth / avgScale;
+          ctx.strokeStyle = layer.stroke;
+          ctx.stroke(path);
+        }
+        ctx.restore();
+        ctx.restore();
+        return;
+      } catch (e) {
+        console.warn('Error rendering custom Path2D shape:', e);
+      }
     }
   }
 

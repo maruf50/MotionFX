@@ -642,11 +642,6 @@ export function ResolutionModal() {
                       <span className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-zinc-300'}`}>
                         {item.label}
                       </span>
-                      {item.recommended && (
-                        <span className="text-[8px] font-bold px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                          PRO
-                        </span>
-                      )}
                     </div>
                     <span className="text-[10px] text-zinc-500 leading-tight">
                       {item.desc}

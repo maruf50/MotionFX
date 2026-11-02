@@ -9,6 +9,12 @@ import { ShapeStyleSection } from './ShapeStyleSection';
 import { BarInspectorSection } from './BarInspectorSection';
 import { BranchingInspectorSection } from './BranchingInspectorSection';
 import { PathFollowerInspectorSection } from './PathFollowerInspectorSection';
+import { ArrayInspectorSection } from './ArrayInspectorSection';
+import { CardInspectorSection } from './CardInspectorSection';
+import { PathDrawInspectorSection } from './PathDrawInspectorSection';
+import { ButtonInspectorSection } from './ButtonInspectorSection';
+import { CursorInspectorSection } from './CursorInspectorSection';
+import { StickerInspectorSection } from './StickerInspectorSection';
 import { TextEffectSection } from './TextEffectSection';
 import { MultiSelectSection } from './MultiSelectSection';
 
@@ -84,15 +90,30 @@ export function RightInspector({ width }: RightInspectorProps) {
           {selectedLayer.shapeType === 'bar' && <BarInspectorSection />}
           {selectedLayer.shapeType === 'branching' && <BranchingInspectorSection />}
           {selectedLayer.shapeType === 'pathFollower' && <PathFollowerInspectorSection />}
+          {selectedLayer.shapeType === 'array' && <ArrayInspectorSection />}
+          {selectedLayer.shapeType === 'card' && <CardInspectorSection />}
+          {selectedLayer.shapeType === 'pathDraw' && <PathDrawInspectorSection />}
+          {selectedLayer.shapeType === 'button' && <ButtonInspectorSection />}
+          {selectedLayer.shapeType === 'cursor' && <CursorInspectorSection />}
 
           {/* Standard Shape & Border Section (for standard shapes) */}
           {selectedLayer.type === 'shape' &&
             selectedLayer.shapeType !== 'bar' &&
             selectedLayer.shapeType !== 'branching' &&
-            selectedLayer.shapeType !== 'pathFollower' && <ShapeStyleSection />}
+            selectedLayer.shapeType !== 'pathFollower' &&
+            selectedLayer.shapeType !== 'array' &&
+            selectedLayer.shapeType !== 'card' &&
+            selectedLayer.shapeType !== 'pathDraw' &&
+            selectedLayer.shapeType !== 'button' &&
+            selectedLayer.shapeType !== 'cursor' && <ShapeStyleSection />}
 
           {/* Kinetic Text & Effects Section */}
           <TextEffectSection />
+
+          {/* Sticker & Image Asset Section */}
+          {(selectedLayer.type === 'image' || selectedLayer.isSticker) && (
+            <StickerInspectorSection />
+          )}
         </div>
       )}
     </aside>

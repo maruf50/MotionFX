@@ -40,9 +40,9 @@ const FPS_OPTIONS: FpsOption[] = [
   {
     fps: 120,
     label: '120 FPS',
-    badge: 'Ultra Pro Smooth',
+    badge: 'Ultra Smooth',
     description: 'Double the frame rate for breathtaking fluidity on 120Hz/144Hz+ displays.',
-    idealFor: 'Ultra high refresh monitors, slow-mo & pro grading',
+    idealFor: 'Ultra high refresh monitors & slow-mo playback',
     bitrateEstimate: '18 - 28 Mbps',
     isUltra: true,
   },

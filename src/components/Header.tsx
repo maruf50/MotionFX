@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Sparkles,
   Film,
@@ -14,6 +14,11 @@ import {
   Redo2,
   Maximize2,
   PenTool,
+  Layers,
+  Plus,
+  Check,
+  ChevronDown,
+  Magnet,
 } from 'lucide-react';
 import { useMotion } from '@/context/MotionContext';
 import { TEMPLATES } from '@/modules/templates';
@@ -25,11 +30,18 @@ export function Header() {
     setCanvasBg,
     showGuides,
     setShowGuides,
+    isSnappingEnabled,
+    toggleSnapping,
     canvasResolution,
     setIsResolutionModalOpen,
     setIsBuildShapeModalOpen,
     loadTemplate,
-    clearScene,
+    compositions,
+    activeCompositionId,
+    activeCompositionName,
+    createBlankComposition,
+    switchComposition,
+    deleteComposition,
     startExport,
     exportProgress,
     exportFps,
@@ -42,72 +54,188 @@ export function Header() {
     historyStepCount,
   } = useMotion();
 
+  const [isCompMenuOpen, setIsCompMenuOpen] = useState(false);
+  const [isTmplMenuOpen, setIsTmplMenuOpen] = useState(false);
+
+  const compMenuRef = useRef<HTMLDivElement | null>(null);
+  const tmplMenuRef = useRef<HTMLDivElement | null>(null);
+
+  // Close menus on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (compMenuRef.current && !compMenuRef.current.contains(e.target as Node)) {
+        setIsCompMenuOpen(false);
+      }
+      if (tmplMenuRef.current && !tmplMenuRef.current.contains(e.target as Node)) {
+        setIsTmplMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   return (
     <header className="h-12 bg-[#141417] border-b border-[#242428] px-3.5 flex items-center justify-between shrink-0 z-30 select-none">
       {/* Brand & Studio Title */}
       <div className="flex items-center gap-3">
-        <div className="w-7 h-7 rounded-md bg-purple-600/20 border border-purple-500/40 flex items-center justify-center shadow-sm shadow-purple-950/50">
-          <Sparkles className="w-3.5 h-3.5 text-purple-300" />
+        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#241344] via-[#150a2b] to-[#090414] border-[1.5px] border-purple-500/80 flex items-center justify-center shadow-md shadow-purple-950/70 group hover:border-purple-400 transition cursor-default">
+          <span className="font-mono font-black text-xs tracking-tighter text-purple-300 drop-shadow-[0_0_8px_rgba(168,85,247,0.9)] select-none">
+            Fx
+          </span>
         </div>
         <div>
           <div className="flex items-center gap-2">
-            <span className="font-bold text-xs tracking-tight text-white uppercase">MotionFX</span>
-            <span className="text-[9px] font-mono uppercase px-1.5 py-0.2 rounded bg-purple-950/60 text-purple-300 border border-purple-700/50">
-              Studio Pro
+            <span className="font-extrabold text-xs tracking-tight text-white uppercase font-sans">
+              Motion<span className="text-purple-400 font-black">FX</span>
             </span>
           </div>
         </div>
 
         <div className="h-4 w-[1px] bg-[#242428] mx-1.5 hidden md:block"></div>
 
-        {/* Quick Template Selector */}
-        <div className="hidden lg:flex items-center gap-1.5">
-          <span className="text-[11px] text-zinc-400 mr-1 flex items-center gap-1">
-            <SlidersHorizontal className="w-3 h-3 text-purple-400" />
-            Templates:
-          </span>
-
+        {/* Composition Switcher Dropdown */}
+        <div ref={compMenuRef} className="relative">
           <button
-            onClick={() => loadTemplate('bento-grid')}
-            className="text-xs px-2.5 py-1 rounded bg-[#1c1c20] hover:bg-[#25252b] text-zinc-300 hover:text-white border border-[#28282e] hover:border-purple-500/40 transition flex items-center gap-1.5 cursor-pointer"
+            type="button"
+            onClick={() => {
+              setIsCompMenuOpen(!isCompMenuOpen);
+              setIsTmplMenuOpen(false);
+            }}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#1c1c20] hover:bg-[#25252b] border border-[#2c2c34] text-xs text-white transition cursor-pointer"
+            title="Switch or manage compositions (preserves your work)"
           >
-            <TableProperties className="w-3.5 h-3.5 text-zinc-400" />
-            Bento Grid Pop
+            <Layers className="w-3.5 h-3.5 text-purple-400" />
+            <span className="font-semibold max-w-[130px] truncate">{activeCompositionName}</span>
+            <ChevronDown className="w-3 h-3 text-zinc-400" />
           </button>
 
-          <button
-            onClick={() => loadTemplate('kinetic-typography')}
-            className="text-xs px-2.5 py-1 rounded bg-[#1c1c20] hover:bg-[#25252b] text-zinc-300 hover:text-white border border-[#28282e] hover:border-purple-500/40 transition flex items-center gap-1.5 cursor-pointer"
-          >
-            <Type className="w-3.5 h-3.5 text-zinc-400" />
-            Kinetic Type
-          </button>
+          {isCompMenuOpen && (
+            <div className="absolute top-full left-0 mt-1 w-64 bg-[#18181c] border border-[#2f2f38] rounded-lg shadow-2xl z-50 p-1.5 space-y-1">
+              <div className="flex items-center justify-between px-2 py-1 text-[10px] font-mono text-zinc-400 uppercase border-b border-[#242428]">
+                <span>Compositions ({compositions.length})</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    createBlankComposition();
+                    setIsCompMenuOpen(false);
+                  }}
+                  className="text-purple-400 hover:text-purple-300 font-semibold flex items-center gap-0.5 cursor-pointer"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>New Blank</span>
+                </button>
+              </div>
 
-          <button
-            onClick={() => loadTemplate('logo-reveal')}
-            className="text-xs px-2.5 py-1 rounded bg-[#1c1c20] hover:bg-[#25252b] text-zinc-300 hover:text-white border border-[#28282e] hover:border-purple-500/40 transition flex items-center gap-1.5 cursor-pointer"
-          >
-            <Award className="w-3.5 h-3.5 text-zinc-400" />
-            Logo Reveal
-          </button>
+              <div className="max-h-56 overflow-y-auto space-y-0.5">
+                {compositions.map((comp) => {
+                  const isActive = comp.id === activeCompositionId;
+                  return (
+                    <div
+                      key={comp.id}
+                      onClick={() => {
+                        switchComposition(comp.id);
+                        setIsCompMenuOpen(false);
+                      }}
+                      className={`flex items-center justify-between px-2 py-1.5 rounded text-xs transition cursor-pointer ${
+                        isActive
+                          ? 'bg-purple-900/30 text-purple-200 border border-purple-500/50'
+                          : 'text-zinc-300 hover:bg-[#222228] hover:text-white border border-transparent'
+                      }`}
+                    >
+                      <div className="min-w-0 pr-2">
+                        <div className="flex items-center gap-1.5">
+                          {isActive && <Check className="w-3 h-3 text-purple-400 shrink-0" />}
+                          <span className="font-semibold truncate">{comp.name}</span>
+                        </div>
+                        <span className="text-[10px] text-zinc-500 font-mono block">
+                          {comp.layers.length} layers • {comp.duration}s
+                        </span>
+                      </div>
 
-          <button
-            onClick={() => loadTemplate('notification-toast')}
-            className="text-xs px-2.5 py-1 rounded bg-[#1c1c20] hover:bg-[#25252b] text-zinc-300 hover:text-white border border-[#28282e] hover:border-purple-500/40 transition flex items-center gap-1.5 cursor-pointer"
-          >
-            <Bell className="w-3.5 h-3.5 text-zinc-400" />
-            Dynamic Toast
-          </button>
+                      {compositions.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteComposition(comp.id);
+                          }}
+                          className="p-1 rounded text-zinc-500 hover:text-red-400 hover:bg-red-950/20 transition cursor-pointer"
+                          title="Delete Composition"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Build Shape Studio Action */}
+        {/* 1-Click New Blank Composition Button */}
         <button
-          onClick={() => setIsBuildShapeModalOpen(true)}
-          className="text-xs px-2.5 py-1 rounded bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 hover:text-white border border-purple-500/40 transition flex items-center gap-1.5 cursor-pointer"
-          title="Open Vector Pen & Shape Builder Studio"
+          type="button"
+          onClick={() => createBlankComposition()}
+          className="text-xs px-2 py-1 rounded bg-[#1c1c20] hover:bg-[#25252b] text-zinc-300 hover:text-white border border-[#28282e] hover:border-purple-500/40 transition flex items-center gap-1 cursor-pointer"
+          title="Create a fresh blank composition without overwriting"
         >
-          <PenTool className="w-3.5 h-3.5 text-purple-300" />
-          <span className="font-semibold">Build Shape</span>
+          <Plus className="w-3 h-3 text-purple-400" />
+          <span>New Blank</span>
+        </button>
+
+        {/* Templates Selector Dropdown (Opens in dedicated composition) */}
+        <div ref={tmplMenuRef} className="relative hidden md:block">
+          <button
+            type="button"
+            onClick={() => {
+              setIsTmplMenuOpen(!isTmplMenuOpen);
+              setIsCompMenuOpen(false);
+            }}
+            className="text-xs px-2.5 py-1 rounded bg-[#1c1c20] hover:bg-[#25252b] text-zinc-300 hover:text-white border border-[#28282e] hover:border-purple-500/40 transition flex items-center gap-1.5 cursor-pointer"
+            title="Load animation templates as separate compositions"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+            <span>Templates</span>
+            <ChevronDown className="w-3 h-3 text-zinc-400" />
+          </button>
+
+          {isTmplMenuOpen && (
+            <div className="absolute top-full left-0 mt-1 w-60 bg-[#18181c] border border-[#2f2f38] rounded-lg shadow-2xl z-50 p-1.5 space-y-1">
+              <div className="px-2 py-1 text-[10px] font-mono text-zinc-400 uppercase border-b border-[#242428] flex items-center justify-between">
+                <span>Templates</span>
+                <span className="text-[9px] text-purple-400">Safe in New Comp</span>
+              </div>
+              {TEMPLATES.map((tmpl) => (
+                <button
+                  key={tmpl.id}
+                  type="button"
+                  onClick={() => {
+                    loadTemplate(tmpl.id, true);
+                    setIsTmplMenuOpen(false);
+                  }}
+                  className="w-full text-left px-2 py-1.5 rounded hover:bg-[#23232a] text-xs text-zinc-200 hover:text-white flex items-center justify-between transition cursor-pointer"
+                >
+                  <span className="font-medium truncate">{tmpl.name}</span>
+                  <span className="text-[9px] font-mono text-zinc-500 shrink-0">{tmpl.duration}s</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Canvas Snapping Action */}
+        <button
+          onClick={toggleSnapping}
+          className={`text-xs px-2.5 py-1 rounded border transition flex items-center gap-1.5 cursor-pointer ${
+            isSnappingEnabled
+              ? 'bg-purple-600/30 text-purple-200 border-purple-500/60 font-semibold shadow-sm'
+              : 'bg-[#161619] text-zinc-400 border-[#28282e] hover:text-zinc-200'
+          }`}
+          title={isSnappingEnabled ? 'Snapping is ON (Canvas center & layer alignment) — Click to toggle (S)' : 'Snapping is OFF — Click to toggle (S)'}
+        >
+          <Magnet className={`w-3.5 h-3.5 ${isSnappingEnabled ? 'text-purple-300' : 'text-zinc-500'}`} />
+          <span>Snap</span>
         </button>
       </div>
 
@@ -147,66 +275,62 @@ export function Header() {
         </label>
       </div>
 
-      {/* Right Actions, History & Video Export */}
+      {/* Right Action Tools: Undo, Redo, Export */}
       <div className="flex items-center gap-2">
-        {/* 50-Step Undo / Redo Controls */}
-        <div className="flex items-center gap-0.5 bg-[#101012] p-0.5 rounded-md border border-[#242428]">
+        <div className="flex items-center gap-1 bg-[#101012] p-1 rounded-md border border-[#242428]">
           <button
             onClick={undo}
             disabled={!canUndo}
-            className="px-2 py-1 rounded hover:bg-[#1c1c20] text-zinc-300 disabled:opacity-30 disabled:hover:bg-transparent transition cursor-pointer disabled:cursor-not-allowed flex items-center gap-1.5 text-xs"
-            title={`Undo (Ctrl+Z) • ${historyStepCount}/50 steps recorded`}
+            className={`p-1.5 rounded transition ${
+              canUndo
+                ? 'text-zinc-300 hover:text-white hover:bg-[#1e1e24] cursor-pointer'
+                : 'text-zinc-600 cursor-not-allowed'
+            }`}
+            title={`Undo (Ctrl+Z) - ${historyStepCount} steps`}
           >
-            <Undo2 className="w-3.5 h-3.5 text-purple-400" />
-            <span className="hidden sm:inline font-medium">Undo</span>
-            {canUndo && (
-              <span className="text-[9px] px-1 py-0.2 bg-purple-950/60 text-purple-300 rounded border border-purple-700/50 font-mono">
-                {historyStepCount}
-              </span>
-            )}
+            <Undo2 className="w-3.5 h-3.5" />
           </button>
-
           <button
             onClick={redo}
             disabled={!canRedo}
-            className="px-2 py-1 rounded hover:bg-[#1c1c20] text-zinc-300 disabled:opacity-30 disabled:hover:bg-transparent transition cursor-pointer disabled:cursor-not-allowed flex items-center gap-1.5 text-xs"
-            title="Redo (Ctrl+Y or Ctrl+Shift+Z)"
+            className={`p-1.5 rounded transition ${
+              canRedo
+                ? 'text-zinc-300 hover:text-white hover:bg-[#1e1e24] cursor-pointer'
+                : 'text-zinc-600 cursor-not-allowed'
+            }`}
+            title="Redo (Ctrl+Y / Ctrl+Shift+Z)"
           >
-            <Redo2 className="w-3.5 h-3.5 text-purple-400" />
-            <span className="hidden sm:inline font-medium">Redo</span>
+            <Redo2 className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        <button
-          onClick={clearScene}
-          className="text-xs px-2.5 py-1 rounded bg-[#1c1c20] hover:bg-rose-950/50 hover:text-rose-300 hover:border-rose-800/40 text-zinc-300 border border-[#28282e] transition flex items-center gap-1.5 cursor-pointer"
-          title="Clear all layers"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-          <span>Clear</span>
-        </button>
-
+        {/* Video Framerate / Export Settings Configuration Trigger */}
         <button
           onClick={() => setIsExportSettingsOpen(true)}
-          disabled={layers.length === 0 || exportProgress.isExporting}
-          className={`text-xs font-semibold px-3 py-1 rounded transition flex items-center gap-2 cursor-pointer shadow-md disabled:opacity-30 disabled:cursor-not-allowed ${
+          className={`px-2.5 py-1 rounded text-xs font-mono font-bold transition flex items-center gap-1.5 cursor-pointer border ${
             exportFps >= 120
-              ? 'bg-gradient-to-r from-amber-600 via-purple-600 to-purple-600 hover:from-amber-500 hover:to-purple-500 text-white shadow-amber-950/30 border border-amber-400/40'
-              : 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-950/50 border border-purple-400/30'
+              ? 'bg-amber-500/15 text-amber-300 border-amber-500/40 hover:bg-amber-500/25'
+              : 'bg-[#18181c] text-purple-300 border-purple-500/30 hover:bg-[#202026]'
           }`}
-          title="Export Video Settings (Choose 60 FPS or 120 FPS)"
+          title="Video Render Framerate & Encoding Settings"
+        >
+          <SlidersHorizontal className="w-3 h-3 text-purple-400" />
+          <span>{exportFps} FPS</span>
+        </button>
+
+        {/* Export Render Button */}
+        <button
+          onClick={() => startExport(exportFps)}
+          disabled={exportProgress.isExporting || layers.length === 0}
+          className={`px-3 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 shadow-sm transition ${
+            exportProgress.isExporting || layers.length === 0
+              ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700'
+              : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white cursor-pointer shadow-purple-900/30'
+          }`}
+          title={layers.length === 0 ? 'Add elements to export video' : 'Export Video WebM / MP4'}
         >
           <Film className="w-3.5 h-3.5" />
-          <span>Export</span>
-          <span
-            className={`text-[9px] font-mono px-1.5 py-0.2 rounded font-bold uppercase ${
-              exportFps >= 120
-                ? 'bg-amber-400 text-black shadow-xs'
-                : 'bg-purple-950/80 text-purple-200 border border-purple-400/40'
-            }`}
-          >
-            {exportFps} FPS
-          </span>
+          <span>{exportProgress.isExporting ? 'Exporting...' : 'Export'}</span>
         </button>
       </div>
     </header>

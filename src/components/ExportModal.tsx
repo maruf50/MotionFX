@@ -33,7 +33,7 @@ export function ExportModal() {
                 : 'bg-purple-950/60 text-purple-300 border-purple-700/50'
             }`}
           >
-            {exportProgress.fps || 60} FPS {(exportProgress.fps || 60) >= 120 ? 'ULTRA' : 'PRO'}
+            {exportProgress.fps || 60} FPS
           </span>
         </div>
 

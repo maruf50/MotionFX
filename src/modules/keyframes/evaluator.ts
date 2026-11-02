@@ -15,6 +15,32 @@ export function getInterpolatedValue(layer: Layer, prop: AnimatableProp, t: numb
     if (prop === 'scaleX' || prop === 'scaleY' || prop === 'opacity') {
       return (layer[prop] as number | undefined) ?? 1;
     }
+    if (prop === 'barPercentage') {
+      return (layer.barPercentage as number | undefined) ?? 75;
+    }
+    if (prop === 'branchGrowth') {
+      const raw = layer.branchGrowth;
+      if (raw === undefined) return 100;
+      return raw <= 1 && raw > 0 ? raw * 100 : raw;
+    }
+    if (prop === 'followerProgress') {
+      return (layer.followerProgress as number | undefined) ?? 100;
+    }
+    if (prop === 'arrayProgress') {
+      return (layer.arrayProgress as number | undefined) ?? 100;
+    }
+    if (prop === 'cardProgress') {
+      return (layer.cardProgress as number | undefined) ?? 100;
+    }
+    if (prop === 'pathDrawProgress') {
+      return (layer.pathDrawProgress as number | undefined) ?? 100;
+    }
+    if (prop === 'buttonProgress') {
+      return (layer.buttonProgress as number | undefined) ?? 100;
+    }
+    if (prop === 'cursorProgress') {
+      return (layer.cursorProgress as number | undefined) ?? 100;
+    }
     return (layer[prop] as number | undefined) ?? 0;
   }
   if (kfs.length === 1 || t <= kfs[0].time) return kfs[0].value;
@@ -136,9 +162,7 @@ export function setOrUpdateKeyframe(
   } else {
     // If keyframes were empty and time > 0.05s, anchor at time 0 with layer's base value
     if (list.length === 0 && roundedTime > 0.05) {
-      const baseVal =
-        (layer[prop] as number | undefined) ??
-        (prop === 'scaleX' || prop === 'scaleY' || prop === 'opacity' ? 1 : 0);
+      const baseVal = getInterpolatedValue(layer, prop, 0);
       list.push({ time: 0, value: baseVal });
     }
     list.push({ time: roundedTime, value });

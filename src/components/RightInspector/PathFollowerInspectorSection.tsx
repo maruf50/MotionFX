@@ -17,16 +17,26 @@ import {
   Maximize2,
   Smile,
   Layers,
+  Diamond,
 } from 'lucide-react';
 import { useMotion } from '@/context/MotionContext';
 import { FollowerType, PathPoint } from '@/types/motion';
 import { PATH_PRESETS } from '@/modules/renderers/pathFollower';
 import { STICKER_PRESETS } from '@/modules/assets/stickers';
+import { getInterpolatedValue } from '@/modules/keyframes/evaluator';
 
 const EMOJI_PRESETS = ['✨', '🚀', '🔥', '⭐', '💎', '💫', '🟣', '⚡', '🛸', '🎯'];
 
 export function PathFollowerInspectorSection() {
-  const { selectedLayer, updateLayer } = useMotion();
+  const {
+    selectedLayer,
+    updateLayer,
+    setAnimPropValue,
+    toggleKeyframe,
+    addStartAndEndKeyframes,
+    currentTime,
+    isAutoKeyframe,
+  } = useMotion();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   if (!selectedLayer || selectedLayer.shapeType !== 'pathFollower') return null;
@@ -43,6 +53,23 @@ export function PathFollowerInspectorSection() {
   const orientToPath = selectedLayer.followerOrientToPath ?? true;
   const showTrack = selectedLayer.showPathTrack !== false;
   const isPenEditing = selectedLayer.isPenEditing ?? false;
+
+  const hasKeyframes = Boolean(selectedLayer.keyframes?.followerProgress?.length);
+  const progress = hasKeyframes
+    ? getInterpolatedValue(selectedLayer, 'followerProgress', currentTime)
+    : (selectedLayer.followerProgress ?? 100);
+
+  const hasKf = selectedLayer.keyframes?.followerProgress?.some(
+    (k) => Math.abs(k.time - currentTime) < 0.04
+  );
+
+  const handleProgressChange = (val: number) => {
+    if (hasKeyframes || isAutoKeyframe) {
+      setAnimPropValue(selectedLayer.id, 'followerProgress', val, true);
+    } else {
+      updateLayer(selectedLayer.id, { followerProgress: val });
+    }
+  };
 
   const handleApplyPreset = (presetKey: string) => {
     const preset = PATH_PRESETS[presetKey];
@@ -145,6 +172,47 @@ export function PathFollowerInspectorSection() {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Keyframeable Follower Travel Progress */}
+      <div className="pt-2 border-t border-[#242428] space-y-1.5">
+        <div className="flex items-center justify-between text-[11px] text-zinc-400">
+          <div className="flex items-center gap-1.5">
+            <span>Travel Progress</span>
+            <button
+              type="button"
+              onClick={() => toggleKeyframe(selectedLayer.id, 'followerProgress')}
+              title={hasKf ? 'Remove keyframe at playhead' : 'Add keyframe at playhead'}
+              className={`p-1 rounded transition cursor-pointer ${
+                hasKf
+                  ? 'text-purple-400 bg-purple-950/60 hover:bg-purple-900/60'
+                  : 'text-zinc-600 hover:text-zinc-300'
+              }`}
+            >
+              <Diamond className={`w-3 h-3 ${hasKf ? 'fill-purple-400' : ''}`} />
+            </button>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="font-mono text-purple-300 font-semibold">{Math.round(progress)}%</span>
+            <button
+              type="button"
+              onClick={() => addStartAndEndKeyframes(selectedLayer.id, 'followerProgress', 0, 100, followerSpeed)}
+              className="text-[9px] px-1.5 py-0.5 rounded bg-[#1e1e24] hover:bg-purple-950 text-zinc-300 hover:text-purple-300 border border-[#303038] hover:border-purple-600 transition"
+              title="Add 0% start and 100% end keyframes"
+            >
+              0%→100%
+            </button>
+          </div>
+        </div>
+        <input
+          type="range"
+          min="0"
+          max="100"
+          step="1"
+          value={Math.round(progress)}
+          onChange={(e) => handleProgressChange(parseInt(e.target.value, 10))}
+          className="w-full accent-purple-500 cursor-pointer"
+        />
       </div>
 
       {/* Follower Count & Speed */}

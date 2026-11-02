@@ -1,4 +1,18 @@
-export type AnimatableProp = 'x' | 'y' | 'scaleX' | 'scaleY' | 'rotation' | 'opacity';
+export type AnimatableProp =
+  | 'x'
+  | 'y'
+  | 'scaleX'
+  | 'scaleY'
+  | 'rotation'
+  | 'opacity'
+  | 'barPercentage'
+  | 'branchGrowth'
+  | 'followerProgress'
+  | 'arrayProgress'
+  | 'cardProgress'
+  | 'pathDrawProgress'
+  | 'buttonProgress'
+  | 'cursorProgress';
 
 export interface Keyframe {
   time: number; // in seconds
@@ -23,13 +37,107 @@ export type ShapeType =
   | 'line'
   | 'bar'
   | 'branching'
-  | 'pathFollower';
+  | 'pathFollower'
+  | 'array'
+  | 'card'
+  | 'pathDraw'
+  | 'button'
+  | 'cursor';
 
 export type BarShape = 'horizontal' | 'vertical' | 'radial' | 'pill';
 export type BranchCurvature = 'curved' | 'straight' | 'stepped';
 export type BranchDirection = 'right' | 'left' | 'up' | 'down' | 'radial';
 export type BranchEndShape = 'circle' | 'dot' | 'arrow' | 'square' | 'none';
 export type FollowerType = 'circle' | 'star' | 'rect' | 'arrow' | 'emoji' | 'sparkle' | 'image';
+
+// Array Matrix types
+export type ArrayItemShape =
+  | 'circle'
+  | 'square'
+  | 'rounded'
+  | 'star'
+  | 'dot'
+  | 'emoji'
+  | 'ring'
+  | 'triangle'
+  | 'diamond'
+  | 'hexagon';
+
+export type ArrayAnimType = 'pop' | 'fade' | 'drop' | 'wave' | 'ripple' | 'snake';
+export type ArrayElementKind = 'shape' | 'text' | 'image' | 'icon';
+
+export interface ArrayElementItem {
+  id: string;
+  kind: ArrayElementKind;
+  shape?: ArrayItemShape;
+  color?: string;
+  borderColor?: string;
+  borderWidth?: number;
+  sizeRatio?: number;
+  text?: string;
+  textColor?: string;
+  fontSize?: number;
+  icon?: string;
+  iconColor?: string;
+  imageSrc?: string;
+}
+
+// Card Stack types
+export type CardAnimType = 'fan' | 'swipe' | 'stackShift' | 'cascade' | 'flip' | 'float';
+export type CardShape = 'rounded' | 'chamfer' | 'rect' | 'pill' | 'glass';
+
+export interface CardItem {
+  id: string;
+  title: string;
+  subtitle?: string;
+  badge?: string;
+  imageSrc?: string;
+  shape?: CardShape;
+  color?: string;
+  gradientEnd?: string;
+  textColor?: string;
+  borderColor?: string;
+  borderWidth?: number;
+  borderRadius?: number;
+}
+
+// Path Draw types
+export type PathDrawType = 'arc' | 'wave' | 'spiral' | 'infinity' | 'straight' | 'custom';
+export type PathDrawTextAnim = 'reveal' | 'travel' | 'wave' | 'typewriter' | 'none';
+export type PathAnimStyle = 'writeOn' | 'laserBeam' | 'dashFlow' | 'pulseGlow' | 'dualDraw';
+
+// Button types
+export type ButtonStyle =
+  | 'pill'
+  | 'rounded'
+  | 'rect'
+  | 'chamfer'
+  | 'gradient'
+  | 'outline'
+  | 'glass'
+  | 'floating'
+  | 'toggle';
+export type ButtonAnimation = 'pulseGlow' | 'shimmer' | 'clickPress' | 'bounce' | 'ripple' | 'toggleSwitch';
+export type ButtonIcon =
+  | 'arrow'
+  | 'check'
+  | 'sparkle'
+  | 'plus'
+  | 'play'
+  | 'heart'
+  | 'bell'
+  | 'star'
+  | 'download'
+  | 'external'
+  | 'cart'
+  | 'customEmoji'
+  | 'none';
+export type ButtonIconPosition = 'left' | 'right' | 'iconOnly';
+
+// Cursor types
+export type CursorType = 'pointer' | 'hand' | 'crosshair' | 'beam' | 'glowDot';
+export type CursorPathMode = 'linear' | 'orbit' | 'customPath' | 'float';
+export type CursorClickAnim = 'ripple' | 'press' | 'burst' | 'none';
 
 export interface PathPoint {
   x: number;
@@ -63,7 +171,9 @@ export interface Layer {
   height: number;
   sides?: number; // for star and polygon
   fill: string;
+  fillAlpha?: number; // 0 to 100
   stroke: string;
+  strokeAlpha?: number; // 0 to 100
   borderWidth: number;
   borderRadius: number; // for rounded borders
   borderStyle: BorderStyle; // solid, dashed, dotted
@@ -77,6 +187,7 @@ export interface Layer {
   expanded?: boolean;
   // Custom vector path
   pathData?: string;
+  pathClosed?: boolean;
   // Text specific
   text?: string;
   morphTarget?: string;
@@ -85,8 +196,10 @@ export interface Layer {
   fontWeight?: string | number;
   fontStyle?: 'normal' | 'italic';
   textEffect?: TextEffect;
-  // Image / PNG specific
+  // Image / PNG / Sticker specific
   imageSrc?: string | null;
+  isSticker?: boolean;
+  stickerId?: string;
   // Bar shape properties
   barPercentage?: number; // 0 to 100
   barShape?: BarShape;
@@ -111,7 +224,9 @@ export interface Layer {
   branchAnimated?: boolean;
   branchAnimDuration?: number;
   branchAnimLoop?: 'loop' | 'pingpong' | 'once';
-  branchGrowth?: number; // 0 to 1
+  branchGrowth?: number; // 0 to 100 (percentage)
+  branchStagger?: boolean;
+  branchGrowTrunk?: boolean;
   branchAnimateCount?: boolean;
   branchAnimateLength?: boolean;
   // Move Along Path (Path Follower) properties
@@ -133,6 +248,114 @@ export interface Layer {
   pathTrackWidth?: number;
   pathTrackDashed?: boolean;
   isPenEditing?: boolean;
+  followerProgress?: number; // 0 to 100 (for keyframing path follower)
+
+  // 1. Array Matrix Animation properties
+  arrayRows?: number;
+  arrayCols?: number;
+  arrayGap?: number;
+  arrayShape?: ArrayItemShape;
+  arrayItemSize?: number;
+  arrayCustomEmoji?: string;
+  arrayAnimType?: ArrayAnimType;
+  arrayAnimDuration?: number;
+  arrayAnimStagger?: number;
+  arrayAnimLoop?: 'loop' | 'pingpong' | 'once';
+  arrayRandomColor?: boolean;
+  arrayProgress?: number; // 0 to 100
+  arrayElements?: ArrayElementItem[];
+  arrayElementSpawnMode?: 'cycle' | 'random';
+  arrayItemBorderColor?: string;
+  arrayItemBorderWidth?: number;
+  arrayRandomSize?: boolean;
+  arraySizeVariance?: number; // 0.1 to 0.8 (default ~0.35)
+  arrayRandomRotation?: boolean;
+  arrayItemRotation?: number;
+
+  // 2. Card Stack Animation properties
+  cardCount?: number;
+  cardTitle?: string;
+  cardSubtitle?: string;
+  cardBadge?: string;
+  cardImageSrc?: string | null;
+  cardColor?: string;
+  cardShape?: CardShape;
+  cardBorderRadius?: number;
+  cardBorderWidth?: number;
+  cardBorderColor?: string;
+  cardBorderStyle?: BorderStyle;
+  cardAnimType?: CardAnimType;
+  cardAnimDuration?: number;
+  cardSpread?: number;
+  cardAnimLoop?: 'loop' | 'pingpong' | 'once';
+  cardItems?: CardItem[];
+  cardProgress?: number; // 0 to 100 (for keyframing card stack motion)
+
+  // 3. Path Draw & Text on Path properties
+  pathDrawType?: PathDrawType;
+  pathDrawStrokeWidth?: number;
+  pathDrawColor?: string;
+  pathDrawDashed?: boolean;
+  pathDrawArrow?: boolean;
+  pathDrawProgress?: number; // 0 to 100
+  pathDrawAnimated?: boolean;
+  pathDrawDuration?: number;
+  pathDrawLoop?: 'once' | 'loop' | 'pingpong';
+  pathDrawText?: string;
+  pathDrawTextFontSize?: number;
+  pathDrawTextColor?: string;
+  pathDrawTextOffset?: number;
+  pathDrawTextAnimation?: PathDrawTextAnim;
+  pathAnimStyle?: PathAnimStyle;
+
+  // 4. Interactive Button properties
+  btnStyle?: ButtonStyle;
+  btnText?: string;
+  btnSubtext?: string;
+  btnHideText?: boolean;
+  btnFontSize?: number;
+  btnFontFamily?: string;
+  btnFontWeight?: string | number;
+  btnSubtextSize?: number;
+  btnIcon?: ButtonIcon;
+  btnIconPosition?: ButtonIconPosition;
+  btnCustomEmoji?: string;
+  btnState?: 'on' | 'off';
+  btnColor?: string;
+  btnOnColor?: string;
+  btnOffColor?: string;
+  btnKnobColor?: string;
+  btnGradientEnd?: string;
+  btnTextColor?: string;
+  btnSubtextColor?: string;
+  btnBorderRadius?: number;
+  btnBorderWidth?: number;
+  btnBorderColor?: string;
+  btnGlow?: boolean;
+  btnGlowColor?: string;
+  btnAnimation?: ButtonAnimation;
+  btnAnimSpeed?: number;
+  buttonProgress?: number; // 0 to 100
+
+  // 5. Cursor Motion properties
+  cursorType?: CursorType;
+  cursorColor?: string;
+  cursorSize?: number;
+  cursorPathMode?: CursorPathMode;
+  cursorStartPos?: { x: number; y: number };
+  cursorEndPos?: { x: number; y: number };
+  cursorPathDuration?: number;
+  cursorClickAnim?: CursorClickAnim;
+  cursorClickInterval?: number;
+  cursorClickTimes?: string;
+  cursorBlinking?: boolean;
+  cursorBlinkRate?: number;
+  cursorTrail?: boolean;
+  cursorOrientToMotion?: boolean;
+  showCursorPath?: boolean;
+  cursorPathColor?: string;
+  cursorProgress?: number; // 0 to 100
+
   // Base transform properties (used when keyframes are empty)
   x?: number;
   y?: number;
@@ -140,8 +363,11 @@ export interface Layer {
   scaleY?: number;
   rotation?: number;
   opacity?: number;
+  // Timeline in/out range (After Effects style layer bar & trimming)
+  startTime?: number; // in seconds, defaults to 0
+  endTime?: number;   // in seconds, defaults to composition duration
   // Animatable tracks
-  keyframes: Record<AnimatableProp, Keyframe[]>;
+  keyframes: Partial<Record<AnimatableProp, Keyframe[]>>;
 }
 
 export interface TransformState {
@@ -180,4 +406,15 @@ export interface ExportProgress {
 export interface CanvasResolution {
   width: number;
   height: number;
+}
+
+export interface Composition {
+  id: string;
+  name: string;
+  layers: Layer[];
+  duration: number;
+  canvasBg: string;
+  resolution?: CanvasResolution;
+  templateId?: string;
+  createdAt?: number;
 }

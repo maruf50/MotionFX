@@ -47,7 +47,14 @@ export function CanvasStage() {
     setIsResolutionModalOpen,
     editingTextLayerId,
     setEditingTextLayerId,
+    isSnappingEnabled,
+    toggleSnapping,
+    mergeSelectedLayers,
+    selectedLayerIds,
   } = useMotion();
+
+  const [snapGuides, setSnapGuides] = useState<{ x?: number; y?: number }>({});
+  const activeSnapGuidesRef = useRef<{ x?: number; y?: number }>({});
 
   const isDraggingRef = useRef<boolean>(false);
   const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -130,8 +137,16 @@ export function CanvasStage() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // 1. If currently selected layer is a pathFollower, check if clicked an anchor or handle
-    if (selectedLayer && selectedLayer.shapeType === 'pathFollower' && selectedLayer.pathPoints) {
+    // 1. If currently selected layer has pathPoints (pathFollower, custom pathDraw, or custom cursor), check if clicked an anchor or handle
+    if (
+      selectedLayer &&
+      (selectedLayer.isPenEditing ||
+        selectedLayer.shapeType === 'custom' ||
+        selectedLayer.shapeType === 'pathFollower' ||
+        (selectedLayer.shapeType === 'pathDraw' && selectedLayer.pathDrawType === 'custom') ||
+        (selectedLayer.shapeType === 'cursor' && selectedLayer.cursorPathMode === 'customPath')) &&
+      selectedLayer.pathPoints
+    ) {
       const tr = getLayerWorldTransformAtTime(selectedLayer, layers, currentTime);
       const rad = (tr.rotation * Math.PI) / 180;
       const cos = Math.cos(rad);
@@ -184,7 +199,8 @@ export function CanvasStage() {
           (dx * Math.sin(invRad) + dy * Math.cos(invRad)) / Math.max(0.001, tr.scaleY)
         );
 
-        const last = selectedLayer.pathPoints[selectedLayer.pathPoints.length - 1];
+        const currentPts = selectedLayer.pathPoints || [];
+        const last = currentPts[currentPts.length - 1];
         const newPt = {
           x: localX,
           y: localY,
@@ -195,7 +211,8 @@ export function CanvasStage() {
         };
         recordSnapshot();
         updateLayer(selectedLayer.id, {
-          pathPoints: [...selectedLayer.pathPoints, newPt],
+          pathDrawType: selectedLayer.shapeType === 'pathDraw' ? 'custom' : selectedLayer.pathDrawType,
+          pathPoints: [...currentPts, newPt],
         });
         return;
       }
@@ -300,6 +317,8 @@ export function CanvasStage() {
     for (let i = 0; i < layers.length; i++) {
       const layer = layers[i];
       if (!layer.visible) continue;
+      if (typeof layer.startTime === 'number' && currentTime < layer.startTime) continue;
+      if (typeof layer.endTime === 'number' && currentTime > layer.endTime) continue;
 
       const tr = getLayerWorldTransformAtTime(layer, layers, currentTime);
       const dims = getLayerDimensions(ctx, layer);
@@ -340,6 +359,8 @@ export function CanvasStage() {
     for (let i = 0; i < layers.length; i++) {
       const layer = layers[i];
       if (!layer.visible) continue;
+      if (typeof layer.startTime === 'number' && currentTime < layer.startTime) continue;
+      if (typeof layer.endTime === 'number' && currentTime > layer.endTime) continue;
 
       const tr = getLayerWorldTransformAtTime(layer, layers, currentTime);
       const dims = getLayerDimensions(ctx, layer);
@@ -575,16 +596,66 @@ export function CanvasStage() {
         const targetWorldX = pt.x - dragOffsetRef.current.x;
         const targetWorldY = pt.y - dragOffsetRef.current.y;
 
-        let localX = Math.round(targetWorldX);
-        let localY = Math.round(targetWorldY);
+        let finalWorldX = targetWorldX;
+        let finalWorldY = targetWorldY;
+        let snapGuideX: number | undefined = undefined;
+        let snapGuideY: number | undefined = undefined;
+
+        if (isSnappingEnabled) {
+          const snapThreshold = 8;
+          const canvasMidX = canvasResolution.width / 2;
+          const canvasMidY = canvasResolution.height / 2;
+
+          // Candidate X snap points: canvas center, 0, canvasWidth
+          const snapPointsX: number[] = [canvasMidX, 0, canvasResolution.width];
+          const snapPointsY: number[] = [canvasMidY, 0, canvasResolution.height];
+
+          // Add other visible layers' world centers
+          layers.forEach((other) => {
+            if (other.id === selectedLayerId || !other.visible) return;
+            if (typeof other.startTime === 'number' && currentTime < other.startTime) return;
+            if (typeof other.endTime === 'number' && currentTime > other.endTime) return;
+            const otherTr = getLayerWorldTransformAtTime(other, layers, currentTime);
+            snapPointsX.push(otherTr.x);
+            snapPointsY.push(otherTr.y);
+          });
+
+          // Check X snap
+          let bestDiffX = snapThreshold;
+          for (const sx of snapPointsX) {
+            const diff = Math.abs(finalWorldX - sx);
+            if (diff < bestDiffX) {
+              bestDiffX = diff;
+              finalWorldX = sx;
+              snapGuideX = sx;
+            }
+          }
+
+          // Check Y snap
+          let bestDiffY = snapThreshold;
+          for (const sy of snapPointsY) {
+            const diff = Math.abs(finalWorldY - sy);
+            if (diff < bestDiffY) {
+              bestDiffY = diff;
+              finalWorldY = sy;
+              snapGuideY = sy;
+            }
+          }
+        }
+
+        activeSnapGuidesRef.current = { x: snapGuideX, y: snapGuideY };
+        setSnapGuides({ x: snapGuideX, y: snapGuideY });
+
+        let localX = Math.round(finalWorldX);
+        let localY = Math.round(finalWorldY);
 
         // If parented, convert world position into local coordinates relative to parent
         if (targetLayer.parentId) {
           const parent = layers.find((l) => l.id === targetLayer.parentId);
           if (parent) {
             const parentWorldTr = getLayerWorldTransformAtTime(parent, layers, currentTime);
-            const dx = targetWorldX - parentWorldTr.x;
-            const dy = targetWorldY - parentWorldTr.y;
+            const dx = finalWorldX - parentWorldTr.x;
+            const dy = finalWorldY - parentWorldTr.y;
             const rad = (-parentWorldTr.rotation * Math.PI) / 180;
             const cos = Math.cos(rad);
             const sin = Math.sin(rad);
@@ -600,6 +671,8 @@ export function CanvasStage() {
     };
 
     const handleGlobalMouseUp = () => {
+      activeSnapGuidesRef.current = {};
+      setSnapGuides({});
       if (!hasMovedDuringDragRef.current && pendingTextEditRef.current) {
         const textLayerId = pendingTextEditRef.current;
         const textLayer = layers.find((l) => l.id === textLayerId);
@@ -617,12 +690,30 @@ export function CanvasStage() {
       scaleHandleRef.current = null;
     };
 
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      const activeTag = (document.activeElement?.tagName || '').toLowerCase();
+      if (activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select') return;
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'e') {
+        e.preventDefault();
+        mergeSelectedLayers();
+        return;
+      }
+      if (e.key.toLowerCase() === 's' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        toggleSnapping();
+        return;
+      }
+    };
+
     window.addEventListener('mousemove', handleGlobalMouseMove);
     window.addEventListener('mouseup', handleGlobalMouseUp);
+    window.addEventListener('keydown', handleGlobalKeyDown);
 
     return () => {
       window.removeEventListener('mousemove', handleGlobalMouseMove);
       window.removeEventListener('mouseup', handleGlobalMouseUp);
+      window.removeEventListener('keydown', handleGlobalKeyDown);
     };
   }, [
     selectedLayerId,
@@ -632,6 +723,10 @@ export function CanvasStage() {
     currentTime,
     getCanvasCoords,
     updateLayer,
+    isSnappingEnabled,
+    toggleSnapping,
+    mergeSelectedLayers,
+    canvasResolution,
   ]);
 
   // Handle Drag & Drop from Template Library onto Canvas
@@ -753,6 +848,20 @@ export function CanvasStage() {
             cursor: canvasCursor,
           }}
         />
+
+        {/* Active Smart Snapping Guide Lines */}
+        {snapGuides.x !== undefined && (
+          <div
+            className="absolute top-0 bottom-0 pointer-events-none z-20 border-l border-dashed border-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.9)]"
+            style={{ left: `${(snapGuides.x / canvasResolution.width) * 100}%` }}
+          />
+        )}
+        {snapGuides.y !== undefined && (
+          <div
+            className="absolute left-0 right-0 pointer-events-none z-20 border-t border-dashed border-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.9)]"
+            style={{ top: `${(snapGuides.y / canvasResolution.height) * 100}%` }}
+          />
+        )}
 
         {/* On-Canvas Direct Inline Text Editor with Blinking Cursor */}
         {editingTextLayerId && selectedLayer && selectedLayer.id === editingTextLayerId && selectedLayerWorldTr && (() => {

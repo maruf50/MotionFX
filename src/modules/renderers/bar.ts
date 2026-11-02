@@ -1,5 +1,6 @@
 import { Layer } from '@/types/motion';
 import { drawRoundedRect, applyStrokeStyle } from './shapes';
+import { getInterpolatedValue } from '../keyframes/evaluator';
 
 /**
  * Renders the Bar shape (Horizontal, Vertical, Radial Gauge, Pill).
@@ -12,7 +13,7 @@ export function renderBarShape(
   time: number,
   tr?: { scaleX: number; scaleY: number }
 ) {
-  const percentage = Math.max(0, Math.min(100, layer.barPercentage ?? 75));
+  const percentage = Math.max(0, Math.min(100, getInterpolatedValue(layer, 'barPercentage', time)));
   const barShape = layer.barShape || 'horizontal';
   const hw = layer.width / 2;
   const hh = layer.height / 2;
@@ -58,8 +59,8 @@ export function renderBarShape(
     // Optional border stroke around track
     if (layer.borderWidth > 0 && layer.borderStyle !== 'none' && layer.stroke) {
       ctx.beginPath();
-      ctx.arc(0, 0, radius + thickness / 2, 0, Math.PI * 2);
-      ctx.arc(0, 0, Math.max(2, radius - thickness / 2), 0, Math.PI * 2);
+      ctx.arc(0, 0, Math.max(1, radius + thickness / 2), 0, Math.PI * 2);
+      ctx.arc(0, 0, Math.max(1, radius - thickness / 2), 0, Math.PI * 2);
       ctx.lineWidth = layer.borderWidth / avgScale;
       ctx.strokeStyle = layer.stroke;
       ctx.stroke();

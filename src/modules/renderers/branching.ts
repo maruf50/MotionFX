@@ -1,5 +1,6 @@
 import { Layer, BranchCurvature, BranchDirection, BranchEndShape } from '@/types/motion';
 import { applyStrokeStyle } from './shapes';
+import { getInterpolatedValue } from '../keyframes/evaluator';
 
 /**
  * Draws an end marker at (x, y) with rotation angle.
@@ -182,6 +183,7 @@ export function renderBranchingShape(
   time: number,
   tr?: { scaleX: number; scaleY: number }
 ) {
+  const safeTime = Math.max(0, time);
   let branchCount = Math.max(1, Math.min(24, layer.branchCount ?? 4));
   let branchLength = layer.branchLength ?? 130;
   const curvature: BranchCurvature = layer.branchCurvature || 'curved';
@@ -203,35 +205,38 @@ export function renderBranchingShape(
 
   // 2. Growth Animation Calculation (Endpoints move from base to end)
   let growth = 1.0;
-  const isAnimated = layer.branchAnimated !== false;
+  const hasGrowthKeyframes = Boolean(layer.keyframes?.branchGrowth?.length);
+  const isAnimated = layer.branchAnimated !== false && !hasGrowthKeyframes;
 
-  if (isAnimated) {
+  if (hasGrowthKeyframes) {
+    const raw = getInterpolatedValue(layer, 'branchGrowth', safeTime);
+    growth = Math.max(0, Math.min(100, raw)) / 100;
+  } else if (!isAnimated) {
+    const raw = layer.branchGrowth ?? 100;
+    const val = raw <= 1 && raw > 0 ? raw * 100 : raw;
+    growth = Math.max(0, Math.min(100, val)) / 100;
+  } else {
     const duration = Math.max(0.5, layer.branchAnimDuration ?? 2.5);
     const loop = layer.branchAnimLoop || 'loop';
-    const cycleTime = time % duration;
+    const cycleTime = safeTime % duration;
     const t = cycleTime / duration;
 
     if (loop === 'pingpong') {
       growth = t < 0.5 ? t * 2 : (1 - t) * 2;
     } else if (loop === 'once') {
-      growth = Math.min(1.0, time / duration);
+      growth = Math.min(1.0, safeTime / duration);
     } else {
       // Default 'loop': grows out smoothly over 80% of cycle, pauses at full extension, then restarts
       growth = t < 0.8 ? t / 0.8 : 1.0;
     }
-  } else if (typeof layer.branchGrowth === 'number') {
-    growth = Math.max(0, Math.min(1, layer.branchGrowth));
   }
-
-  // Cubic ease-out for organic spring growth
-  const easedGrowth = Math.max(0.001, 1 - Math.pow(1 - growth, 3));
 
   const strokeColor = layer.stroke || layer.fill || '#6366f1';
   const fillColor = layer.fill || strokeColor;
   const strokeWidth = Math.max(1.5, (layer.borderWidth || 3) / avgScale);
 
   ctx.save();
-  applyStrokeStyle(ctx, layer, time);
+  applyStrokeStyle(ctx, layer, safeTime);
   ctx.strokeStyle = strokeColor;
   ctx.lineWidth = strokeWidth;
   ctx.lineCap = 'round';
@@ -240,32 +245,71 @@ export function renderBranchingShape(
   const trunk = getBranchTrunkPoints({ ...layer, branchLength });
   const endpoints = getBranchEndpoints({ ...layer, branchCount, branchLength });
 
-  // 3. Draw Trunk (Base)
-  if (direction !== 'radial') {
-    ctx.beginPath();
-    ctx.moveTo(trunk.start.x, trunk.start.y);
-    ctx.lineTo(trunk.split.x, trunk.split.y);
-    ctx.stroke();
+  const growTrunk = layer.branchGrowTrunk !== false;
+  let trunkGrowth = 1.0;
+  let branchLifetime = growth;
 
-    // Trunk base root node
-    ctx.fillStyle = fillColor;
-    ctx.beginPath();
-    ctx.arc(trunk.start.x, trunk.start.y, Math.max(3, endSize * 0.85), 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
+  if (direction !== 'radial') {
+    if (growTrunk) {
+      trunkGrowth = Math.max(0, Math.min(1, growth / 0.25));
+      branchLifetime = Math.max(0, Math.min(1, (growth - 0.25) / 0.75));
+    } else {
+      trunkGrowth = 1.0;
+      branchLifetime = growth;
+    }
+
+    // 3. Draw Trunk (Base)
+    if (trunkGrowth > 0.001) {
+      const curSplitX = trunk.start.x + (trunk.split.x - trunk.start.x) * trunkGrowth;
+      const curSplitY = trunk.start.y + (trunk.split.y - trunk.start.y) * trunkGrowth;
+
+      ctx.beginPath();
+      ctx.moveTo(trunk.start.x, trunk.start.y);
+      ctx.lineTo(curSplitX, curSplitY);
+      ctx.stroke();
+
+      // Trunk base root node
+      const rootAlpha = Math.min(1.0, trunkGrowth / 0.2);
+      ctx.save();
+      ctx.globalAlpha = (ctx.globalAlpha || 1.0) * rootAlpha;
+      ctx.fillStyle = fillColor;
+      ctx.beginPath();
+      ctx.arc(trunk.start.x, trunk.start.y, Math.max(3, endSize * 0.85), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
   } else {
     // Radial central hub
-    ctx.fillStyle = fillColor;
-    ctx.beginPath();
-    ctx.arc(0, 0, Math.max(4, endSize * 1.2), 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
+    const hubGrowth = Math.max(0, Math.min(1, growth / 0.1));
+    branchLifetime = Math.max(0, Math.min(1, (growth - 0.1) / 0.9));
+
+    if (hubGrowth > 0.001) {
+      ctx.save();
+      ctx.globalAlpha = (ctx.globalAlpha || 1.0) * hubGrowth;
+      ctx.fillStyle = fillColor;
+      ctx.beginPath();
+      ctx.arc(0, 0, Math.max(4, endSize * 1.2 * hubGrowth), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   // 4. Draw Branches growing from split point to endpoints
   const splitPt = trunk.split;
 
   for (let i = 0; i < branchCount; i++) {
+    let branchT = branchLifetime;
+    if (layer.branchStagger && branchCount > 1) {
+      const maxDelay = 0.35;
+      const delay = (i / (branchCount - 1)) * maxDelay;
+      branchT = Math.max(0, Math.min(1, (branchLifetime - delay) / (1 - maxDelay)));
+    }
+
+    if (branchT <= 0.001) continue; // Branch has not yet sprouted
+
+    const easedGrowth = Math.max(0.001, 1 - Math.pow(1 - branchT, 3));
     const targetEnd = endpoints[i] || { x: splitPt.x + 80, y: splitPt.y };
 
     // Current tip position animated from split base to target endpoint
@@ -305,7 +349,7 @@ export function renderBranchingShape(
 
     // 5. Draw End Marker traveling from base to tip
     const markerAngle = Math.atan2(curEndY - splitPt.y, curEndX - splitPt.x);
-    const markerAlpha = Math.min(1.0, easedGrowth / 0.15); // smoothly materializes as it emerges
+    const markerAlpha = Math.min(1.0, branchT / 0.15); // smoothly materializes as it emerges
     drawEndMarker(
       ctx,
       curEndX,

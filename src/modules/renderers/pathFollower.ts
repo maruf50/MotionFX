@@ -1,5 +1,6 @@
 import { Layer, PathPoint, FollowerType } from '@/types/motion';
 import { drawPolygonOrStar } from './shapes';
+import { getInterpolatedValue } from '../keyframes/evaluator';
 
 // Image cache for follower images
 const imageCache: Record<string, HTMLImageElement> = {};
@@ -205,7 +206,7 @@ function drawFollowerItem(
   imageSrc?: string | null,
   onImageLoad?: () => void
 ) {
-  const hs = size / 2;
+  const hs = Math.max(1, size / 2);
 
   if (type === 'circle') {
     ctx.fillStyle = color;
@@ -346,9 +347,14 @@ export function renderPathFollower(
   const scaleDown = layer.followerScaleDown ?? true;
   const orientToPath = layer.followerOrientToPath ?? true;
 
+  const hasKf = (layer.keyframes?.followerProgress?.length ?? 0) > 0;
+  const baseProgress = hasKf
+    ? getInterpolatedValue(layer, 'followerProgress', time) / 100
+    : (time / speed);
+
   for (let i = 0; i < followerCount; i++) {
     // Compute progress for follower i
-    let progress = ((time / speed) - i * spacing) % 1;
+    let progress = (baseProgress - i * spacing) % 1;
     if (progress < 0) progress += 1;
 
     // Calculate fade away opacity

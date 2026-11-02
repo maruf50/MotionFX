@@ -57,7 +57,24 @@ export function getLayerDimensions(
       height: Math.max(layer.height || 160, totalH),
     };
   }
-  if (layer.shapeType === 'pathFollower') {
+  if (layer.shapeType === 'array') {
+    const cols = Math.max(1, layer.arrayCols ?? 5);
+    const rows = Math.max(1, layer.arrayRows ?? 4);
+    const itemSize = Math.max(6, layer.arrayItemSize ?? 22);
+    const gap = Math.max(1, layer.arrayGap ?? 14);
+    const totalW = cols * itemSize + (cols - 1) * gap;
+    const totalH = rows * itemSize + (rows - 1) * gap;
+    return {
+      width: Math.max(40, totalW),
+      height: Math.max(40, totalH),
+    };
+  }
+  if (
+    layer.shapeType === 'custom' ||
+    layer.shapeType === 'pathFollower' ||
+    (layer.shapeType === 'pathDraw' && layer.pathDrawType === 'custom') ||
+    (layer.shapeType === 'cursor' && layer.cursorPathMode === 'customPath')
+  ) {
     if (layer.pathPoints && layer.pathPoints.length >= 2) {
       let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
       layer.pathPoints.forEach(p => {
@@ -136,6 +153,9 @@ export function renderSceneAtTime(
   for (let i = layers.length - 1; i >= 0; i--) {
     const layer = layers[i];
     if (!layer.visible) continue;
+    // Check timeline in/out bounds (After Effects style)
+    if (typeof layer.startTime === 'number' && time < layer.startTime) continue;
+    if (typeof layer.endTime === 'number' && time > layer.endTime) continue;
 
     // Use hierarchical world transform
     const tr = getLayerWorldTransformAtTime(layer, layers, time);
@@ -169,6 +189,13 @@ export function renderSceneAtTime(
   if (!options.hideSelectionGizmo && options.selectedLayerId) {
     const selected = layers.find(l => l.id === options.selectedLayerId);
     if (selected && selected.visible) {
+      // Don't show selection gizmo if layer is trimmed out at the current time
+      const isLayerActiveAtTime =
+        (typeof selected.startTime !== 'number' || time >= selected.startTime) &&
+        (typeof selected.endTime !== 'number' || time <= selected.endTime);
+      if (!isLayerActiveAtTime) {
+        return;
+      }
       const isEditingText = Boolean(options.editingTextLayerId && options.editingTextLayerId === selected.id);
       const tr = getLayerWorldTransformAtTime(selected, layers, time);
       const dims = getLayerDimensions(ctx, selected);
@@ -249,8 +276,14 @@ export function renderSceneAtTime(
       ctx.lineWidth = 1;
       ctx.stroke();
 
-      // If path follower, render interactive anchor points & control handles
-      if (selected.shapeType === 'pathFollower' && selected.pathPoints) {
+      // If path follower, custom path draw, custom path cursor, or custom pen shape, render interactive anchor points & control handles
+      if (
+        (selected.shapeType === 'custom' ||
+          selected.shapeType === 'pathFollower' ||
+          (selected.shapeType === 'pathDraw' && selected.pathDrawType === 'custom') ||
+          (selected.shapeType === 'cursor' && selected.cursorPathMode === 'customPath')) &&
+        selected.pathPoints
+      ) {
         selected.pathPoints.forEach((p) => {
           const px = p.x * tr.scaleX;
           const py = p.y * tr.scaleY;
@@ -323,4 +356,41 @@ export function renderSceneAtTime(
       ctx.restore();
     }
   }
+}
+
+/**
+ * Renders an individual layer with its world transform to a 2D canvas context.
+ * Used for offscreen composition, rasterization, and multi-layer merging.
+ */
+export function renderSingleLayerToCanvas(
+  ctx: CanvasRenderingContext2D,
+  layer: Layer,
+  allLayers: Layer[],
+  time: number,
+  totalDuration: number = 5,
+  onImageLoad?: () => void
+) {
+  if (!layer.visible) return;
+  if (typeof layer.startTime === 'number' && time < layer.startTime) return;
+  if (typeof layer.endTime === 'number' && time > layer.endTime) return;
+  const tr = getLayerWorldTransformAtTime(layer, allLayers, time);
+  if (tr.opacity <= 0.001) return;
+
+  ctx.save();
+  ctx.translate(tr.x, tr.y);
+  ctx.rotate((tr.rotation * Math.PI) / 180);
+  ctx.globalAlpha = tr.opacity;
+
+  if (layer.type === 'shape') {
+    renderShapeLayer(ctx, layer, time, onImageLoad, tr);
+  } else if (layer.type === 'text') {
+    ctx.save();
+    ctx.scale(tr.scaleX, tr.scaleY);
+    renderTextLayer(ctx, layer, time, totalDuration, tr);
+    ctx.restore();
+  } else if (layer.type === 'image') {
+    renderImageLayer(ctx, layer, time, onImageLoad, tr);
+  }
+
+  ctx.restore();
 }

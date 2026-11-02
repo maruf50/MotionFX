@@ -1,20 +1,45 @@
 'use client';
 
 import React from 'react';
-import { Percent, Activity, Sliders, CircleDot, Columns, Minus } from 'lucide-react';
+import { Percent, Activity, Sliders, CircleDot, Columns, Minus, Diamond } from 'lucide-react';
 import { useMotion } from '@/context/MotionContext';
 import { BarShape } from '@/types/motion';
+import { getInterpolatedValue } from '@/modules/keyframes/evaluator';
+import { ColorPickerWithAlpha } from './ColorPickerWithAlpha';
 
 export function BarInspectorSection() {
-  const { selectedLayer, updateLayer } = useMotion();
+  const {
+    selectedLayer,
+    updateLayer,
+    setAnimPropValue,
+    toggleKeyframe,
+    addStartAndEndKeyframes,
+    currentTime,
+    isAutoKeyframe,
+  } = useMotion();
 
   if (!selectedLayer || selectedLayer.shapeType !== 'bar') return null;
 
-  const percentage = selectedLayer.barPercentage ?? 75;
+  const hasKeyframes = Boolean(selectedLayer.keyframes?.barPercentage?.length);
+  const percentage = hasKeyframes
+    ? getInterpolatedValue(selectedLayer, 'barPercentage', currentTime)
+    : (selectedLayer.barPercentage ?? 75);
   const barShape = selectedLayer.barShape || 'horizontal';
   const showLabel = selectedLayer.barShowLabel ?? true;
 
+  const hasKf = selectedLayer.keyframes?.barPercentage?.some(
+    (k) => Math.abs(k.time - currentTime) < 0.04
+  );
+
   const quickPresets = [25, 50, 75, 100];
+
+  const handlePercentageChange = (val: number) => {
+    if (hasKeyframes || isAutoKeyframe) {
+      setAnimPropValue(selectedLayer.id, 'barPercentage', val, true);
+    } else {
+      updateLayer(selectedLayer.id, { barPercentage: val });
+    }
+  };
 
   return (
     <div className="bg-[#1a1a1e] p-2.5 rounded border border-[#28282e] space-y-3">
@@ -31,9 +56,33 @@ export function BarInspectorSection() {
 
       {/* Percentage Control */}
       <div>
-        <div className="flex justify-between text-[11px] text-zinc-400 mb-1">
-          <span>Fill Percentage</span>
-          <span className="font-mono text-purple-300">{Math.round(percentage)}%</span>
+        <div className="flex items-center justify-between text-[11px] text-zinc-400 mb-1">
+          <div className="flex items-center gap-1.5">
+            <span>Fill Percentage</span>
+            <button
+              type="button"
+              onClick={() => toggleKeyframe(selectedLayer.id, 'barPercentage')}
+              title={hasKf ? 'Remove keyframe at playhead' : 'Add keyframe at playhead'}
+              className={`p-1 rounded transition cursor-pointer ${
+                hasKf
+                  ? 'text-purple-400 bg-purple-950/60 hover:bg-purple-900/60'
+                  : 'text-zinc-600 hover:text-zinc-300'
+              }`}
+            >
+              <Diamond className={`w-3 h-3 ${hasKf ? 'fill-purple-400' : ''}`} />
+            </button>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="font-mono text-purple-300 font-semibold">{Math.round(percentage)}%</span>
+            <button
+              type="button"
+              onClick={() => addStartAndEndKeyframes(selectedLayer.id, 'barPercentage', 0, 100, 2.0)}
+              className="text-[9px] px-1.5 py-0.5 rounded bg-[#1e1e24] hover:bg-purple-950 text-zinc-300 hover:text-purple-300 border border-[#303038] hover:border-purple-600 transition"
+              title="Add 0% start and 100% end keyframes"
+            >
+              0%→100%
+            </button>
+          </div>
         </div>
         <input
           type="range"
@@ -41,11 +90,7 @@ export function BarInspectorSection() {
           max="100"
           step="1"
           value={percentage}
-          onChange={(e) =>
-            updateLayer(selectedLayer.id, {
-              barPercentage: parseFloat(e.target.value) || 0,
-            })
-          }
+          onChange={(e) => handlePercentageChange(parseFloat(e.target.value) || 0)}
           className="w-full accent-purple-500 cursor-pointer"
         />
 
@@ -55,7 +100,7 @@ export function BarInspectorSection() {
             <button
               key={val}
               type="button"
-              onClick={() => updateLayer(selectedLayer.id, { barPercentage: val })}
+              onClick={() => handlePercentageChange(val)}
               className={`py-1 rounded text-[10px] font-mono transition border ${
                 Math.round(percentage) === val
                   ? 'bg-purple-600/30 text-purple-200 border-purple-500/60'
@@ -130,34 +175,26 @@ export function BarInspectorSection() {
         </div>
       </div>
 
-      {/* Colors: Fill vs Track Background */}
-      <div className="grid grid-cols-2 gap-2">
-        <div className="bg-[#121214] p-1.5 rounded border border-[#2c2c32] flex items-center justify-between">
-          <span className="text-[11px] text-zinc-300">Fill Color</span>
-          <input
-            type="color"
-            value={selectedLayer.barFillColor || selectedLayer.fill || '#6366f1'}
-            onChange={(e) =>
-              updateLayer(selectedLayer.id, {
-                barFillColor: e.target.value,
-                fill: e.target.value,
-              })
-            }
-            className="w-5 h-5 rounded cursor-pointer bg-transparent border-0"
-          />
-        </div>
+      {/* Colors with Alpha: Fill vs Track Background */}
+      <div className="space-y-2">
+        <ColorPickerWithAlpha
+          label="Fill Color & Alpha"
+          color={selectedLayer.barFillColor || selectedLayer.fill || '#6366f1'}
+          onChange={(newFill) =>
+            updateLayer(selectedLayer.id, {
+              barFillColor: newFill,
+              fill: newFill,
+            })
+          }
+        />
 
-        <div className="bg-[#121214] p-1.5 rounded border border-[#2c2c32] flex items-center justify-between">
-          <span className="text-[11px] text-zinc-300">Track Color</span>
-          <input
-            type="color"
-            value={selectedLayer.barTrackColor || '#22232a'}
-            onChange={(e) =>
-              updateLayer(selectedLayer.id, { barTrackColor: e.target.value })
-            }
-            className="w-5 h-5 rounded cursor-pointer bg-transparent border-0"
-          />
-        </div>
+        <ColorPickerWithAlpha
+          label="Track Color & Alpha"
+          color={selectedLayer.barTrackColor || '#22232a'}
+          onChange={(newTrack) =>
+            updateLayer(selectedLayer.id, { barTrackColor: newTrack })
+          }
+        />
       </div>
 
       {/* Thickness / Ring Width */}

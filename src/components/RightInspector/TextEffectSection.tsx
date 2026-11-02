@@ -5,6 +5,7 @@ import { Wand2 } from 'lucide-react';
 import { useMotion } from '@/context/MotionContext';
 import { TextEffect } from '@/types/motion';
 import { GoogleFontPicker } from '@/components/common/GoogleFontPicker';
+import { ColorPickerWithAlpha } from './ColorPickerWithAlpha';
 
 export function TextEffectSection() {
   const { selectedLayer, updateLayer } = useMotion();
@@ -105,16 +106,12 @@ export function TextEffectSection() {
           className="w-full accent-purple-500 cursor-pointer"
         />
 
-        {/* Text Color */}
-        <div className="flex items-center justify-between pt-0.5">
-          <label className="text-[11px] text-zinc-400">Text Color</label>
-          <input
-            type="color"
-            value={selectedLayer.fill || '#ffffff'}
-            onChange={(e) => updateLayer(selectedLayer.id, { fill: e.target.value })}
-            className="w-6 h-6 rounded cursor-pointer bg-[#121214] border border-[#2c2c32] p-0.5"
-          />
-        </div>
+        {/* Text Color & Alpha */}
+        <ColorPickerWithAlpha
+          label="Text Color & Alpha"
+          color={selectedLayer.fill || '#ffffff'}
+          onChange={(newColor) => updateLayer(selectedLayer.id, { fill: newColor })}
+        />
       </div>
 
       {/* Kinetic Text Effect Dropdown */}

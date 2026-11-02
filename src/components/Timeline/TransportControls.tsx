@@ -11,6 +11,7 @@ import {
   X,
   Clock,
   ChevronDown,
+  Scissors,
 } from 'lucide-react';
 import { useMotion } from '@/context/MotionContext';
 
@@ -32,6 +33,9 @@ export function TransportControls() {
     deleteSelectedKeyframes,
     isAutoKeyframe,
     toggleAutoKeyframe,
+    splitLayerAtCurrentTime,
+    trimLayerInToCurrentTime,
+    trimLayerOutToCurrentTime,
   } = useMotion();
 
   const [customInput, setCustomInput] = useState<string>(duration.toString());
@@ -191,6 +195,41 @@ export function TransportControls() {
               ? `Delete Keyframes (${selectedKeyframes.length})`
               : 'Delete Keyframe'}
           </span>
+        </button>
+
+        <div className="h-4 w-[1px] bg-[#242428] mx-0.5"></div>
+
+        {/* Split / Cut Layer at Current Time (After Effects style) */}
+        <button
+          onClick={() => splitLayerAtCurrentTime()}
+          disabled={!selectedLayerId}
+          className="text-xs px-2 py-1 rounded bg-[#1c1c20] hover:bg-[#25252b] text-zinc-300 hover:text-amber-300 disabled:opacity-30 disabled:cursor-not-allowed border border-[#28282e] hover:border-amber-500/40 transition flex items-center gap-1 cursor-pointer"
+          title="Split / Cut Selected Layer at Playhead (Ctrl+Shift+D)"
+        >
+          <Scissors className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline font-medium">Split</span>
+        </button>
+
+        {/* Trim In-point to playhead */}
+        <button
+          onClick={() => trimLayerInToCurrentTime()}
+          disabled={!selectedLayerId}
+          className="text-xs px-2 py-1 rounded bg-[#1c1c20] hover:bg-[#25252b] text-zinc-300 hover:text-cyan-300 disabled:opacity-30 disabled:cursor-not-allowed border border-[#28282e] hover:border-cyan-500/40 transition flex items-center gap-1 cursor-pointer"
+          title="Trim Start / Set In-Point to Playhead ([)"
+        >
+          <span className="font-mono font-bold text-[11px] text-cyan-400">[</span>
+          <span className="hidden sm:inline font-medium">Trim In</span>
+        </button>
+
+        {/* Trim Out-point to playhead */}
+        <button
+          onClick={() => trimLayerOutToCurrentTime()}
+          disabled={!selectedLayerId}
+          className="text-xs px-2 py-1 rounded bg-[#1c1c20] hover:bg-[#25252b] text-zinc-300 hover:text-cyan-300 disabled:opacity-30 disabled:cursor-not-allowed border border-[#28282e] hover:border-cyan-500/40 transition flex items-center gap-1 cursor-pointer"
+          title="Trim End / Set Out-Point to Playhead (])"
+        >
+          <span className="hidden sm:inline font-medium">Trim Out</span>
+          <span className="font-mono font-bold text-[11px] text-cyan-400">]</span>
         </button>
       </div>
 
