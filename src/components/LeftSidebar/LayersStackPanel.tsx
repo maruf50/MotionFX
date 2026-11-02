@@ -32,9 +32,19 @@ import {
   GitBranch,
   Route,
   Blend,
+  Sparkles,
+  Wand2,
+  Ban,
+  Waves,
+  Contrast,
+  Zap,
+  Tv,
+  Boxes,
+  Activity,
+  Droplets,
 } from 'lucide-react';
 import { useMotion } from '@/context/MotionContext';
-import { Layer } from '@/types/motion';
+import { Layer, LayerFilterType } from '@/types/motion';
 import { countTotalKeyframes } from '@/modules/keyframes/evaluator';
 
 export function LayersStackPanel() {
@@ -43,6 +53,7 @@ export function LayersStackPanel() {
     selectedLayerId,
     selectedLayerIds,
     selectLayer,
+    updateLayer,
     selectAllLayers,
     clearSelectedLayers,
     deleteLayersBatch,
@@ -67,8 +78,25 @@ export function LayersStackPanel() {
   const [isAddToGroupOpen, setIsAddToGroupOpen] = useState<boolean>(false);
   const [isNamingNewGroup, setIsNamingNewGroup] = useState<boolean>(false);
   const [newGroupName, setNewGroupName] = useState<string>('');
+  const [activeFilterMenuLayerId, setActiveFilterMenuLayerId] = useState<string | null>(null);
 
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const filterDropdownRef = useRef<HTMLDivElement | null>(null);
+
+  // Close filter dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (filterDropdownRef.current && !filterDropdownRef.current.contains(e.target as Node)) {
+        setActiveFilterMenuLayerId(null);
+      }
+    };
+    if (activeFilterMenuLayerId) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [activeFilterMenuLayerId]);
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -530,6 +558,87 @@ export function LayersStackPanel() {
                 </div>
 
                 <div className="flex items-center gap-1 shrink-0">
+                  {/* Active Filter Badge */}
+                  {layer.filterType && layer.filterType !== 'none' && (
+                    <span
+                      className="text-[9px] px-1 py-0.2 rounded font-mono font-bold uppercase bg-zinc-800 text-zinc-300 border border-zinc-700 shrink-0"
+                      title={`Active Filter: ${layer.filterType}`}
+                    >
+                      {layer.filterType === 'blackAndWhite' ? 'B&W' : layer.filterType}
+                    </span>
+                  )}
+
+                  {/* Quick Filter Menu Trigger */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveFilterMenuLayerId((prev) => (prev === layer.id ? null : layer.id));
+                      }}
+                      className={`text-xs p-1 rounded transition cursor-pointer ${
+                        layer.filterType && layer.filterType !== 'none'
+                          ? 'text-zinc-200 hover:text-white'
+                          : 'text-zinc-500 hover:text-zinc-300'
+                      }`}
+                      title="Layer FX Filter"
+                    >
+                      <Wand2 className="w-3 h-3" />
+                    </button>
+
+                    {activeFilterMenuLayerId === layer.id && (
+                      <div
+                        ref={filterDropdownRef}
+                        onClick={(e) => e.stopPropagation()}
+                        className="absolute right-0 top-6 z-50 w-40 bg-[#16161a] border border-[#2c2c36] rounded-md shadow-2xl p-1 space-y-0.5 text-xs text-zinc-300 select-none animate-in fade-in"
+                      >
+                        <div className="px-2 py-1 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider border-b border-[#242428] mb-1">
+                          Layer Filter FX
+                        </div>
+                        {[
+                          { type: 'none', label: 'None (Clear)', Icon: Ban },
+                          { type: 'blur', label: 'Blur', Icon: Droplets },
+                          { type: 'glow', label: 'Glow', Icon: Sparkles },
+                          { type: 'wave', label: 'Wave', Icon: Waves },
+                          { type: 'blackAndWhite', label: 'Black & White', Icon: Contrast },
+                          { type: 'glitch', label: 'Glitch', Icon: Zap },
+                          { type: 'noise', label: 'Noise', Icon: Tv },
+                          { type: 'shatter', label: 'Shatter', Icon: Boxes },
+                          { type: 'wobble', label: 'Wobble', Icon: Activity },
+                        ].map((f) => {
+                          const isCurrent = (layer.filterType || 'none') === f.type;
+                          const FilterItemIcon = f.Icon;
+                          return (
+                            <button
+                              key={f.type}
+                              type="button"
+                              onClick={() => {
+                                updateLayer(layer.id, {
+                                  filterType: f.type as LayerFilterType,
+                                  filterIntensity: layer.filterIntensity ?? 100,
+                                });
+                                setActiveFilterMenuLayerId(null);
+                              }}
+                              className={`w-full text-left px-2 py-1 rounded flex items-center justify-between text-[11px] transition ${
+                                isCurrent
+                                  ? 'bg-zinc-800 text-white font-semibold'
+                                  : 'hover:bg-[#202028] text-zinc-400 hover:text-zinc-200'
+                              }`}
+                            >
+                              <span className="flex items-center gap-2">
+                                <FilterItemIcon className={`w-3.5 h-3.5 ${isCurrent ? 'text-white' : 'text-zinc-400'}`} />
+                                <span>{f.label}</span>
+                              </span>
+                              {isCurrent && (
+                                <Check className="w-3 h-3 text-white" />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
                   <span
                     className="text-[9px] font-mono px-1 py-0.5 rounded bg-[#111113] text-zinc-400 border border-[#25252b]"
                     title={`${kfCount} Keyframes on this layer`}

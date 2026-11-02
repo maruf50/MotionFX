@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { Sparkles, Maximize2, ChevronDown, ChevronRight, Diamond } from 'lucide-react';
+import { Sparkles, Maximize2, ChevronDown, ChevronRight, Diamond, Wand2 } from 'lucide-react';
 import { useMotion } from '@/context/MotionContext';
 import { AnimatableProp, Keyframe, SelectedKeyframeRef } from '@/types/motion';
 import { getInterpolatedValue, hasKeyframeAtTime } from '@/modules/keyframes/evaluator';
@@ -24,6 +24,9 @@ const PROP_META: Record<
   pathDrawProgress: { label: 'Path Draw', unit: '%', color: '#fb7185', format: (v) => `${Math.round(v)}%` },
   buttonProgress: { label: 'Button Motion', unit: '%', color: '#2dd4bf', format: (v) => `${Math.round(v)}%` },
   cursorProgress: { label: 'Cursor Flight', unit: '%', color: '#38bdf8', format: (v) => `${Math.round(v)}%` },
+  textProgress: { label: 'Text Progress', unit: '%', color: '#f43f5e', format: (v) => `${Math.round(v)}%` },
+  filterIntensity: { label: 'Filter FX', unit: '%', color: '#e879f9', format: (v) => `${Math.round(v)}%` },
+  graphProgress: { label: 'Graph Progress', unit: '%', color: '#10b981', format: (v) => `${Math.round(v)}%` },
 };
 
 interface DraggingItem {
@@ -639,6 +642,12 @@ export function TimelineTracks() {
                         <span className="text-[9px] px-1 py-0.2 rounded bg-cyan-400/25 text-cyan-200 font-mono font-medium shrink-0 flex items-center gap-0.5">
                           <Maximize2 className="w-2.5 h-2.5 text-cyan-300" />
                           Scale
+                        </span>
+                      )}
+                      {layer.filterType && layer.filterType !== 'none' && (
+                        <span className="text-[9px] px-1 py-0.2 rounded bg-zinc-800/90 text-zinc-200 border border-zinc-700/70 font-mono font-medium shrink-0 flex items-center gap-0.5">
+                          <Wand2 className="w-2.5 h-2.5 text-zinc-300" />
+                          {layer.filterType === 'blackAndWhite' ? 'B&W' : layer.filterType}
                         </span>
                       )}
                     </div>

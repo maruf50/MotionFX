@@ -22,6 +22,7 @@ import {
   ToggleLeft,
   MousePointer,
   Smile,
+  BarChart3,
 } from 'lucide-react';
 import { useMotion } from '@/context/MotionContext';
 
@@ -244,6 +245,20 @@ export function AddElementsPanel() {
             </div>
             <span className="text-[9px] font-semibold text-zinc-200 group-hover:text-purple-200">Cursor</span>
             <span className="text-[7px] text-zinc-500 font-mono">Click & Path</span>
+          </button>
+
+          {/* 9. Graph */}
+          <button
+            type="button"
+            onClick={() => addShape('graph')}
+            className="flex flex-col items-center justify-center p-1.5 rounded bg-gradient-to-b from-[#1e1c2b] to-[#16161d] hover:from-[#29253c] hover:to-[#201f2b] border border-emerald-500/30 hover:border-emerald-400 transition group cursor-pointer shadow-sm text-center"
+            title="Add Graph & Chart (Column, Bar, Line, Area, Pie/Donut, Combo with keyframe animation)"
+          >
+            <div className="w-5 h-5 rounded bg-emerald-500/20 text-emerald-300 flex items-center justify-center group-hover:scale-110 transition mb-1">
+              <BarChart3 className="w-3 h-3" />
+            </div>
+            <span className="text-[9px] font-semibold text-zinc-200 group-hover:text-emerald-200">Graph</span>
+            <span className="text-[7px] text-zinc-500 font-mono">Data & Charts</span>
           </button>
         </div>
       </div>

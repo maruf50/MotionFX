@@ -4,6 +4,7 @@ import { renderShapeLayer } from './shapes';
 import { renderTextLayer } from './text';
 import { renderImageLayer } from './media';
 import { getBranchEndpoints } from './branching';
+import { applyLayerFilter } from './filters';
 
 export interface RenderOptions {
   canvasBg: string;
@@ -166,20 +167,38 @@ export function renderSceneAtTime(
     ctx.rotate((tr.rotation * Math.PI) / 180);
     ctx.globalAlpha = tr.opacity;
 
-    if (layer.type === 'shape') {
-      renderShapeLayer(ctx, layer, time, options.onImageLoad, tr);
-    } else if (layer.type === 'text') {
-      if (options.editingTextLayerId && options.editingTextLayerId === layer.id) {
-        // Skip canvas text rendering during inline editing to allow native HTML input with blinking caret
+    if (layer.filterType && layer.filterType !== 'none') {
+      applyLayerFilter(ctx, layer, time, (fCtx) => {
+        if (layer.type === 'shape') {
+          renderShapeLayer(fCtx, layer, time, options.onImageLoad, tr);
+        } else if (layer.type === 'text') {
+          if (options.editingTextLayerId && options.editingTextLayerId === layer.id) {
+            return;
+          }
+          fCtx.save();
+          fCtx.scale(tr.scaleX, tr.scaleY);
+          renderTextLayer(fCtx, layer, time, totalDuration, tr);
+          fCtx.restore();
+        } else if (layer.type === 'image') {
+          renderImageLayer(fCtx, layer, time, options.onImageLoad, tr);
+        }
+      });
+    } else {
+      if (layer.type === 'shape') {
+        renderShapeLayer(ctx, layer, time, options.onImageLoad, tr);
+      } else if (layer.type === 'text') {
+        if (options.editingTextLayerId && options.editingTextLayerId === layer.id) {
+          // Skip canvas text rendering during inline editing to allow native HTML input with blinking caret
+          ctx.restore();
+          continue;
+        }
+        ctx.save();
+        ctx.scale(tr.scaleX, tr.scaleY);
+        renderTextLayer(ctx, layer, time, totalDuration, tr);
         ctx.restore();
-        continue;
+      } else if (layer.type === 'image') {
+        renderImageLayer(ctx, layer, time, options.onImageLoad, tr);
       }
-      ctx.save();
-      ctx.scale(tr.scaleX, tr.scaleY);
-      renderTextLayer(ctx, layer, time, totalDuration, tr);
-      ctx.restore();
-    } else if (layer.type === 'image') {
-      renderImageLayer(ctx, layer, time, options.onImageLoad, tr);
     }
 
     ctx.restore();
@@ -381,15 +400,30 @@ export function renderSingleLayerToCanvas(
   ctx.rotate((tr.rotation * Math.PI) / 180);
   ctx.globalAlpha = tr.opacity;
 
-  if (layer.type === 'shape') {
-    renderShapeLayer(ctx, layer, time, onImageLoad, tr);
-  } else if (layer.type === 'text') {
-    ctx.save();
-    ctx.scale(tr.scaleX, tr.scaleY);
-    renderTextLayer(ctx, layer, time, totalDuration, tr);
-    ctx.restore();
-  } else if (layer.type === 'image') {
-    renderImageLayer(ctx, layer, time, onImageLoad, tr);
+  if (layer.filterType && layer.filterType !== 'none') {
+    applyLayerFilter(ctx, layer, time, (fCtx) => {
+      if (layer.type === 'shape') {
+        renderShapeLayer(fCtx, layer, time, onImageLoad, tr);
+      } else if (layer.type === 'text') {
+        fCtx.save();
+        fCtx.scale(tr.scaleX, tr.scaleY);
+        renderTextLayer(fCtx, layer, time, totalDuration, tr);
+        fCtx.restore();
+      } else if (layer.type === 'image') {
+        renderImageLayer(fCtx, layer, time, onImageLoad, tr);
+      }
+    });
+  } else {
+    if (layer.type === 'shape') {
+      renderShapeLayer(ctx, layer, time, onImageLoad, tr);
+    } else if (layer.type === 'text') {
+      ctx.save();
+      ctx.scale(tr.scaleX, tr.scaleY);
+      renderTextLayer(ctx, layer, time, totalDuration, tr);
+      ctx.restore();
+    } else if (layer.type === 'image') {
+      renderImageLayer(ctx, layer, time, onImageLoad, tr);
+    }
   }
 
   ctx.restore();

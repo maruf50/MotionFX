@@ -41,6 +41,15 @@ export function getInterpolatedValue(layer: Layer, prop: AnimatableProp, t: numb
     if (prop === 'cursorProgress') {
       return (layer.cursorProgress as number | undefined) ?? 100;
     }
+    if (prop === 'textProgress') {
+      return (layer.textProgress as number | undefined) ?? 100;
+    }
+    if (prop === 'filterIntensity') {
+      return (layer.filterIntensity as number | undefined) ?? 100;
+    }
+    if (prop === 'graphProgress') {
+      return (layer.graphProgress as number | undefined) ?? 100;
+    }
     return (layer[prop] as number | undefined) ?? 0;
   }
   if (kfs.length === 1 || t <= kfs[0].time) return kfs[0].value;

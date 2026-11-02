@@ -12,7 +12,10 @@ export type AnimatableProp =
   | 'cardProgress'
   | 'pathDrawProgress'
   | 'buttonProgress'
-  | 'cursorProgress';
+  | 'cursorProgress'
+  | 'textProgress'
+  | 'filterIntensity'
+  | 'graphProgress';
 
 export interface Keyframe {
   time: number; // in seconds
@@ -42,7 +45,8 @@ export type ShapeType =
   | 'card'
   | 'pathDraw'
   | 'button'
-  | 'cursor';
+  | 'cursor'
+  | 'graph';
 
 export type BarShape = 'horizontal' | 'vertical' | 'radial' | 'pill';
 export type BranchCurvature = 'curved' | 'straight' | 'stepped';
@@ -158,6 +162,27 @@ export type TextEffect =
   | 'cascade'
   | 'neonPulse';
 
+export type LayerFilterType =
+  | 'none'
+  | 'blur'
+  | 'glow'
+  | 'wave'
+  | 'blackAndWhite'
+  | 'glitch'
+  | 'noise'
+  | 'shatter'
+  | 'wobble';
+
+export type GraphType = 'column' | 'bar' | 'line' | 'area' | 'pie' | 'combo';
+
+export interface GraphDataItem {
+  id: string;
+  label: string;
+  value: number;
+  color?: string;
+  secondaryValue?: number; // for Combo chart line overlay
+}
+
 export type LayerType = 'shape' | 'text' | 'image' | 'group';
 
 export interface Layer {
@@ -196,6 +221,7 @@ export interface Layer {
   fontWeight?: string | number;
   fontStyle?: 'normal' | 'italic';
   textEffect?: TextEffect;
+  textProgress?: number; // 0 to 100% keyframable animation progress
   // Image / PNG / Sticker specific
   imageSrc?: string | null;
   isSticker?: boolean;
@@ -376,6 +402,52 @@ export interface Layer {
   scaleStartValue?: number; // starting scale factor (defaults to 0)
   scaleInOnly?: boolean;
   scaleOutOnly?: boolean;
+  // Top-level Layer Filters (Glow, Wave, Black & White, Glitch, Noise, Shatter, Wobble, Blur)
+  filterType?: LayerFilterType;
+  filterIntensity?: number; // 0 to 100% (keyframable via 'filterIntensity')
+  // Blur properties
+  filterBlurRadius?: number; // 1 to 60px
+  // Glow properties
+  filterGlowColor?: string;
+  filterGlowRadius?: number; // 5 to 60px
+  // Wave properties
+  filterWaveFrequency?: number; // 1 to 20
+  filterWaveAmplitude?: number; // 2 to 50
+  filterWaveSpeed?: number; // 1 to 15
+  // Black and White properties
+  filterBwContrast?: number; // 50 to 200%
+  // Glitch properties
+  filterGlitchAmount?: number; // 2 to 40
+  filterGlitchSlices?: number; // 3 to 20
+  filterGlitchSpeed?: number; // 1 to 30
+  // Noise properties
+  filterNoiseDensity?: number; // 10 to 100
+  filterNoiseColor?: boolean;
+  // Shatter properties
+  filterShatterPieces?: number; // 4 to 36
+  filterShatterSpread?: number; // 10 to 200
+  // Wobble properties
+  filterWobbleSpeed?: number; // 1 to 20
+  filterWobbleAmount?: number; // 2 to 30
+  // Graph Shape & Motion properties
+  graphType?: GraphType; // 'column' | 'bar' | 'line' | 'area' | 'pie' | 'combo'
+  graphData?: GraphDataItem[];
+  graphProgress?: number; // 0 to 100% (keyframable via 'graphProgress')
+  graphShowLabels?: boolean;
+  graphShowValues?: boolean;
+  graphShowGrid?: boolean;
+  graphShowAxes?: boolean;
+  graphLineCurvature?: 'straight' | 'smooth' | 'step';
+  graphLineWidth?: number;
+  graphBarRadius?: number;
+  graphDonutHole?: number; // 0 to 80% (inner cutout radius for Pie -> Donut)
+  graphShowLegend?: boolean;
+  graphShowDots?: boolean;
+  graphDotSize?: number;
+  graphGridColor?: string;
+  graphAxisColor?: string;
+  graphTextColor?: string;
+  graphBarSpacing?: number;
   // Animatable tracks
   keyframes: Partial<Record<AnimatableProp, Keyframe[]>>;
 }

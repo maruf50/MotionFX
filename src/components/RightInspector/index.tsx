@@ -14,9 +14,11 @@ import { CardInspectorSection } from './CardInspectorSection';
 import { PathDrawInspectorSection } from './PathDrawInspectorSection';
 import { ButtonInspectorSection } from './ButtonInspectorSection';
 import { CursorInspectorSection } from './CursorInspectorSection';
+import { GraphInspectorSection } from './GraphInspectorSection';
 import { StickerInspectorSection } from './StickerInspectorSection';
 import { TextEffectSection } from './TextEffectSection';
 import { MultiSelectSection } from './MultiSelectSection';
+import { FilterInspectorSection } from './FilterInspectorSection';
 
 interface RightInspectorProps {
   width?: number;
@@ -86,6 +88,9 @@ export function RightInspector({ width }: RightInspectorProps) {
           {/* Transform & Keyframable Props */}
           <TransformSection />
 
+          {/* Top-Level Filters & FX (Universal for all layers) */}
+          <FilterInspectorSection />
+
           {/* Specialized Sections according to shape type */}
           {selectedLayer.shapeType === 'bar' && <BarInspectorSection />}
           {selectedLayer.shapeType === 'branching' && <BranchingInspectorSection />}
@@ -95,6 +100,7 @@ export function RightInspector({ width }: RightInspectorProps) {
           {selectedLayer.shapeType === 'pathDraw' && <PathDrawInspectorSection />}
           {selectedLayer.shapeType === 'button' && <ButtonInspectorSection />}
           {selectedLayer.shapeType === 'cursor' && <CursorInspectorSection />}
+          {selectedLayer.shapeType === 'graph' && <GraphInspectorSection />}
 
           {/* Standard Shape & Border Section (for standard shapes) */}
           {selectedLayer.type === 'shape' &&
@@ -105,7 +111,8 @@ export function RightInspector({ width }: RightInspectorProps) {
             selectedLayer.shapeType !== 'card' &&
             selectedLayer.shapeType !== 'pathDraw' &&
             selectedLayer.shapeType !== 'button' &&
-            selectedLayer.shapeType !== 'cursor' && <ShapeStyleSection />}
+            selectedLayer.shapeType !== 'cursor' &&
+            selectedLayer.shapeType !== 'graph' && <ShapeStyleSection />}
 
           {/* Kinetic Text & Effects Section */}
           <TextEffectSection />

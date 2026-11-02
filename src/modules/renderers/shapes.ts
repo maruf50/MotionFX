@@ -7,6 +7,7 @@ import { renderCardShape } from './card';
 import { renderPathDrawShape } from './pathDraw';
 import { renderButtonShape } from './button';
 import { renderCursorShape } from './cursor';
+import { renderGraphShape } from './graph';
 
 /**
  * Applies stroke styles (solid, dashed, dotted) and marching ants offset.
@@ -191,6 +192,13 @@ export function renderShapeLayer(
     ctx.save();
     ctx.scale(sx, sy);
     renderCursorShape(ctx, layer, time, tr);
+    ctx.restore();
+    return;
+  }
+  if (shape === 'graph') {
+    ctx.save();
+    ctx.scale(sx, sy);
+    renderGraphShape(ctx, layer, time);
     ctx.restore();
     return;
   }

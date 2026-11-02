@@ -1016,6 +1016,12 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         baseH = 120;
         baseBorderW = 1;
         layerName = `Motion Cursor ${layers.length + 1}`;
+      } else if (shapeType === 'graph') {
+        baseW = 320;
+        baseH = 220;
+        baseBorderW = 1;
+        baseRadius = 12;
+        layerName = `Graph & Chart ${layers.length + 1}`;
       } else if (shapeType === 'custom') {
         baseW = 200;
         baseH = 160;
@@ -1032,12 +1038,14 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         width: Math.max(10, Math.round(baseW * sx)),
         height: Math.max(10, Math.round(baseH * sy)),
         sides: shapeType === 'star' ? 5 : shapeType === 'polygon' ? 6 : undefined,
-        fill: shapeType === 'line' ? 'transparent' : color,
+        fill: shapeType === 'line' ? 'transparent' : shapeType === 'graph' ? 'rgba(20, 20, 26, 0.75)' : color,
         stroke:
           shapeType === 'line'
             ? color
             : shapeType === 'bar'
             ? 'transparent'
+            : shapeType === 'graph'
+            ? 'rgba(255, 255, 255, 0.12)'
             : shapeType === 'branching'
             ? color
             : '#ffffff',
@@ -1172,6 +1180,27 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         cursorOrientToMotion: shapeType === 'cursor' ? true : undefined,
         showCursorPath: shapeType === 'cursor' ? true : undefined,
         cursorPathColor: shapeType === 'cursor' ? 'rgba(168, 85, 247, 0.45)' : undefined,
+        // Graph defaults
+        graphType: shapeType === 'graph' ? 'column' : undefined,
+        graphData: shapeType === 'graph' ? [
+          { id: '1', label: 'Mon', value: 45, color: '#6366f1', secondaryValue: 20 },
+          { id: '2', label: 'Tue', value: 78, color: '#8b5cf6', secondaryValue: 38 },
+          { id: '3', label: 'Wed', value: 62, color: '#ec4899', secondaryValue: 52 },
+          { id: '4', label: 'Thu', value: 95, color: '#3b82f6', secondaryValue: 68 },
+          { id: '5', label: 'Fri', value: 120, color: '#10b981', secondaryValue: 90 },
+        ] : undefined,
+        graphProgress: shapeType === 'graph' ? 100 : undefined,
+        graphShowLabels: shapeType === 'graph' ? true : undefined,
+        graphShowValues: shapeType === 'graph' ? true : undefined,
+        graphShowGrid: shapeType === 'graph' ? true : undefined,
+        graphShowAxes: shapeType === 'graph' ? true : undefined,
+        graphLineCurvature: shapeType === 'graph' ? 'smooth' : undefined,
+        graphLineWidth: shapeType === 'graph' ? 3 : undefined,
+        graphBarRadius: shapeType === 'graph' ? 6 : undefined,
+        graphDonutHole: shapeType === 'graph' ? 45 : undefined,
+        graphShowDots: shapeType === 'graph' ? true : undefined,
+        graphDotSize: shapeType === 'graph' ? 4.5 : undefined,
+        graphBarSpacing: shapeType === 'graph' ? 10 : undefined,
         x: centerX + offset - Math.round(40 * sx),
         y: centerY + offset - Math.round(40 * sy),
         scaleX: 1,
@@ -1246,6 +1275,14 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
                 cursorProgress: [
                   { time: 0, value: 0 },
                   { time: 2.5, value: 100 },
+                ],
+              }
+            : {}),
+          ...(shapeType === 'graph'
+            ? {
+                graphProgress: [
+                  { time: 0, value: 0 },
+                  { time: 2.0, value: 100 },
                 ],
               }
             : {}),
@@ -1344,6 +1381,9 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         borderStyle: 'none',
         animateDash: false,
         textEffect: textEffect || 'none',
+        textProgress: 100,
+        startTime: 0,
+        endTime: durationRef.current,
         easing: 'easeOutCubic',
         width: Math.max(80, Math.round(340 * sx)),
         height: Math.max(20, Math.round(60 * sy)),
@@ -1360,6 +1400,14 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
           scaleY: [],
           rotation: [],
           opacity: [],
+          ...(textEffect && textEffect !== 'none'
+            ? {
+                textProgress: [
+                  { time: 0, value: 0 },
+                  { time: 2.0, value: 100 },
+                ],
+              }
+            : {}),
         },
       };
 
