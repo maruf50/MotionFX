@@ -42,6 +42,7 @@ import {
   Boxes,
   Activity,
   Droplets,
+  Volume2,
 } from 'lucide-react';
 import { useMotion } from '@/context/MotionContext';
 import { Layer, LayerFilterType } from '@/types/motion';
@@ -136,6 +137,7 @@ export function LayersStackPanel() {
     }
     if (layer.type === 'text') return <Type className="w-3.5 h-3.5 text-zinc-300" />;
     if (layer.type === 'image') return <ImageIcon className="w-3.5 h-3.5 text-zinc-300" />;
+    if (layer.type === 'audio') return <Volume2 className="w-3.5 h-3.5 text-pink-400" />;
     if (layer.shapeType === 'bar') return <Percent className="w-3.5 h-3.5 text-purple-400" />;
     if (layer.shapeType === 'branching') return <GitBranch className="w-3.5 h-3.5 text-purple-400" />;
     if (layer.shapeType === 'pathFollower') return <Route className="w-3.5 h-3.5 text-purple-400" />;

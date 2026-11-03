@@ -50,6 +50,12 @@ export function getInterpolatedValue(layer: Layer, prop: AnimatableProp, t: numb
     if (prop === 'graphProgress') {
       return (layer.graphProgress as number | undefined) ?? 100;
     }
+    if (prop === 'audioVolume') {
+      return (layer.audioVolume as number | undefined) ?? 80;
+    }
+    if (prop === 'audioPitch') {
+      return (layer.audioPitch as number | undefined) ?? 1.0;
+    }
     return (layer[prop] as number | undefined) ?? 0;
   }
   if (kfs.length === 1 || t <= kfs[0].time) return kfs[0].value;

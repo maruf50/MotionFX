@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { Sparkles, Maximize2, ChevronDown, ChevronRight, Diamond, Wand2 } from 'lucide-react';
+import { Sparkles, Maximize2, ChevronDown, ChevronRight, Diamond, Wand2, Volume2 } from 'lucide-react';
 import { useMotion } from '@/context/MotionContext';
 import { AnimatableProp, Keyframe, SelectedKeyframeRef } from '@/types/motion';
 import { getInterpolatedValue, hasKeyframeAtTime } from '@/modules/keyframes/evaluator';
+import { getWaveformPreview } from '@/modules/audio/audioEngine';
 
 const PROP_META: Record<
   AnimatableProp,
@@ -27,6 +28,8 @@ const PROP_META: Record<
   textProgress: { label: 'Text Progress', unit: '%', color: '#f43f5e', format: (v) => `${Math.round(v)}%` },
   filterIntensity: { label: 'Filter FX', unit: '%', color: '#e879f9', format: (v) => `${Math.round(v)}%` },
   graphProgress: { label: 'Graph Progress', unit: '%', color: '#10b981', format: (v) => `${Math.round(v)}%` },
+  audioVolume: { label: 'Audio Volume', unit: '%', color: '#ec4899', format: (v) => `${Math.round(v)}%` },
+  audioPitch: { label: 'Audio Pitch', unit: 'x', color: '#f472b6', format: (v) => `${v.toFixed(2)}x` },
 };
 
 interface DraggingItem {
@@ -559,13 +562,20 @@ export function TimelineTracks() {
                       className="w-2 h-2 rounded-full shrink-0"
                       style={{
                         backgroundColor:
-                          layer.fill && layer.fill !== 'transparent' ? layer.fill : '#a855f7',
+                          layer.type === 'audio'
+                            ? '#ec4899'
+                            : layer.fill && layer.fill !== 'transparent'
+                            ? layer.fill
+                            : '#a855f7',
                       }}
                     />
                     <span className="text-xs truncate font-medium max-w-[115px]">{layer.name}</span>
                   </div>
 
                   <div className="flex items-center gap-1.5 shrink-0">
+                    {layer.type === 'audio' && (
+                      <Volume2 className="w-3 h-3 text-pink-400 shrink-0" />
+                    )}
                     {activePropTracks.length > 0 && (
                       <span
                         className="text-[9px] px-1 py-0.2 rounded font-mono font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30"
@@ -577,6 +587,8 @@ export function TimelineTracks() {
                     <span className="text-[10px] font-mono text-zinc-500 uppercase">
                       {layer.type === 'text'
                         ? 'text'
+                        : layer.type === 'audio'
+                        ? `SFX • ${layer.soundEffect || 'audio'}`
                         : layer.type === 'shape'
                         ? layer.shapeType || 'shape'
                         : 'image'}
@@ -603,7 +615,11 @@ export function TimelineTracks() {
                       setCurrentTime(start);
                     }}
                     className={`layer-bar absolute top-1.5 bottom-1.5 rounded-sm flex items-center select-none group/bar transition-colors z-10 cursor-grab active:cursor-grabbing ${
-                      isSel
+                      layer.type === 'audio'
+                        ? isSel
+                          ? 'bg-pink-600/90 hover:bg-pink-600 border border-pink-300 text-white shadow-md shadow-pink-950/60'
+                          : 'bg-[#2b172a]/90 hover:bg-[#381c37] border border-pink-500/40 text-pink-200'
+                        : isSel
                         ? 'bg-purple-600/80 hover:bg-purple-600 border border-purple-400 text-white shadow-md shadow-purple-950/60'
                         : 'bg-[#252632]/90 hover:bg-[#2e303f] border border-[#3c3e52]/80 text-zinc-300'
                     }`}
@@ -613,6 +629,18 @@ export function TimelineTracks() {
                     }}
                     title={`${layer.name} (${start.toFixed(2)}s – ${end.toFixed(2)}s)`}
                   >
+                    {/* Audio Waveform preview inside bar */}
+                    {layer.type === 'audio' && (
+                      <div className="absolute inset-y-1 left-2.5 right-2.5 flex items-center gap-[2px] opacity-35 pointer-events-none overflow-hidden">
+                        {getWaveformPreview(layer.soundEffect || 'whoosh', 28).map((peak, pIdx) => (
+                          <div
+                            key={pIdx}
+                            style={{ height: `${Math.max(2, Math.round(peak * 16))}px` }}
+                            className="w-[2px] bg-pink-300 rounded-full shrink-0"
+                          />
+                        ))}
+                      </div>
+                    )}
                     {/* Left Trim Handle */}
                     <div
                       onMouseDown={(e) => handleStartTrim(e, layer.id, 'left', start, end)}

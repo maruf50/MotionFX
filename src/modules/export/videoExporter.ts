@@ -2,6 +2,7 @@ import confetti from 'canvas-confetti';
 import { Layer } from '@/types/motion';
 import { renderSceneAtTime } from '../renderers/engine';
 import { loadGoogleFont } from '../fonts/googleFonts';
+import { getAudioContext, playSoundEffect, playCustomAudio } from '../audio/audioEngine';
 
 export interface ExporterOptions {
   canvas: HTMLCanvasElement;
@@ -62,6 +63,23 @@ export class VideoExporter {
       }
 
       const stream = canvas.captureStream(fps);
+
+      // Connect Web Audio if audio layers exist
+      const audioLayers = layers.filter((l) => l.type === 'audio' && l.visible && !l.audioMuted);
+      let mediaStreamDest: MediaStreamAudioDestinationNode | null = null;
+      if (audioLayers.length > 0 && typeof window !== 'undefined') {
+        try {
+          const audioCtx = getAudioContext();
+          mediaStreamDest = audioCtx.createMediaStreamDestination();
+          const audioTracks = mediaStreamDest.stream.getAudioTracks();
+          if (audioTracks.length > 0) {
+            stream.addTrack(audioTracks[0]);
+          }
+        } catch (e) {
+          console.warn('Audio track stream addition error:', e);
+        }
+      }
+
       const isUltraRes = canvas.width >= 2500 || canvas.height >= 2500;
       const isHighFps = fps >= 120;
       // Scale bitrate for 120 FPS and 4K ultra-resolutions to prevent compression artifacts
@@ -121,6 +139,7 @@ export class VideoExporter {
       this.recorder.start();
 
       let currentFrame = 0;
+      const triggeredAudioSet = new Set<string>();
 
       const renderNextFrame = () => {
         if (this.isCancelled) return;
@@ -128,6 +147,23 @@ export class VideoExporter {
         const frameTime = Math.min(duration, currentFrame / fps);
         const pct = Math.min(99, Math.round((currentFrame / totalFrames) * 100));
         onProgress(pct, frameTime, duration, fps);
+
+        // Play audio into mediaStreamDest if layer start time is reached
+        if (mediaStreamDest) {
+          audioLayers.forEach((al) => {
+            const st = al.startTime ?? 0;
+            if (frameTime >= st && !triggeredAudioSet.has(al.id)) {
+              triggeredAudioSet.add(al.id);
+              const vol = typeof al.audioVolume === 'number' ? al.audioVolume : 80;
+              const pitch = typeof al.audioPitch === 'number' ? al.audioPitch : 1.0;
+              if (al.audioType === 'custom' && al.audioCustomUrl) {
+                playCustomAudio(al.audioCustomUrl, vol, pitch, 0, Boolean(al.audioLoop), mediaStreamDest!);
+              } else {
+                playSoundEffect(al.soundEffect || 'whoosh', vol, pitch, mediaStreamDest!);
+              }
+            }
+          });
+        }
 
         // Render deterministic frame at exact timestamp frameTime
         renderSceneAtTime(ctx, canvas.width, canvas.height, layers, frameTime, duration, {

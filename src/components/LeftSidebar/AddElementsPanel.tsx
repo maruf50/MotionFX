@@ -23,11 +23,12 @@ import {
   MousePointer,
   Smile,
   BarChart3,
+  Volume2,
 } from 'lucide-react';
 import { useMotion } from '@/context/MotionContext';
 
 export function AddElementsPanel() {
-  const { addShape, addText, addImage, addSticker, setIsBuildShapeModalOpen } = useMotion();
+  const { addShape, addText, addAudio, addImage, addSticker, setIsBuildShapeModalOpen } = useMotion();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -263,32 +264,41 @@ export function AddElementsPanel() {
         </div>
       </div>
 
-      {/* Text, Upload & Stickers Row */}
-      <div className="grid grid-cols-3 gap-1.5">
+      {/* Text, Audio/Music, Upload & Stickers Row */}
+      <div className="grid grid-cols-4 gap-1">
         <button
           onClick={() => addText('none')}
-          className="flex items-center justify-center gap-1 py-1.5 px-1.5 rounded bg-[#1c1c20] hover:bg-[#24242a] border border-[#28282e] hover:border-purple-500/50 transition text-xs text-zinc-200 cursor-pointer"
+          className="flex flex-col items-center justify-center p-1.5 rounded bg-[#1c1c20] hover:bg-[#24242a] border border-[#28282e] hover:border-purple-500/50 transition text-[10px] text-zinc-200 cursor-pointer"
           title="Add Kinetic Text"
         >
-          <Type className="w-3.5 h-3.5 text-purple-400" />
+          <Type className="w-3.5 h-3.5 text-purple-400 mb-0.5" />
           <span>Text</span>
         </button>
 
         <button
+          onClick={() => addAudio('whoosh')}
+          className="flex flex-col items-center justify-center p-1.5 rounded bg-gradient-to-b from-[#2a1728] to-[#1a121d] hover:from-[#3a1d37] hover:to-[#241528] border border-pink-500/40 hover:border-pink-400 transition text-[10px] text-pink-200 font-medium cursor-pointer shadow-sm"
+          title="Add Music & Sound FX Layer (Whoosh, Click, Jump, Fade, Grow, Pop, Chime, etc.)"
+        >
+          <Volume2 className="w-3.5 h-3.5 text-pink-400 mb-0.5" />
+          <span>Music/SFX</span>
+        </button>
+
+        <button
           onClick={() => fileInputRef.current?.click()}
-          className="flex items-center justify-center gap-1 py-1.5 px-1.5 rounded bg-[#1c1c20] hover:bg-[#24242a] border border-[#28282e] hover:border-purple-500/50 transition text-xs text-zinc-200 cursor-pointer"
+          className="flex flex-col items-center justify-center p-1.5 rounded bg-[#1c1c20] hover:bg-[#24242a] border border-[#28282e] hover:border-purple-500/50 transition text-[10px] text-zinc-200 cursor-pointer"
           title="Upload Custom Image or PNG"
         >
-          <Upload className="w-3.5 h-3.5 text-purple-400" />
+          <Upload className="w-3.5 h-3.5 text-purple-400 mb-0.5" />
           <span>Upload</span>
         </button>
 
         <button
           onClick={() => addSticker()}
-          className="flex items-center justify-center gap-1 py-1.5 px-1.5 rounded bg-gradient-to-b from-[#221e33] to-[#1a1728] hover:from-[#2e2846] hover:to-[#221f35] border border-purple-500/40 hover:border-purple-400 transition text-xs text-purple-200 font-medium cursor-pointer shadow-sm"
+          className="flex flex-col items-center justify-center p-1.5 rounded bg-gradient-to-b from-[#221e33] to-[#1a1728] hover:from-[#2e2846] hover:to-[#221f35] border border-purple-500/40 hover:border-purple-400 transition text-[10px] text-purple-200 font-medium cursor-pointer shadow-sm"
           title="Add Sticker (browse and pick in Inspector)"
         >
-          <Smile className="w-3.5 h-3.5 text-purple-400" />
+          <Smile className="w-3.5 h-3.5 text-purple-400 mb-0.5" />
           <span>Stickers</span>
         </button>
 

@@ -19,6 +19,7 @@ import { StickerInspectorSection } from './StickerInspectorSection';
 import { TextEffectSection } from './TextEffectSection';
 import { MultiSelectSection } from './MultiSelectSection';
 import { FilterInspectorSection } from './FilterInspectorSection';
+import { AudioInspectorSection } from './AudioInspectorSection';
 
 interface RightInspectorProps {
   width?: number;
@@ -82,44 +83,51 @@ export function RightInspector({ width }: RightInspectorProps) {
             />
           </div>
 
-          {/* Hierarchy & Parenting */}
-          <ParentHierarchySection />
+          {/* Dedicated Audio / Music Section */}
+          {selectedLayer.type === 'audio' ? (
+            <AudioInspectorSection />
+          ) : (
+            <>
+              {/* Hierarchy & Parenting */}
+              <ParentHierarchySection />
 
-          {/* Transform & Keyframable Props */}
-          <TransformSection />
+              {/* Transform & Keyframable Props */}
+              <TransformSection />
 
-          {/* Top-Level Filters & FX (Universal for all layers) */}
-          <FilterInspectorSection />
+              {/* Top-Level Filters & FX (Universal for all layers) */}
+              <FilterInspectorSection />
 
-          {/* Specialized Sections according to shape type */}
-          {selectedLayer.shapeType === 'bar' && <BarInspectorSection />}
-          {selectedLayer.shapeType === 'branching' && <BranchingInspectorSection />}
-          {selectedLayer.shapeType === 'pathFollower' && <PathFollowerInspectorSection />}
-          {selectedLayer.shapeType === 'array' && <ArrayInspectorSection />}
-          {selectedLayer.shapeType === 'card' && <CardInspectorSection />}
-          {selectedLayer.shapeType === 'pathDraw' && <PathDrawInspectorSection />}
-          {selectedLayer.shapeType === 'button' && <ButtonInspectorSection />}
-          {selectedLayer.shapeType === 'cursor' && <CursorInspectorSection />}
-          {selectedLayer.shapeType === 'graph' && <GraphInspectorSection />}
+              {/* Specialized Sections according to shape type */}
+              {selectedLayer.shapeType === 'bar' && <BarInspectorSection />}
+              {selectedLayer.shapeType === 'branching' && <BranchingInspectorSection />}
+              {selectedLayer.shapeType === 'pathFollower' && <PathFollowerInspectorSection />}
+              {selectedLayer.shapeType === 'array' && <ArrayInspectorSection />}
+              {selectedLayer.shapeType === 'card' && <CardInspectorSection />}
+              {selectedLayer.shapeType === 'pathDraw' && <PathDrawInspectorSection />}
+              {selectedLayer.shapeType === 'button' && <ButtonInspectorSection />}
+              {selectedLayer.shapeType === 'cursor' && <CursorInspectorSection />}
+              {selectedLayer.shapeType === 'graph' && <GraphInspectorSection />}
 
-          {/* Standard Shape & Border Section (for standard shapes) */}
-          {selectedLayer.type === 'shape' &&
-            selectedLayer.shapeType !== 'bar' &&
-            selectedLayer.shapeType !== 'branching' &&
-            selectedLayer.shapeType !== 'pathFollower' &&
-            selectedLayer.shapeType !== 'array' &&
-            selectedLayer.shapeType !== 'card' &&
-            selectedLayer.shapeType !== 'pathDraw' &&
-            selectedLayer.shapeType !== 'button' &&
-            selectedLayer.shapeType !== 'cursor' &&
-            selectedLayer.shapeType !== 'graph' && <ShapeStyleSection />}
+              {/* Standard Shape & Border Section (for standard shapes) */}
+              {selectedLayer.type === 'shape' &&
+                selectedLayer.shapeType !== 'bar' &&
+                selectedLayer.shapeType !== 'branching' &&
+                selectedLayer.shapeType !== 'pathFollower' &&
+                selectedLayer.shapeType !== 'array' &&
+                selectedLayer.shapeType !== 'card' &&
+                selectedLayer.shapeType !== 'pathDraw' &&
+                selectedLayer.shapeType !== 'button' &&
+                selectedLayer.shapeType !== 'cursor' &&
+                selectedLayer.shapeType !== 'graph' && <ShapeStyleSection />}
 
-          {/* Kinetic Text & Effects Section */}
-          <TextEffectSection />
+              {/* Kinetic Text & Effects Section */}
+              <TextEffectSection />
 
-          {/* Sticker & Image Asset Section */}
-          {(selectedLayer.type === 'image' || selectedLayer.isSticker) && (
-            <StickerInspectorSection />
+              {/* Sticker & Image Asset Section */}
+              {(selectedLayer.type === 'image' || selectedLayer.isSticker) && (
+                <StickerInspectorSection />
+              )}
+            </>
           )}
         </div>
       )}

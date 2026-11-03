@@ -23,6 +23,9 @@ export function getLayerDimensions(
   ctx: CanvasRenderingContext2D,
   layer: Layer
 ): { width: number; height: number } {
+  if (layer.type === 'audio') {
+    return { width: 0, height: 0 };
+  }
   if (layer.type === 'text') {
     const fontSize = layer.fontSize || 48;
     const family = layer.fontFamily ? `"${layer.fontFamily}", ` : '';
@@ -154,7 +157,7 @@ export function renderSceneAtTime(
   // 3. Render Layers from bottom of stack to top (reverse array so index 0 is foreground)
   for (let i = layers.length - 1; i >= 0; i--) {
     const layer = layers[i];
-    if (!layer.visible) continue;
+    if (!layer.visible || layer.type === 'audio') continue;
     // Check timeline in/out bounds (After Effects style)
     if (typeof layer.startTime === 'number' && time < layer.startTime) continue;
     if (typeof layer.endTime === 'number' && time > layer.endTime) continue;
@@ -208,7 +211,7 @@ export function renderSceneAtTime(
   // 4. Draw Selection Gizmo Outline if a layer is selected and gizmos are visible
   if (!options.hideSelectionGizmo && options.selectedLayerId) {
     const selected = layers.find(l => l.id === options.selectedLayerId);
-    if (selected && selected.visible) {
+    if (selected && selected.visible && selected.type !== 'audio') {
       // Don't show selection gizmo if layer is trimmed out at the current time
       const isLayerActiveAtTime =
         (typeof selected.startTime !== 'number' || time >= selected.startTime) &&

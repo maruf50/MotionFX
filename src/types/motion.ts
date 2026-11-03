@@ -15,7 +15,9 @@ export type AnimatableProp =
   | 'cursorProgress'
   | 'textProgress'
   | 'filterIntensity'
-  | 'graphProgress';
+  | 'graphProgress'
+  | 'audioVolume'
+  | 'audioPitch';
 
 export interface Keyframe {
   time: number; // in seconds
@@ -216,7 +218,21 @@ export interface GraphDataItem {
   secondaryValue?: number; // for Combo chart line overlay
 }
 
-export type LayerType = 'shape' | 'text' | 'image' | 'group';
+export type SoundEffectType =
+  | 'whoosh'
+  | 'click'
+  | 'jump'
+  | 'fade'
+  | 'grow'
+  | 'pop'
+  | 'chime'
+  | 'impact'
+  | 'laser'
+  | 'swish';
+
+export type AudioLayerType = 'sfx' | 'music' | 'custom';
+
+export type LayerType = 'shape' | 'text' | 'image' | 'group' | 'audio';
 
 export interface Layer {
   id: string;
@@ -255,6 +271,16 @@ export interface Layer {
   fontStyle?: 'normal' | 'italic';
   textEffect?: TextEffect;
   textProgress?: number; // 0 to 100% keyframable animation progress
+  // Audio / Music / SFX specific
+  soundEffect?: SoundEffectType;
+  audioType?: AudioLayerType;
+  audioVolume?: number; // 0 to 100, defaults to 80
+  audioPitch?: number; // 0.5 to 2.0, defaults to 1.0
+  audioLoop?: boolean;
+  audioMuted?: boolean;
+  audioCustomUrl?: string;
+  audioCustomName?: string;
+  audioDuration?: number;
   // Image / PNG / Sticker specific
   imageSrc?: string | null;
   isSticker?: boolean;

@@ -17,9 +17,15 @@ import {
   SelectedKeyframeRef,
   ExportProgress,
   TextEffect,
+  SoundEffectType,
   CanvasResolution,
   Composition,
 } from '@/types/motion';
+import {
+  SOUND_EFFECTS_CATALOG,
+  playSoundEffect,
+  playCustomAudio,
+} from '@/modules/audio/audioEngine';
 import {
   uid,
   getInterpolatedValue,
@@ -73,6 +79,7 @@ interface MotionContextType {
     stroke?: string
   ) => void;
   addText: (textEffect?: TextEffect) => void;
+  addAudio: (soundEffect?: SoundEffectType) => void;
   addImage: (src: string, name?: string, w?: number, h?: number) => void;
   addSticker: (presetId?: string) => void;
   // Layer management & Multi-selection
@@ -673,6 +680,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
   const lastTimeRef = useRef<number>(0);
   const currentTimeRef = useRef<number>(0);
   currentTimeRef.current = currentTime;
+  const triggeredAudioLayersRef = useRef<Set<string>>(new Set());
 
   // Push snapshot to undo stack
   const pushUndo = useCallback((force: boolean = true) => {
@@ -868,6 +876,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
   // Set Current Time with Clamp
   const setCurrentTime = useCallback(
     (t: number) => {
+      triggeredAudioLayersRef.current.clear();
       const clamped = Math.max(0, Math.min(duration, t));
       setCurrentTimeState(clamped);
     },
@@ -903,15 +912,36 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
       const dt = Math.min(0.1, (now - lastTimeRef.current) / 1000);
       lastTimeRef.current = now;
 
-      let nextTime = currentTimeRef.current + dt;
+      const prevTime = currentTimeRef.current;
+      let nextTime = prevTime + dt;
       let shouldStop = false;
 
       if (nextTime >= duration) {
         if (isLooping) {
           nextTime = 0;
+          triggeredAudioLayersRef.current.clear();
         } else {
           nextTime = duration;
           shouldStop = true;
+        }
+      }
+
+      // Check audio playback for active audio layers
+      const activeLayers = layersRef.current;
+      for (let i = 0; i < activeLayers.length; i++) {
+        const l = activeLayers[i];
+        if (l.type === 'audio' && l.visible && !l.audioMuted) {
+          const st = l.startTime ?? 0;
+          if (prevTime <= st && nextTime >= st && !triggeredAudioLayersRef.current.has(l.id)) {
+            triggeredAudioLayersRef.current.add(l.id);
+            const vol = typeof l.audioVolume === 'number' ? l.audioVolume : 80;
+            const pitch = typeof l.audioPitch === 'number' ? l.audioPitch : 1.0;
+            if (l.audioType === 'custom' && l.audioCustomUrl) {
+              playCustomAudio(l.audioCustomUrl, vol, pitch, 0, Boolean(l.audioLoop));
+            } else {
+              playSoundEffect(l.soundEffect || 'whoosh', vol, pitch);
+            }
+          }
         }
       }
 
@@ -940,6 +970,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
     if (!isPlaying && currentTimeRef.current >= duration) {
       currentTimeRef.current = 0;
       setCurrentTimeState(0);
+      triggeredAudioLayersRef.current.clear();
     }
     setIsPlaying((prev) => !prev);
   }, [isPlaying, duration]);
@@ -950,11 +981,13 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
     setIsPlaying(false);
     currentTimeRef.current = 0;
     setCurrentTimeState(0);
+    triggeredAudioLayersRef.current.clear();
   }, []);
 
   const seekToStart = useCallback(() => {
     currentTimeRef.current = 0;
     setCurrentTimeState(0);
+    triggeredAudioLayersRef.current.clear();
   }, []);
 
   const toggleLoop = useCallback(() => setIsLooping((v) => !v), []);
@@ -1451,6 +1484,61 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
     [layers.length, pushUndo]
   );
 
+  const addAudio = useCallback(
+    (soundEffect: SoundEffectType = 'whoosh') => {
+      pushUndo(true);
+      const curTime = currentTimeRef.current;
+      const meta = SOUND_EFFECTS_CATALOG.find((s) => s.type === soundEffect);
+      const sfxDuration = meta ? meta.duration : 0.5;
+
+      const newLayer: Layer = {
+        id: uid('audio'),
+        name: `Audio: ${meta?.label || soundEffect}`,
+        type: 'audio',
+        visible: true,
+        soundEffect,
+        audioType: 'sfx',
+        audioVolume: 80,
+        audioPitch: 1.0,
+        audioLoop: false,
+        audioMuted: false,
+        startTime: curTime,
+        endTime: Math.min(durationRef.current, curTime + sfxDuration),
+        easing: 'linear',
+        fill: '#ec4899',
+        stroke: '#f472b6',
+        borderWidth: 0,
+        borderRadius: 0,
+        borderStyle: 'none',
+        animateDash: false,
+        width: 0,
+        height: 0,
+        x: 0,
+        y: 0,
+        scaleX: 1,
+        scaleY: 1,
+        rotation: 0,
+        opacity: 1,
+        keyframes: {
+          x: [],
+          y: [],
+          scaleX: [],
+          scaleY: [],
+          rotation: [],
+          opacity: [],
+        },
+      };
+
+      setLayers((prev) => [newLayer, ...prev]);
+      setSelectedLayerId(newLayer.id);
+
+      try {
+        playSoundEffect(soundEffect, 80, 1.0);
+      } catch {}
+    },
+    [pushUndo]
+  );
+
   const addImage = useCallback(
     (src: string, name: string = 'PNG Asset', w = 150, h = 150) => {
       pushUndo(true);
@@ -1669,10 +1757,12 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         const clone: Layer = JSON.parse(JSON.stringify(target));
         clone.id = uid(target.type);
         clone.name = `${target.name} Copy`;
-        if (clone.x !== undefined) clone.x += 20;
-        if (clone.y !== undefined) clone.y += 20;
-        clone.keyframes.x?.forEach((k) => (k.value += 20));
-        clone.keyframes.y?.forEach((k) => (k.value += 20));
+        if (clone.type !== 'audio') {
+          if (clone.x !== undefined) clone.x += 20;
+          if (clone.y !== undefined) clone.y += 20;
+          clone.keyframes.x?.forEach((k) => (k.value += 20));
+          clone.keyframes.y?.forEach((k) => (k.value += 20));
+        }
         return [clone, ...prev];
       });
     },
@@ -3640,6 +3730,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         addShape,
         addCustomShape,
         addText,
+        addAudio,
         addImage,
         addSticker,
         selectLayer,

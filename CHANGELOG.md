@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.3.0] - 2026-11-02
+
+### Added
+- **Music & Sound FX Layers (`audio` Layer Type)**:
+  - Just like Text and Shape layers, users can now add dedicated **Music & Sound FX** layers directly from the Left Sidebar (`AddElementsPanel`).
+  - **Procedural Web Audio Synthesis Engine (`src/modules/audio/audioEngine.ts`)**:
+    - Zero external network dependencies, offline-first, studio-grade procedural sound design using Web Audio API oscillators, noise generators, biquad filters, pitch ramps, and dynamic gain envelopes.
+    - **10 Core Sound Effects**:
+      - **Whoosh**: Dynamic bandpass-filtered air swoosh for fast kinetic movement, camera pans, and zooms.
+      - **Click**: Ultra-crisp mechanical UI tap for buttons, switches, and toggles.
+      - **Jump**: Cartoon spring/bounce pitch slide from 160Hz to 620Hz.
+      - **Fade & Swell**: Warm harmonic pad swell (C4, G4, C5) for smooth scene transitions and scene ins/outs.
+      - **Grow & Rise**: Ascending power-up frequency sweep with resonant filter for scaling up elements and status reveals.
+      - **Pop**: Snappy bubble pop with instant 950Hz to 110Hz drop in 40ms.
+      - **Chime**: Resonant metallic bell/chime cluster (880Hz, 1760Hz, 2640Hz) for successes and notifications.
+      - **Impact**: Cinematic sub-bass thud (140Hz to 32Hz) with punchy transient body.
+      - **Laser**: Sci-fi energy beam sweep (1800Hz to 120Hz) with resonant bandpass filter.
+      - **Swish**: Fast snappy whip for swift kinetic typography and rapid cuts.
+  - **Dedicated Audio Inspector (`AudioInspectorSection`)**:
+    - Interactive Sound Effects Catalog grid with 1-click sound assignment and immediate audition preview.
+    - **Live Waveform Visualizer**: Procedurally rendered SVG waveform matching the selected sound effect.
+    - **Custom Audio Upload**: Full support for importing custom MP3, WAV, OGG, and M4A audio files.
+    - **Audio Controls**: Volume slider (0% to 100%), Pitch & Speed control (0.5x to 2.0x), Mute toggle, Looping switch, and "Snap to Playhead" timeline placement.
+  - **Timeline Integration (`TimelineTracks.tsx`)**:
+    - Dedicated magenta/pink audio track bars with embedded SVG waveform previews.
+    - Full drag-and-drop repositioning and in/out trimming.
+    - Layer stack volume icon indicator and SFX name badge.
+  - **Synchronized Playback & Video Export**:
+    - Real-time timeline playback triggers audio precisely as the playhead advances past the layer's start time.
+    - Integrated with `VideoExporter`: audio layers are automatically routed into the `MediaRecorder` stream, producing exported WebM/MP4 videos with synchronized sound effects.
+
+---
+
 ## [2.2.0] - 2026-10-28
 
 ### Added
