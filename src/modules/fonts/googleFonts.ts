@@ -66,9 +66,126 @@ export const FONT_CATEGORIES = [
 export type FontCategoryId = (typeof FONT_CATEGORIES)[number]['id'];
 
 const loadedFontLinks = new Set<string>();
+const loadedFontFaces = new Set<string>();
+const inFlightFontPromises = new Map<string, Promise<void>>();
 
 /**
- * Dynamically injects Google Font link tag and waits for browser font loading.
+ * Returns generic platform fallback font stack tailored to font category.
+ */
+export function getCategoryFallback(category?: string): string {
+  switch (category) {
+    case 'serif':
+      return 'Georgia, "Times New Roman", Times, serif';
+    case 'display':
+      return 'Impact, "Arial Black", "Trebuchet MS", sans-serif';
+    case 'monospace':
+      return '"Courier New", Courier, monospace';
+    case 'handwriting':
+      return 'cursive, "Brush Script MT", sans-serif';
+    case 'sans-serif':
+    default:
+      return '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+  }
+}
+
+/**
+ * Returns category-tailored fallback for a given font family.
+ */
+export function getFontFallback(fontFamily?: string): string {
+  if (!fontFamily) return getCategoryFallback('sans-serif');
+  const fontMeta = GOOGLE_FONTS_CATALOG.find(
+    (f) => f.name.toLowerCase() === fontFamily.trim().toLowerCase()
+  );
+  return getCategoryFallback(fontMeta?.category);
+}
+
+/**
+ * Normalizes font weight so Canvas doesn't fall back when requested weight
+ * (like 'bold' on Bebas Neue or Pacifico) does not exist in the font face.
+ */
+export function getEffectiveFontWeight(
+  fontFamily?: string,
+  requestedWeight?: string | number
+): string {
+  if (!fontFamily) return String(requestedWeight || 'bold');
+  const fontMeta = GOOGLE_FONTS_CATALOG.find(
+    (f) => f.name.toLowerCase() === fontFamily.trim().toLowerCase()
+  );
+  if (!fontMeta || !Array.isArray(fontMeta.weights) || fontMeta.weights.length === 0) {
+    return String(requestedWeight || 'bold');
+  }
+
+  // Single-weight fonts (e.g. 400 for Bebas Neue, Pacifico, Anton, etc.)
+  if (fontMeta.weights.length === 1) {
+    return 'normal';
+  }
+
+  let target = 400;
+  if (typeof requestedWeight === 'number') {
+    target = requestedWeight;
+  } else if (requestedWeight === 'bold') {
+    target = 700;
+  } else if (requestedWeight === 'normal') {
+    target = 400;
+  } else {
+    target = parseInt(String(requestedWeight), 10) || 400;
+  }
+
+  let closest = fontMeta.weights[0];
+  let minDiff = Math.abs(closest - target);
+  for (const w of fontMeta.weights) {
+    const diff = Math.abs(w - target);
+    if (diff < minDiff) {
+      minDiff = diff;
+      closest = w;
+    }
+  }
+
+  return String(closest);
+}
+
+/**
+ * Builds the exact CSS font string for Canvas Rendering Context,
+ * guaranteeing accurate weights and distinct category fallbacks.
+ */
+export function buildCanvasFontString(
+  fontFamily: string | undefined,
+  fontSize: number,
+  fontWeight: string | number | undefined,
+  fontStyle: string | undefined
+): string {
+  const effectiveWeight = getEffectiveFontWeight(fontFamily, fontWeight);
+  const styleStr = fontStyle === 'italic' ? 'italic ' : '';
+  const cleanFamily = fontFamily?.trim();
+  const fallback = getFontFallback(cleanFamily);
+
+  if (!cleanFamily || cleanFamily === 'sans-serif' || cleanFamily === 'system-ui') {
+    return `${styleStr}${effectiveWeight} ${fontSize}px ${fallback}`;
+  }
+
+  return `${styleStr}${effectiveWeight} ${fontSize}px "${cleanFamily}", ${fallback}`;
+}
+
+/**
+ * Formulates the exact Google Fonts CSS2 URL for a given font family,
+ * avoiding unsupported weight/axis ranges that trigger HTTP 400 Bad Request.
+ */
+export function getGoogleFontUrl(fontFamily: string): string {
+  const cleanFamily = fontFamily.trim();
+  const fontMeta = GOOGLE_FONTS_CATALOG.find(
+    (f) => f.name.toLowerCase() === cleanFamily.toLowerCase()
+  );
+  const encodedName = cleanFamily.replace(/\s+/g, '+');
+
+  if (fontMeta && fontMeta.weights.length > 1) {
+    return `https://fonts.googleapis.com/css2?family=${encodedName}:wght@${fontMeta.weights.join(';')}&display=swap`;
+  }
+  return `https://fonts.googleapis.com/css2?family=${encodedName}&display=swap`;
+}
+
+/**
+ * Dynamically injects Google Font link tag and notifies canvas when loaded.
+ * Safely caches completed fonts to guarantee zero infinite render loops.
  */
 export function loadGoogleFont(fontFamily: string): Promise<void> {
   if (typeof window === 'undefined') return Promise.resolve();
@@ -78,23 +195,75 @@ export function loadGoogleFont(fontFamily: string): Promise<void> {
     return Promise.resolve();
   }
 
-  const fontId = `google-font-${cleanFamily.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
+  const cacheKey = cleanFamily.toLowerCase();
 
-  if (!loadedFontLinks.has(fontId) && !document.getElementById(fontId)) {
-    loadedFontLinks.add(fontId);
-    const link = document.createElement('link');
-    link.id = fontId;
-    link.rel = 'stylesheet';
-    const encodedName = cleanFamily.replace(/\s+/g, '+');
-    link.href = `https://fonts.googleapis.com/css2?family=${encodedName}:ital,wght@0,300..900;1,300..900&display=swap`;
-    document.head.appendChild(link);
+  // If already loaded and ready, immediately resolve with zero DOM work or event dispatching
+  if (loadedFontFaces.has(cacheKey)) {
+    return Promise.resolve();
   }
 
-  if (typeof document !== 'undefined' && 'fonts' in document) {
-    return (document as any).fonts.ready.then(() => {});
+  // If already in flight, reuse existing promise
+  const existingPromise = inFlightFontPromises.get(cacheKey);
+  if (existingPromise) {
+    return existingPromise;
   }
 
-  return Promise.resolve();
+  const fontId = `google-font-${cacheKey.replace(/[^a-z0-9]/g, '-')}`;
+
+  const loadPromise = new Promise<void>((resolve) => {
+    let resolved = false;
+    const notifyDone = () => {
+      if (resolved) return;
+      resolved = true;
+      loadedFontFaces.add(cacheKey);
+      inFlightFontPromises.delete(cacheKey);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('motionfx-font-loaded', { detail: { fontFamily: cleanFamily } })
+        );
+      }
+      resolve();
+    };
+
+    if (!loadedFontLinks.has(fontId) && !document.getElementById(fontId)) {
+      loadedFontLinks.add(fontId);
+      const link = document.createElement('link');
+      link.id = fontId;
+      link.rel = 'stylesheet';
+      link.href = getGoogleFontUrl(cleanFamily);
+      link.onload = () => {
+        // When CSS stylesheet is loaded, also test document.fonts if available
+        if (typeof document !== 'undefined' && 'fonts' in document) {
+          const effectiveWeight = getEffectiveFontWeight(cleanFamily, 'normal');
+          (document as any).fonts
+            .load(`${effectiveWeight} 48px "${cleanFamily}"`)
+            .then(notifyDone)
+            .catch(notifyDone);
+        } else {
+          notifyDone();
+        }
+      };
+      link.onerror = () => {
+        // Fall back gracefully
+        notifyDone();
+      };
+      document.head.appendChild(link);
+    } else {
+      // Stylesheet already in document: wait for fonts.load
+      if (typeof document !== 'undefined' && 'fonts' in document) {
+        const effectiveWeight = getEffectiveFontWeight(cleanFamily, 'normal');
+        (document as any).fonts
+          .load(`${effectiveWeight} 48px "${cleanFamily}"`)
+          .then(notifyDone)
+          .catch(notifyDone);
+      } else {
+        notifyDone();
+      }
+    }
+  });
+
+  inFlightFontPromises.set(cacheKey, loadPromise);
+  return loadPromise;
 }
 
 /**
@@ -102,6 +271,9 @@ export function loadGoogleFont(fontFamily: string): Promise<void> {
  */
 export function preloadPopularFonts() {
   if (typeof window === 'undefined') return;
-  const popular = GOOGLE_FONTS_CATALOG.filter((f) => f.popular).slice(0, 10);
-  popular.forEach((f) => loadGoogleFont(f.name));
+  GOOGLE_FONTS_CATALOG.forEach((f) => {
+    if (!loadedFontFaces.has(f.name.toLowerCase())) {
+      loadGoogleFont(f.name);
+    }
+  });
 }

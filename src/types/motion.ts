@@ -174,7 +174,14 @@ export type ButtonIcon =
 export type ButtonIconPosition = 'left' | 'right' | 'iconOnly';
 
 // Cursor types
-export type CursorType = 'pointer' | 'hand' | 'crosshair' | 'beam' | 'glowDot';
+export type CursorType =
+  | 'triangle'
+  | 'pointer'
+  | 'image'
+  | 'hand'
+  | 'crosshair'
+  | 'beam'
+  | 'glowDot';
 export type CursorPathMode = 'linear' | 'orbit' | 'customPath' | 'float';
 export type CursorClickAnim = 'ripple' | 'press' | 'burst' | 'none';
 
@@ -207,6 +214,30 @@ export type LayerFilterType =
   | 'noise'
   | 'shatter'
   | 'wobble';
+
+export interface LayerFilterItem {
+  id: string;
+  type: LayerFilterType;
+  enabled: boolean;
+  intensity: number; // 0 to 100%
+  // Specific filter parameters
+  blurRadius?: number; // 1 to 60px
+  glowColor?: string;
+  glowRadius?: number; // 5 to 60px
+  waveFrequency?: number; // 1 to 20
+  waveAmplitude?: number; // 2 to 50
+  waveSpeed?: number; // 1 to 15
+  bwContrast?: number; // 50 to 200%
+  glitchAmount?: number; // 2 to 40
+  glitchSlices?: number; // 3 to 20
+  glitchSpeed?: number; // 1 to 30
+  noiseDensity?: number; // 10 to 100
+  noiseColor?: boolean;
+  shatterPieces?: number; // 4 to 36
+  shatterSpread?: number; // 10 to 200
+  wobbleAmount?: number; // 2 to 30
+  wobbleSpeed?: number; // 1 to 20
+}
 
 export type GraphType = 'column' | 'bar' | 'line' | 'area' | 'pie' | 'combo';
 
@@ -271,6 +302,7 @@ export interface Layer {
   fontStyle?: 'normal' | 'italic';
   textEffect?: TextEffect;
   textProgress?: number; // 0 to 100% keyframable animation progress
+  textSpeed?: number; // Animation speed multiplier (0.25x to 5x, defaults to 1.0)
   // Audio / Music / SFX specific
   soundEffect?: SoundEffectType;
   audioType?: AudioLayerType;
@@ -429,6 +461,11 @@ export interface Layer {
   cursorType?: CursorType;
   cursorColor?: string;
   cursorSize?: number;
+  cursorImage?: string | null; // Data URL or Image URL for custom transparent image cursor
+  cursorImageHotspotX?: number; // 0 to 1, default 0 (top-left)
+  cursorImageHotspotY?: number; // 0 to 1, default 0 (top-left)
+  cursorClickDuration?: number; // duration of click animation in seconds (defaults to 0.35s)
+  cursorClickScale?: number; // scale factor on/after clicking (defaults to 0.8x)
   cursorPathMode?: CursorPathMode;
   cursorStartPos?: { x: number; y: number };
   cursorEndPos?: { x: number; y: number };
@@ -465,6 +502,7 @@ export interface Layer {
   scaleInOnly?: boolean;
   scaleOutOnly?: boolean;
   // Top-level Layer Filters (Glow, Wave, Black & White, Glitch, Noise, Shatter, Wobble, Blur)
+  filters?: LayerFilterItem[]; // Stack of multiple FX filters applied in sequence
   filterType?: LayerFilterType;
   filterIntensity?: number; // 0 to 100% (keyframable via 'filterIntensity')
   // Blur properties

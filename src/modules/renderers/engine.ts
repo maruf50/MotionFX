@@ -6,6 +6,7 @@ import { renderImageLayer } from './media';
 import { getBranchEndpoints } from './branching';
 import { applyLayerFilter } from './filters';
 import { resolveColorOrGradient } from './gradients';
+import { buildCanvasFontString } from '../fonts/googleFonts';
 
 export interface RenderOptions {
   canvasBg: string;
@@ -28,10 +29,7 @@ export function getLayerDimensions(
   }
   if (layer.type === 'text') {
     const fontSize = layer.fontSize || 48;
-    const family = layer.fontFamily ? `"${layer.fontFamily}", ` : '';
-    const weight = layer.fontWeight || 'bold';
-    const style = layer.fontStyle === 'italic' ? 'italic ' : '';
-    ctx.font = `${style}${weight} ${fontSize}px ${family}"Geist", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+    ctx.font = buildCanvasFontString(layer.fontFamily, fontSize, layer.fontWeight, layer.fontStyle);
     const metrics = ctx.measureText(layer.text || 'TEXT');
     return {
       width: Math.max(80, metrics.width),
@@ -171,7 +169,12 @@ export function renderSceneAtTime(
     ctx.rotate((tr.rotation * Math.PI) / 180);
     ctx.globalAlpha = tr.opacity;
 
-    if (layer.filterType && layer.filterType !== 'none') {
+    const hasFilters = Boolean(
+      (layer.filters && layer.filters.some((f) => f.enabled !== false && f.type !== 'none')) ||
+      (layer.filterType && layer.filterType !== 'none')
+    );
+
+    if (hasFilters) {
       applyLayerFilter(ctx, layer, time, (fCtx) => {
         if (layer.type === 'shape') {
           renderShapeLayer(fCtx, layer, time, options.onImageLoad, tr);
@@ -419,7 +422,12 @@ export function renderSingleLayerToCanvas(
   ctx.rotate((tr.rotation * Math.PI) / 180);
   ctx.globalAlpha = tr.opacity;
 
-  if (layer.filterType && layer.filterType !== 'none') {
+  const hasFilters = Boolean(
+    (layer.filters && layer.filters.some((f) => f.enabled !== false && f.type !== 'none')) ||
+    (layer.filterType && layer.filterType !== 'none')
+  );
+
+  if (hasFilters) {
     applyLayerFilter(ctx, layer, time, (fCtx) => {
       if (layer.type === 'shape') {
         renderShapeLayer(fCtx, layer, time, onImageLoad, tr);

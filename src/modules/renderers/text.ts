@@ -1,6 +1,6 @@
 import { Layer } from '@/types/motion';
 import { Easings } from '../easing/easings';
-import { loadGoogleFont } from '../fonts/googleFonts';
+import { loadGoogleFont, buildCanvasFontString } from '../fonts/googleFonts';
 import { getInterpolatedValue } from '../keyframes/evaluator';
 import { resolveColorOrGradient } from './gradients';
 
@@ -8,7 +8,7 @@ const GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*<>[]{}';
 
 /**
  * Renders kinetic text layers with various motion effects, Google Fonts,
- * and keyframable animation progress (0-100%).
+ * and keyframable animation progress (0-100%) and animation speed.
  */
 export function renderTextLayer(
   ctx: CanvasRenderingContext2D,
@@ -24,45 +24,77 @@ export function renderTextLayer(
   const fontSize = layer.fontSize || 48;
   const str = layer.text || 'TEXT';
   const effect = layer.textEffect || 'none';
-  const family = layer.fontFamily ? `"${layer.fontFamily}", ` : '';
-  const weight = layer.fontWeight || 'bold';
-  const style = layer.fontStyle === 'italic' ? 'italic ' : '';
+  const speed = Math.max(0.1, Math.min(10, layer.textSpeed || 1.0));
 
   // Keyframable text animation progress (0 to 100%)
   const hasTextKf = Boolean(layer.keyframes?.textProgress && layer.keyframes.textProgress.length > 0);
   const rawProgress = getInterpolatedValue(layer, 'textProgress', time);
   const animProgress = Math.max(0, Math.min(1, rawProgress / 100));
 
-  ctx.font = `${style}${weight} ${fontSize}px ${family}"Geist", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+  // Determine effective progress 'p' (0.0 to 1.0)
+  // 1) If keyframed on textProgress: always use animProgress evaluated at time.
+  // 2) If not keyframed:
+  //    - If the user explicitly adjusted the slider (< 100 or manual setting), directly follow animProgress.
+  //    - If textProgress is 100 (default) and time > 0 for a motion effect, preview auto-play based on speed.
+  //    - Otherwise (or for 'none'), use animProgress.
+  let p = animProgress;
+  if (!hasTextKf) {
+    if (layer.textProgress !== undefined && layer.textProgress < 100) {
+      p = animProgress;
+    } else if (effect !== 'none' && time > 0) {
+      const effectDuration = Math.min(totalDuration * 0.6, 2.0 / speed);
+      p = Math.min(1, Math.max(0, (time * speed) / (effectDuration || 2.0)));
+    } else {
+      p = animProgress;
+    }
+  }
+
+  ctx.font = buildCanvasFontString(layer.fontFamily, fontSize, layer.fontWeight, layer.fontStyle);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   const estWidth = Math.max(40, ctx.measureText(str).width);
-  ctx.fillStyle = resolveColorOrGradient(ctx, layer.fill || '#ffffff', -estWidth / 2, -fontSize / 2, estWidth, fontSize);
+  ctx.fillStyle = resolveColorOrGradient(
+    ctx,
+    layer.fill || '#ffffff',
+    -estWidth / 2,
+    -fontSize / 2,
+    estWidth,
+    fontSize
+  );
 
-  if (effect === 'none') {
-    const displayStr = hasTextKf
-      ? str.substring(0, Math.floor(animProgress * str.length))
-      : str;
-    ctx.fillText(displayStr, 0, 0);
+  const drawStrokeIfEnabled = (textToStroke: string, ox = 0, oy = 0) => {
     if (layer.borderWidth > 0 && layer.borderStyle !== 'none' && layer.stroke) {
       const avgScale = (Math.abs(tr?.scaleX ?? 1) + Math.abs(tr?.scaleY ?? 1)) / 2 || 1;
       ctx.lineWidth = layer.borderWidth / avgScale;
-      ctx.strokeStyle = resolveColorOrGradient(ctx, layer.stroke, -estWidth / 2, -fontSize / 2, estWidth, fontSize);
-      ctx.strokeText(displayStr, 0, 0);
+      ctx.strokeStyle = resolveColorOrGradient(
+        ctx,
+        layer.stroke,
+        -estWidth / 2,
+        -fontSize / 2,
+        estWidth,
+        fontSize
+      );
+      ctx.strokeText(textToStroke, ox, oy);
     }
+  };
+
+  if (effect === 'none') {
+    const charCount = p >= 1 ? str.length : Math.ceil(p * str.length);
+    const displayStr = str.substring(0, charCount);
+    ctx.fillText(displayStr, 0, 0);
+    drawStrokeIfEnabled(displayStr);
     return;
   }
 
   if (effect === 'typewriter') {
-    // Reveal letters progressively based on keyframe progress or auto-timing
-    const typeProgress = hasTextKf
-      ? animProgress
-      : Math.min(1, time / (totalDuration * 0.6));
-    const charCount = Math.floor(typeProgress * str.length);
+    // Reveal letters progressively based on progress & speed
+    const charCount = p >= 1 ? str.length : Math.floor(p * str.length);
     const visibleSub = str.substring(0, charCount);
-    const showCursor = typeProgress < 1 && Math.floor(time * 3.5) % 2 === 0;
+    const showCursor = p < 1 && Math.floor(time * 3.5 * speed) % 2 === 0;
+    const fullText = visibleSub + (showCursor ? '▍' : '');
 
-    ctx.fillText(visibleSub + (showCursor ? '▍' : ''), 0, 0);
+    ctx.fillText(fullText, 0, 0);
+    drawStrokeIfEnabled(fullText);
     return;
   }
 
@@ -70,11 +102,7 @@ export function renderTextLayer(
     // Cyber Glitch / Scramble Morph between initial text and target word
     const target = layer.morphTarget || 'FUTURE MOTION';
     const maxLen = Math.max(str.length, target.length);
-    const morphStart = 0.6;
-    const morphDuration = Math.min(2.5, totalDuration * 0.55);
-    const morphProgress = hasTextKf
-      ? animProgress
-      : Math.max(0, Math.min(1, (time - morphStart) / morphDuration));
+    const morphProgress = p;
 
     let displayStr = '';
     for (let i = 0; i < maxLen; i++) {
@@ -87,19 +115,21 @@ export function renderTextLayer(
       } else if (morphProgress > charThreshold + 0.25) {
         displayStr += c2;
       } else {
-        // Scramble phase
-        const randIdx = Math.floor((time * 30 + i * 13) % GLYPHS.length);
+        // Scramble phase with speed-scaled jitter
+        const randIdx = Math.floor((time * 30 * speed + i * 13) % GLYPHS.length);
         displayStr += GLYPHS[randIdx];
       }
     }
 
-    ctx.fillText(displayStr.trim(), 0, 0);
+    const outputStr = displayStr.trim();
+    ctx.fillText(outputStr, 0, 0);
+    drawStrokeIfEnabled(outputStr);
     return;
   }
 
   if (effect === 'wave') {
-    // Per-letter undulating sine wave modulated by progress
-    const waveIntensity = hasTextKf ? animProgress : 1.0;
+    // Per-letter undulating sine wave modulated by progress & speed
+    const waveIntensity = p;
     const totalW = ctx.measureText(str).width;
     let curX = -totalW / 2;
     ctx.textAlign = 'left';
@@ -107,8 +137,21 @@ export function renderTextLayer(
     for (let i = 0; i < str.length; i++) {
       const ch = str[i];
       const cw = ctx.measureText(ch).width;
-      const yOffset = Math.sin(time * 6 + i * 0.5) * (fontSize * 0.22) * waveIntensity;
+      const yOffset = Math.sin(time * 6 * speed + i * 0.5) * (fontSize * 0.22) * waveIntensity;
       ctx.fillText(ch, curX, yOffset);
+      if (layer.borderWidth > 0 && layer.borderStyle !== 'none' && layer.stroke) {
+        const avgScale = (Math.abs(tr?.scaleX ?? 1) + Math.abs(tr?.scaleY ?? 1)) / 2 || 1;
+        ctx.lineWidth = layer.borderWidth / avgScale;
+        ctx.strokeStyle = resolveColorOrGradient(
+          ctx,
+          layer.stroke,
+          -estWidth / 2,
+          -fontSize / 2,
+          estWidth,
+          fontSize
+        );
+        ctx.strokeText(ch, curX, yOffset);
+      }
       curX += cw;
     }
     return;
@@ -120,20 +163,13 @@ export function renderTextLayer(
     let curX = -totalW / 2;
     ctx.textAlign = 'left';
 
+    const charStep = 1 / Math.max(1, str.length);
+
     for (let i = 0; i < str.length; i++) {
       const ch = str[i];
       const cw = ctx.measureText(ch).width;
-      let localP = 1.0;
-
-      if (hasTextKf) {
-        const charStep = 1 / Math.max(1, str.length);
-        const charStart = i * charStep * 0.7;
-        localP = Math.max(0, Math.min(1, (animProgress - charStart) / 0.3));
-      } else {
-        const delay = i * 0.06;
-        localP = Math.max(0, Math.min(1, (time - delay) / 0.45));
-      }
-
+      const charStart = i * charStep * 0.7;
+      const localP = Math.max(0, Math.min(1, (p - charStart) / 0.3));
       const s = Easings.backOut(localP);
 
       ctx.save();
@@ -142,6 +178,19 @@ export function renderTextLayer(
       ctx.globalAlpha *= localP;
       ctx.textAlign = 'center';
       ctx.fillText(ch, 0, 0);
+      if (layer.borderWidth > 0 && layer.borderStyle !== 'none' && layer.stroke) {
+        const avgScale = (Math.abs(tr?.scaleX ?? 1) + Math.abs(tr?.scaleY ?? 1)) / 2 || 1;
+        ctx.lineWidth = layer.borderWidth / avgScale;
+        ctx.strokeStyle = resolveColorOrGradient(
+          ctx,
+          layer.stroke,
+          -estWidth / 2,
+          -fontSize / 2,
+          estWidth,
+          fontSize
+        );
+        ctx.strokeText(ch, 0, 0);
+      }
       ctx.restore();
 
       curX += cw;
@@ -150,9 +199,9 @@ export function renderTextLayer(
   }
 
   if (effect === 'neonPulse') {
-    // Glowing neon outline with pulsating intensity modulated by progress
-    const pulse = (Math.sin(time * 5) + 1) / 2; // 0 to 1
-    const pulseIntensity = hasTextKf ? animProgress : 1.0;
+    // Glowing neon outline with pulsating intensity modulated by progress and speed
+    const pulse = (Math.sin(time * 5 * speed) + 1) / 2; // 0 to 1
+    const pulseIntensity = p;
 
     ctx.save();
     ctx.shadowColor = layer.stroke || '#ec4899';

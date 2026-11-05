@@ -76,7 +76,7 @@ export function CanvasStage() {
   const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
   const hasMovedDuringDragRef = useRef<boolean>(false);
-  const pendingTextEditRef = useRef<string | null>(null);
+
   const draggingPointRef = useRef<{
     layerId: string;
     pointIdx: number;
@@ -354,7 +354,6 @@ export function CanvasStage() {
         dragOffsetRef.current = { x: pt.x - tr.x, y: pt.y - tr.y };
         dragStartPosRef.current = { x: pt.x, y: pt.y };
         hasMovedDuringDragRef.current = false;
-        pendingTextEditRef.current = layer.type === 'text' ? layer.id : null;
         recordSnapshot();
         return;
       }
@@ -605,7 +604,6 @@ export function CanvasStage() {
           const dist = Math.hypot(pt.x - dragStartPosRef.current.x, pt.y - dragStartPosRef.current.y);
           if (dist > 3) {
             hasMovedDuringDragRef.current = true;
-            pendingTextEditRef.current = null;
           }
         }
 
@@ -695,15 +693,6 @@ export function CanvasStage() {
     const handleGlobalMouseUp = () => {
       activeSnapGuidesRef.current = {};
       setSnapGuides({});
-      if (!hasMovedDuringDragRef.current && pendingTextEditRef.current) {
-        const textLayerId = pendingTextEditRef.current;
-        const textLayer = layers.find((l) => l.id === textLayerId);
-        if (textLayer) {
-          setEditingTextLayerId(textLayerId);
-          setEditingTextValue(textLayer.text || '');
-        }
-      }
-      pendingTextEditRef.current = null;
       dragStartPosRef.current = null;
       hasMovedDuringDragRef.current = false;
       draggingPointRef.current = null;

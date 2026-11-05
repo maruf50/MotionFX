@@ -7,6 +7,9 @@ import {
   FONT_CATEGORIES,
   FontCategoryId,
   loadGoogleFont,
+  getCategoryFallback,
+  getFontFallback,
+  preloadPopularFonts,
   GoogleFont,
 } from '@/modules/fonts/googleFonts';
 
@@ -75,7 +78,13 @@ export function GoogleFontPicker({
       {/* Trigger Button */}
       <button
         type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
+        onClick={() => {
+          setIsOpen((prev) => {
+            const next = !prev;
+            if (next) preloadPopularFonts();
+            return next;
+          });
+        }}
         className={`w-full bg-[#121214] border border-[#2c2c32] hover:border-purple-500/60 rounded px-2.5 py-1.5 text-xs text-white flex items-center justify-between gap-2 transition cursor-pointer ${
           isOpen ? 'ring-1 ring-purple-500 border-purple-500' : ''
         }`}
@@ -85,7 +94,7 @@ export function GoogleFontPicker({
           <Type className="w-3.5 h-3.5 text-purple-400 shrink-0" />
           <span
             className="truncate font-medium text-zinc-100"
-            style={{ fontFamily: value ? `"${value}", sans-serif` : 'inherit' }}
+            style={{ fontFamily: value ? `"${value}", ${getFontFallback(value)}` : 'inherit' }}
           >
             {value || 'Inter'}
           </span>
@@ -160,7 +169,7 @@ export function GoogleFontPicker({
                     <div className="flex flex-col truncate">
                       <span
                         className="text-sm truncate"
-                        style={{ fontFamily: `"${font.name}", sans-serif` }}
+                        style={{ fontFamily: `"${font.name}", ${getCategoryFallback(font.category)}` }}
                       >
                         {font.name}
                       </span>
@@ -174,9 +183,17 @@ export function GoogleFontPicker({
                       </span>
                     </div>
 
-                    {isSelected && (
-                      <Check className="w-4 h-4 text-purple-400 shrink-0" />
-                    )}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span
+                        className="text-base text-zinc-400 group-hover:text-purple-300 transition shrink-0 w-7 text-center select-none font-medium"
+                        style={{ fontFamily: `"${font.name}", ${getCategoryFallback(font.category)}` }}
+                      >
+                        Aa
+                      </span>
+                      {isSelected && (
+                        <Check className="w-4 h-4 text-purple-400 shrink-0" />
+                      )}
+                    </div>
                   </button>
                 );
               })

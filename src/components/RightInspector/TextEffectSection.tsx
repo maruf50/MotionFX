@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Wand2, Diamond, Play } from 'lucide-react';
+import { Wand2, Diamond, Play, Zap } from 'lucide-react';
 import { useMotion } from '@/context/MotionContext';
 import { TextEffect } from '@/types/motion';
 import { GoogleFontPicker } from '@/components/common/GoogleFontPicker';
@@ -166,6 +166,55 @@ export function TextEffectSection() {
         </div>
       )}
 
+      {/* Animation Speed */}
+      <div className="pt-2 border-t border-[#28282e] space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <Zap className="w-3 h-3 text-amber-400" />
+            <span className="text-[11px] font-semibold text-zinc-300">Animation Speed</span>
+          </div>
+          <span className="text-[11px] font-mono text-purple-300 bg-purple-900/40 border border-purple-500/30 px-1.5 py-0.5 rounded">
+            {(selectedLayer.textSpeed || 1.0).toFixed(1)}x
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <input
+            type="range"
+            min="0.25"
+            max="3.0"
+            step="0.05"
+            value={selectedLayer.textSpeed || 1.0}
+            onChange={(e) => {
+              const val = Math.max(0.25, Math.min(3.0, parseFloat(e.target.value) || 1.0));
+              updateLayer(selectedLayer.id, { textSpeed: Math.round(val * 100) / 100 });
+            }}
+            className="w-full accent-purple-500 cursor-pointer h-1.5 bg-[#25252e] rounded"
+          />
+        </div>
+
+        {/* Speed preset chips */}
+        <div className="grid grid-cols-5 gap-1">
+          {[0.5, 1.0, 1.5, 2.0, 3.0].map((spd) => {
+            const isActive = Math.abs((selectedLayer.textSpeed || 1.0) - spd) < 0.05;
+            return (
+              <button
+                key={spd}
+                type="button"
+                onClick={() => updateLayer(selectedLayer.id, { textSpeed: spd })}
+                className={`px-1 py-0.5 rounded text-[10px] font-mono transition cursor-pointer text-center ${
+                  isActive
+                    ? 'bg-purple-600 text-white font-bold'
+                    : 'bg-[#202026] text-zinc-400 hover:text-white'
+                }`}
+              >
+                {spd}x
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Keyframable Text Animation Progress (0% to 100%) */}
       <div className="pt-2 border-t border-[#28282e] space-y-2">
         <div className="flex items-center justify-between">
@@ -187,9 +236,13 @@ export function TextEffectSection() {
 
           <button
             type="button"
-            onClick={() => addStartAndEndKeyframes(selectedLayer.id, 'textProgress', 0, 100, 2.0)}
+            onClick={() => {
+              const speed = selectedLayer.textSpeed || 1.0;
+              const kfDuration = Math.round((2.0 / speed) * 100) / 100;
+              addStartAndEndKeyframes(selectedLayer.id, 'textProgress', 0, 100, kfDuration);
+            }}
             className="text-[10px] px-2 py-0.5 rounded bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/40 transition cursor-pointer flex items-center gap-1"
-            title="Create 0% -> 100% keyframe animation across 2s"
+            title={`Create 0% -> 100% keyframe animation across ${Math.round((2.0 / (selectedLayer.textSpeed || 1.0)) * 10) / 10}s`}
           >
             <Play className="w-2.5 h-2.5 fill-current" />
             0% → 100%
@@ -206,6 +259,7 @@ export function TextEffectSection() {
             onChange={(e) => {
               const val = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
               setAnimPropValue(selectedLayer.id, 'textProgress', val);
+              updateLayer(selectedLayer.id, { textProgress: val });
             }}
             className="w-full accent-purple-500 cursor-pointer h-1.5 bg-[#25252e] rounded"
           />
@@ -219,7 +273,10 @@ export function TextEffectSection() {
             <button
               key={preset}
               type="button"
-              onClick={() => setAnimPropValue(selectedLayer.id, 'textProgress', preset)}
+              onClick={() => {
+                setAnimPropValue(selectedLayer.id, 'textProgress', preset);
+                updateLayer(selectedLayer.id, { textProgress: preset });
+              }}
               className={`px-1.5 py-0.5 rounded text-[10px] font-mono transition cursor-pointer ${
                 Math.round(progress) === preset
                   ? 'bg-purple-600 text-white font-bold'

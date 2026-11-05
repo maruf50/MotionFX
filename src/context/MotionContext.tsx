@@ -46,6 +46,7 @@ import {
   openProjectFromFile,
   exportAnimationJSON,
 } from '@/modules/storage/projectFileSystem';
+import { preloadPopularFonts } from '@/modules/fonts/googleFonts';
 
 interface MotionContextType {
   layers: Layer[];
@@ -526,7 +527,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
       if (typeof window !== 'undefined') {
         try {
           localStorage.setItem('motionfx_auto_keyframe', String(next));
-        } catch {}
+        } catch { }
       }
       return next;
     });
@@ -537,7 +538,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem('motionfx_auto_keyframe', String(val));
-      } catch {}
+      } catch { }
     }
   }, []);
   const [isSnappingEnabled, setIsSnappingEnabledState] = useState<boolean>(() => {
@@ -558,7 +559,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
       if (typeof window !== 'undefined') {
         try {
           localStorage.setItem('motionfx_snapping_enabled', String(next));
-        } catch {}
+        } catch { }
       }
       return next;
     });
@@ -569,7 +570,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem('motionfx_snapping_enabled', String(val));
-      } catch {}
+      } catch { }
     }
   }, []);
 
@@ -873,6 +874,24 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
     drawCurrentFrame(currentTime);
   }, [drawCurrentFrame, currentTime]);
 
+  // Re-render whenever an asynchronous Google Font finishes loading (debounced per frame)
+  useEffect(() => {
+    preloadPopularFonts();
+    let rafId: number | null = null;
+    const handleFontLoaded = () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        drawCurrentFrame(currentTimeRef.current);
+        rafId = null;
+      });
+    };
+    window.addEventListener('motionfx-font-loaded', handleFontLoaded);
+    return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      window.removeEventListener('motionfx-font-loaded', handleFontLoaded);
+    };
+  }, [drawCurrentFrame]);
+
   // Set Current Time with Clamp
   const setCurrentTime = useCallback(
     (t: number) => {
@@ -891,7 +910,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
       if (currentTime > valid) setCurrentTimeState(valid);
       try {
         localStorage.setItem('motionfx_duration', valid.toString());
-      } catch {}
+      } catch { }
     },
     [currentTime, pushUndo]
   );
@@ -1090,24 +1109,24 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
           shapeType === 'line' || shapeType === 'graph'
             ? 'transparent'
             : shapeType === 'card'
-            ? color
-            : color,
+              ? color
+              : color,
         stroke:
           shapeType === 'line'
             ? color
             : shapeType === 'bar' || shapeType === 'graph'
-            ? 'transparent'
-            : shapeType === 'branching'
-            ? color
-            : shapeType === 'card'
-            ? 'rgba(255, 255, 255, 0.25)'
-            : '#ffffff',
+              ? 'transparent'
+              : shapeType === 'branching'
+                ? color
+                : shapeType === 'card'
+                  ? 'rgba(255, 255, 255, 0.25)'
+                  : '#ffffff',
         borderWidth:
           shapeType === 'graph'
             ? 0
             : shapeType === 'card'
-            ? Math.max(1, Math.round(2 * us))
-            : Math.max(1, Math.round(baseBorderW * us)),
+              ? Math.max(1, Math.round(2 * us))
+              : Math.max(1, Math.round(baseBorderW * us)),
         borderRadius: Math.max(0, Math.round(baseRadius * us)),
         borderStyle: 'solid',
         animateDash: false,
@@ -1138,12 +1157,12 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         pathPoints: (shapeType === 'pathFollower' || shapeType === 'pathDraw' || shapeType === 'cursor')
           ? DEFAULT_PATH_POINTS.map((p) => ({ ...p }))
           : shapeType === 'custom'
-          ? [
+            ? [
               { x: -50, y: 35 },
               { x: 0, y: -45, cp1x: -30, cp1y: -45, cp2x: -15, cp2y: -45 },
               { x: 50, y: 35, cp1x: 15, cp1y: -45, cp2x: 30, cp2y: 35 },
             ]
-          : undefined,
+            : undefined,
         pathClosed: shapeType === 'custom' ? true : undefined,
         isPenEditing: shapeType === 'custom' ? true : undefined,
         followerCount: shapeType === 'pathFollower' ? 5 : undefined,
@@ -1233,16 +1252,18 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         btnAnimation: shapeType === 'button' ? 'pulseGlow' : undefined,
         btnAnimSpeed: shapeType === 'button' ? 1.5 : undefined,
         // Cursor defaults
-        cursorType: shapeType === 'cursor' ? 'pointer' : undefined,
+        cursorType: shapeType === 'cursor' ? 'triangle' : undefined,
         cursorColor: shapeType === 'cursor' ? '#ffffff' : undefined,
         cursorSize: shapeType === 'cursor' ? 26 : undefined,
+        cursorClickDuration: shapeType === 'cursor' ? 0.35 : undefined,
+        cursorClickScale: shapeType === 'cursor' ? 0.8 : undefined,
         cursorPathMode: shapeType === 'cursor' ? 'customPath' : undefined,
         cursorPathDuration: shapeType === 'cursor' ? 2.5 : undefined,
         cursorClickAnim: shapeType === 'cursor' ? 'ripple' : undefined,
         cursorClickInterval: shapeType === 'cursor' ? 2.0 : undefined,
         cursorClickTimes: shapeType === 'cursor' ? '0.8, 1.8, 2.8' : undefined,
         cursorBlinking: shapeType === 'cursor' ? false : undefined,
-        cursorTrail: shapeType === 'cursor' ? true : undefined,
+        cursorTrail: shapeType === 'cursor' ? false : undefined,
         cursorOrientToMotion: shapeType === 'cursor' ? true : undefined,
         showCursorPath: shapeType === 'cursor' ? true : undefined,
         cursorPathColor: shapeType === 'cursor' ? 'rgba(168, 85, 247, 0.45)' : undefined,
@@ -1283,81 +1304,82 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
           opacity: [],
           ...(shapeType === 'bar'
             ? {
-                barPercentage: [
-                  { time: 0, value: 0 },
-                  { time: 2.0, value: 100 },
-                ],
-              }
+              barPercentage: [
+                { time: 0, value: 0 },
+                { time: 2.0, value: 100 },
+              ],
+            }
             : {}),
           ...(shapeType === 'branching'
             ? {
-                branchGrowth: [
-                  { time: 0, value: 0 },
-                  { time: 2.0, value: 100 },
-                ],
-              }
+              branchGrowth: [
+                { time: 0, value: 0 },
+                { time: 2.0, value: 100 },
+              ],
+            }
             : {}),
           ...(shapeType === 'pathFollower'
             ? {
-                followerProgress: [
-                  { time: 0, value: 0 },
-                  { time: 2.5, value: 100 },
-                ],
-              }
+              followerProgress: [
+                { time: 0, value: 0 },
+                { time: 2.5, value: 100 },
+              ],
+            }
             : {}),
           ...(shapeType === 'array'
             ? {
-                arrayProgress: [
-                  { time: 0, value: 0 },
-                  { time: 2.0, value: 100 },
-                ],
-              }
+              arrayProgress: [
+                { time: 0, value: 0 },
+                { time: 2.0, value: 100 },
+              ],
+            }
             : {}),
           ...(shapeType === 'card'
             ? {
-                cardProgress: [
-                  { time: 0, value: 0 },
-                  { time: 2.0, value: 100 },
-                ],
-              }
+              cardProgress: [
+                { time: 0, value: 0 },
+                { time: 2.0, value: 100 },
+              ],
+            }
             : {}),
           ...(shapeType === 'pathDraw'
             ? {
-                pathDrawProgress: [
-                  { time: 0, value: 0 },
-                  { time: 2.0, value: 100 },
-                ],
-              }
+              pathDrawProgress: [
+                { time: 0, value: 0 },
+                { time: 2.0, value: 100 },
+              ],
+            }
             : {}),
           ...(shapeType === 'button'
             ? {
-                buttonProgress: [
-                  { time: 0, value: 0 },
-                  { time: 1.5, value: 100 },
-                ],
-              }
+              buttonProgress: [
+                { time: 0, value: 0 },
+                { time: 1.5, value: 100 },
+              ],
+            }
             : {}),
           ...(shapeType === 'cursor'
             ? {
-                cursorProgress: [
-                  { time: 0, value: 0 },
-                  { time: 2.5, value: 100 },
-                ],
-              }
+              cursorProgress: [
+                { time: 0, value: 0 },
+                { time: 2.5, value: 100 },
+              ],
+            }
             : {}),
           ...(shapeType === 'graph'
             ? {
-                graphProgress: [
-                  { time: 0, value: 0 },
-                  { time: 2.0, value: 100 },
-                ],
-              }
+              graphProgress: [
+                { time: 0, value: 0 },
+                { time: 2.0, value: 100 },
+              ],
+            }
             : {}),
         },
       };
 
       setLayers((prev) => [newLayer, ...prev]);
       setSelectedLayerId(newLayer.id);
+      setSelectedLayerIdsState([newLayer.id]);
     },
     [layers.length, pushUndo]
   );
@@ -1416,6 +1438,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
 
       setLayers((prev) => [newLayer, ...prev]);
       setSelectedLayerId(newLayer.id);
+      setSelectedLayerIdsState([newLayer.id]);
     },
     [layers.length, pushUndo]
   );
@@ -1449,6 +1472,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         animateDash: false,
         textEffect: textEffect || 'none',
         textProgress: 100,
+        textSpeed: 1.0,
         startTime: 0,
         endTime: durationRef.current,
         easing: 'easeOutCubic',
@@ -1469,17 +1493,18 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
           opacity: [],
           ...(textEffect && textEffect !== 'none'
             ? {
-                textProgress: [
-                  { time: 0, value: 0 },
-                  { time: 2.0, value: 100 },
-                ],
-              }
+              textProgress: [
+                { time: 0, value: 0 },
+                { time: 2.0, value: 100 },
+              ],
+            }
             : {}),
         },
       };
 
       setLayers((prev) => [newLayer, ...prev]);
       setSelectedLayerId(newLayer.id);
+      setSelectedLayerIdsState([newLayer.id]);
     },
     [layers.length, pushUndo]
   );
@@ -1531,10 +1556,11 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
 
       setLayers((prev) => [newLayer, ...prev]);
       setSelectedLayerId(newLayer.id);
+      setSelectedLayerIdsState([newLayer.id]);
 
       try {
         playSoundEffect(soundEffect, 80, 1.0);
-      } catch {}
+      } catch { }
     },
     [pushUndo]
   );
@@ -1582,6 +1608,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
 
       setLayers((prev) => [newLayer, ...prev]);
       setSelectedLayerId(newLayer.id);
+      setSelectedLayerIdsState([newLayer.id]);
     },
     [pushUndo]
   );
@@ -1633,6 +1660,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
 
       setLayers((prev) => [newLayer, ...prev]);
       setSelectedLayerId(newLayer.id);
+      setSelectedLayerIdsState([newLayer.id]);
       setSelectedLayerIdsState([newLayer.id]);
     },
     [layers.length, pushUndo]
@@ -2373,10 +2401,10 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
         layerIds && layerIds.length > 0
           ? layerIds
           : selectedLayerIdsRef.current.length > 0
-          ? selectedLayerIdsRef.current
-          : selectedLayerIdRef.current
-          ? [selectedLayerIdRef.current]
-          : [];
+            ? selectedLayerIdsRef.current
+            : selectedLayerIdRef.current
+              ? [selectedLayerIdRef.current]
+              : [];
       if (targetIds.length < 2) return;
 
       pushUndo(true);
@@ -2824,7 +2852,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
       try {
         localStorage.setItem('motionfx_scene_layers', JSON.stringify(layers));
         localStorage.setItem('motionfx_compositions', JSON.stringify(updated));
-      } catch {}
+      } catch { }
     }
   }, [layers, duration, canvasBg]);
 
@@ -3231,6 +3259,7 @@ export function MotionProvider({ children }: { children: React.ReactNode }) {
 
       setLayers((prev) => [newLayer, ...prev]);
       setSelectedLayerId(newLayer.id);
+      setSelectedLayerIdsState([newLayer.id]);
       setSelectedKeyframe(null);
     },
     [pushUndo]

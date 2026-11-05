@@ -1,7 +1,18 @@
 'use client';
 
-import React from 'react';
-import { MousePointer, Sparkles, Diamond, PenTool, Compass, Navigation } from 'lucide-react';
+import React, { useRef } from 'react';
+import {
+  MousePointer,
+  Sparkles,
+  Diamond,
+  PenTool,
+  Upload,
+  Image as ImageIcon,
+  Zap,
+  Timer,
+  Maximize2,
+  Trash2,
+} from 'lucide-react';
 import { useMotion } from '@/context/MotionContext';
 import { CursorType, CursorPathMode, CursorClickAnim } from '@/types/motion';
 import { getInterpolatedValue } from '@/modules/keyframes/evaluator';
@@ -17,18 +28,22 @@ export function CursorInspectorSection() {
     currentTime,
   } = useMotion();
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   if (!selectedLayer || selectedLayer.shapeType !== 'cursor') return null;
 
-  const cursorType = selectedLayer.cursorType || 'pointer';
+  const cursorType = selectedLayer.cursorType || 'triangle';
   const color = selectedLayer.cursorColor || selectedLayer.fill || '#ffffff';
   const size = selectedLayer.cursorSize ?? 24;
   const pathMode = selectedLayer.cursorPathMode || 'customPath';
   const duration = selectedLayer.cursorPathDuration ?? 2.5;
   const clickAnim = selectedLayer.cursorClickAnim || 'ripple';
   const clickInterval = selectedLayer.cursorClickInterval ?? 2.0;
+  const clickDuration = selectedLayer.cursorClickDuration ?? 0.35;
+  const clickScale = selectedLayer.cursorClickScale ?? 0.8;
   const isBlinking = selectedLayer.cursorBlinking ?? false;
-  const showTrail = selectedLayer.cursorTrail ?? true;
-  const orientToMotion = selectedLayer.cursorOrientToMotion ?? true;
+  const showTrail = selectedLayer.cursorTrail ?? false; // default OFF
+  const orientToMotion = selectedLayer.cursorOrientToMotion ?? false;
   const showFlightPath = selectedLayer.showCursorPath ?? true;
 
   const progress = getInterpolatedValue(selectedLayer, 'cursorProgress', currentTime);
@@ -36,9 +51,11 @@ export function CursorInspectorSection() {
     (k) => Math.abs(k.time - currentTime) < 0.04
   );
 
-  const cursorTypes: { id: CursorType; label: string }[] = [
-    { id: 'pointer', label: 'Pointer' },
-    { id: 'hand', label: 'Hand Finger' },
+  const cursorTypes: { id: CursorType; label: string; badge?: string }[] = [
+    { id: 'triangle', label: 'Smooth Triangle', badge: 'Default' },
+    { id: 'pointer', label: 'PC Classic' },
+    { id: 'image', label: 'Custom Image' },
+    { id: 'hand', label: 'Hand Pointer' },
     { id: 'crosshair', label: 'Crosshair' },
     { id: 'beam', label: 'Text Beam' },
     { id: 'glowDot', label: 'Glow Dot' },
@@ -58,6 +75,23 @@ export function CursorInspectorSection() {
     { id: 'none', label: 'No Click' },
   ];
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      if (dataUrl) {
+        updateLayer(selectedLayer.id, {
+          cursorType: 'image',
+          cursorImage: dataUrl,
+        });
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
   return (
     <div className="bg-[#1a1a1e] p-2.5 rounded border border-[#28282e] space-y-3">
       {/* Header */}
@@ -66,31 +100,140 @@ export function CursorInspectorSection() {
           <MousePointer className="w-3.5 h-3.5 text-purple-400" />
           Motion Cursor & Flight
         </span>
-        <span className="text-xs font-mono font-bold px-1.5 py-0.5 rounded bg-purple-950/60 text-purple-300 border border-purple-700/50 uppercase">
+        <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-purple-950/60 text-purple-300 border border-purple-700/50 uppercase">
           {cursorType}
         </span>
       </div>
 
       {/* Cursor Shape / Type */}
       <div>
-        <label className="text-[11px] text-zinc-400 block mb-1.5">Cursor Glyph</label>
+        <label className="text-[11px] text-zinc-400 block mb-1.5">Cursor Glyph / Style</label>
         <div className="grid grid-cols-3 gap-1">
           {cursorTypes.map((c) => (
             <button
               key={c.id}
               type="button"
               onClick={() => updateLayer(selectedLayer.id, { cursorType: c.id })}
-              className={`py-1 px-1 rounded text-[10px] font-medium border text-center transition cursor-pointer ${
+              className={`py-1.5 px-1 rounded text-[10px] font-medium border text-center transition cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
                 cursorType === c.id
-                  ? 'bg-purple-600/30 text-purple-200 border-purple-500/60'
+                  ? 'bg-purple-600/30 text-purple-200 border-purple-500/60 font-semibold'
                   : 'bg-[#121214] text-zinc-400 border-[#2c2c32] hover:bg-[#202026] hover:text-zinc-200'
               }`}
             >
-              {c.label}
+              <span>{c.label}</span>
+              {c.badge && (
+                <span className="text-[8px] px-1 py-0.2 rounded bg-purple-500/20 text-purple-300 font-mono">
+                  {c.badge}
+                </span>
+              )}
             </button>
           ))}
         </div>
       </div>
+
+      {/* Custom Image Cursor Upload & Configuration */}
+      {cursorType === 'image' && (
+        <div className="bg-[#141418] p-2.5 rounded border border-purple-500/30 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-purple-300 flex items-center gap-1.5">
+              <ImageIcon className="w-3.5 h-3.5" />
+              Custom Image Cursor (Transparent PNG/SVG)
+            </span>
+            {selectedLayer.cursorImage && (
+              <button
+                type="button"
+                onClick={() => updateLayer(selectedLayer.id, { cursorImage: null })}
+                className="text-[9px] text-zinc-500 hover:text-red-400 p-0.5 transition cursor-pointer flex items-center gap-0.5"
+                title="Remove image"
+              >
+                <Trash2 className="w-3 h-3" />
+                Clear
+              </button>
+            )}
+          </div>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/webp,image/svg+xml,image/jpeg,image/*"
+            className="hidden"
+            onChange={handleImageUpload}
+          />
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex-1 py-1.5 px-2 rounded bg-purple-600/20 hover:bg-purple-600/30 text-purple-200 border border-purple-500/40 text-xs font-medium flex items-center justify-center gap-1.5 transition cursor-pointer"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              Upload Transparent Image
+            </button>
+
+            {/* Preview Box */}
+            <div
+              className="w-9 h-9 rounded border border-[#2e2e38] flex items-center justify-center shrink-0 overflow-hidden"
+              style={{
+                backgroundImage:
+                  'linear-gradient(45deg, #18181c 25%, transparent 25%), linear-gradient(-45deg, #18181c 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #18181c 75%), linear-gradient(-45deg, transparent 75%, #18181c 75%)',
+                backgroundSize: '8px 8px',
+                backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px',
+                backgroundColor: '#101014',
+              }}
+              title="Image cursor preview (checkerboard shows transparency)"
+            >
+              {selectedLayer.cursorImage ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={selectedLayer.cursorImage}
+                  alt="Cursor"
+                  className="max-w-full max-h-full object-contain"
+                />
+              ) : (
+                <span className="text-[9px] text-zinc-600">None</span>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[10px] text-zinc-400 block mb-1">Image URL (Optional)</label>
+            <input
+              type="text"
+              value={selectedLayer.cursorImage || ''}
+              onChange={(e) => updateLayer(selectedLayer.id, { cursorImage: e.target.value })}
+              placeholder="https://... or data:image/png..."
+              className="w-full bg-[#101014] border border-[#2a2a34] focus:border-purple-500 rounded px-2 py-1 text-xs text-white outline-none font-mono"
+            />
+          </div>
+
+          {/* Hotspot anchor */}
+          <div>
+            <div className="flex items-center justify-between text-[10px] text-zinc-400 mb-1">
+              <span>Hotspot Anchor Point</span>
+              <div className="flex items-center gap-1">
+                {[
+                  { label: 'Tip (0,0)', x: 0, y: 0 },
+                  { label: 'Center (50%)', x: 0.5, y: 0.5 },
+                ].map((preset) => (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    onClick={() =>
+                      updateLayer(selectedLayer.id, {
+                        cursorImageHotspotX: preset.x,
+                        cursorImageHotspotY: preset.y,
+                      })
+                    }
+                    className="px-1.5 py-0.5 rounded text-[9px] bg-[#1a1a22] hover:bg-[#252530] text-zinc-400 hover:text-white border border-[#2e2e38] transition cursor-pointer"
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Flight Path Mode */}
       <div>
@@ -103,7 +246,7 @@ export function CursorInspectorSection() {
               onClick={() => updateLayer(selectedLayer.id, { cursorPathMode: pm.id })}
               className={`py-1 px-1 rounded text-[10px] font-medium border text-center transition cursor-pointer ${
                 pathMode === pm.id
-                  ? 'bg-purple-600/30 text-purple-200 border-purple-500/60'
+                  ? 'bg-purple-600/30 text-purple-200 border-purple-500/60 font-semibold'
                   : 'bg-[#121214] text-zinc-400 border-[#2c2c32] hover:bg-[#202026] hover:text-zinc-200'
               }`}
             >
@@ -133,86 +276,9 @@ export function CursorInspectorSection() {
 
       {/* Keyframeable Flight Progress */}
       <div className="bg-[#141418] p-2 rounded border border-[#2a2a32] space-y-1.5">
-        <div className="flex items-center justify-between text-[11px] text-zinc-400 mb-1">
-          <div className="flex items-center gap-1.5">
-            <span>Flight Traversal Progress</span>
-            <button
-              type="button"
-              onClick={() => toggleKeyframe(selectedLayer.id, 'cursorProgress')}
-              title={hasKf ? 'Remove keyframe at playhead' : 'Add keyframe at playhead'}
-              className={`p-1 rounded transition cursor-pointer ${
-                hasKf
-                  ? 'text-purple-400 bg-purple-950/60 hover:bg-purple-900/60'
-                  : 'text-zinc-600 hover:text-zinc-300'
-              }`}
-            >
-              <Diamond className={`w-3 h-3 ${hasKf ? 'fill-purple-400' : ''}`} />
-            </button>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="font-mono text-purple-300 font-semibold">{Math.round(progress)}%</span>
-            <button
-              type="button"
-              onClick={() => addStartAndEndKeyframes(selectedLayer.id, 'cursorProgress', 0, 100, duration)}
-              className="text-[9px] px-1.5 py-0.5 rounded bg-[#1e1e24] hover:bg-purple-950 text-zinc-300 hover:text-purple-300 border border-[#303038] hover:border-purple-600 transition"
-              title="Add 0% start and 100% end keyframes"
-            >
-              0%→100%
-            </button>
-          </div>
-        </div>
-        <input
-          type="range"
-          min="0"
-          max="100"
-          value={progress}
-          onChange={(e) =>
-            setAnimPropValue(selectedLayer.id, 'cursorProgress', parseFloat(e.target.value) || 0)
-          }
-          className="w-full accent-purple-500 cursor-pointer"
-        />
-      </div>
-
-      {/* Click Timestamps String */}
-      <div>
-        <label className="text-[11px] text-zinc-400 block mb-1">
-          Click Timestamps (seconds, e.g. "0.8, 1.8, 2.8")
-        </label>
-        <input
-          type="text"
-          value={selectedLayer.cursorClickTimes || ''}
-          placeholder="0.8, 1.8, 2.8"
-          onChange={(e) => updateLayer(selectedLayer.id, { cursorClickTimes: e.target.value })}
-          className="w-full bg-[#121216] border border-[#2c2c36] rounded px-2 py-1 text-xs text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-purple-500 font-mono"
-        />
-      </div>
-
-      {/* Click Effect */}
-      <div>
-        <label className="text-[11px] text-zinc-400 block mb-1.5">Click Animation Style</label>
-        <div className="grid grid-cols-2 gap-1">
-          {clickAnims.map((ca) => (
-            <button
-              key={ca.id}
-              type="button"
-              onClick={() => updateLayer(selectedLayer.id, { cursorClickAnim: ca.id })}
-              className={`py-1 px-1 rounded text-[10px] font-medium border text-center transition cursor-pointer ${
-                clickAnim === ca.id
-                  ? 'bg-purple-600/30 text-purple-200 border-purple-500/60'
-                  : 'bg-[#121214] text-zinc-400 border-[#2c2c32] hover:bg-[#202026] hover:text-zinc-200'
-              }`}
-            >
-              {ca.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Keyframeable Flight Progress */}
-      <div className="bg-[#141418] p-2 rounded border border-[#2a2a32] space-y-1.5">
         <div className="flex items-center justify-between text-[11px] text-zinc-400">
           <div className="flex items-center gap-1.5">
-            <span>Flight Progress</span>
+            <span>Flight Traversal Progress</span>
             <button
               type="button"
               onClick={() => toggleKeyframe(selectedLayer.id, 'cursorProgress')}
@@ -277,52 +343,115 @@ export function CursorInspectorSection() {
         </div>
       </div>
 
-      {/* Keyframeable Flight Progress */}
-      <div className="bg-[#141418] p-2 rounded border border-[#2a2a32] space-y-1.5">
-        <div className="flex items-center justify-between text-[11px] text-zinc-400">
-          <div className="flex items-center gap-1.5">
-            <span>Flight Progress</span>
+      {/* Color Picker (for vector shapes) */}
+      {cursorType !== 'image' && (
+        <ColorPickerWithAlpha
+          label="Cursor Color"
+          color={color}
+          onChange={(val) => updateLayer(selectedLayer.id, { cursorColor: val, fill: val })}
+        />
+      )}
+
+      {/* Click Animation & Physics Customization */}
+      <div className="pt-2 border-t border-[#28282e] space-y-2">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
+          <Zap className="w-3 h-3 text-amber-400" />
+          Click Animation & Physics
+        </span>
+
+        {/* Click Animation Style */}
+        <div className="grid grid-cols-2 gap-1">
+          {clickAnims.map((ca) => (
             <button
+              key={ca.id}
               type="button"
-              onClick={() => toggleKeyframe(selectedLayer.id, 'cursorProgress')}
-              title={hasKf ? 'Remove keyframe at playhead' : 'Add keyframe at playhead'}
-              className={`p-1 rounded transition cursor-pointer ${
-                hasKf
-                  ? 'text-purple-400 bg-purple-950/60 hover:bg-purple-900/60'
-                  : 'text-zinc-600 hover:text-zinc-300'
+              onClick={() => updateLayer(selectedLayer.id, { cursorClickAnim: ca.id })}
+              className={`py-1 px-1 rounded text-[10px] font-medium border text-center transition cursor-pointer ${
+                clickAnim === ca.id
+                  ? 'bg-purple-600/30 text-purple-200 border-purple-500/60 font-semibold'
+                  : 'bg-[#121214] text-zinc-400 border-[#2c2c32] hover:bg-[#202026] hover:text-zinc-200'
               }`}
             >
-              <Diamond className={`w-3 h-3 ${hasKf ? 'fill-purple-400' : ''}`} />
+              {ca.label}
             </button>
+          ))}
+        </div>
+
+        {/* Click Duration & Click Scale Options */}
+        <div className="grid grid-cols-2 gap-2 pt-1">
+          {/* Click Duration */}
+          <div>
+            <div className="flex items-center justify-between text-[11px] text-zinc-400 mb-1">
+              <span className="flex items-center gap-1">
+                <Timer className="w-3 h-3 text-zinc-400" /> Duration
+              </span>
+              <span className="font-mono text-purple-300">{clickDuration.toFixed(2)}s</span>
+            </div>
+            <input
+              type="range"
+              min="0.1"
+              max="1.5"
+              step="0.05"
+              value={clickDuration}
+              onChange={(e) =>
+                updateLayer(selectedLayer.id, {
+                  cursorClickDuration: parseFloat(e.target.value) || 0.35,
+                })
+              }
+              className="w-full accent-purple-500 cursor-pointer"
+            />
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="font-mono text-purple-300 font-semibold">{Math.round(progress)}%</span>
-            <button
-              type="button"
-              onClick={() => addStartAndEndKeyframes(selectedLayer.id, 'cursorProgress', 0, 100, duration)}
-              className="text-[9px] px-1.5 py-0.5 rounded bg-[#1e1e24] hover:bg-purple-950 text-zinc-300 hover:text-purple-300 border border-[#303038] hover:border-purple-600 transition"
-              title="Add 0% start and 100% end keyframes"
-            >
-              0%→100%
-            </button>
+
+          {/* Scale Size After Clicking */}
+          <div>
+            <div className="flex items-center justify-between text-[11px] text-zinc-400 mb-1">
+              <span className="flex items-center gap-1">
+                <Maximize2 className="w-3 h-3 text-zinc-400" /> Click Scale
+              </span>
+              <span className="font-mono text-purple-300">{clickScale.toFixed(2)}x</span>
+            </div>
+            <input
+              type="range"
+              min="0.4"
+              max="1.6"
+              step="0.05"
+              value={clickScale}
+              onChange={(e) =>
+                updateLayer(selectedLayer.id, {
+                  cursorClickScale: parseFloat(e.target.value) || 0.8,
+                })
+              }
+              className="w-full accent-purple-500 cursor-pointer"
+            />
           </div>
         </div>
-        <input
-          type="range"
-          min="0"
-          max="100"
-          value={progress}
-          onChange={(e) =>
-            setAnimPropValue(selectedLayer.id, 'cursorProgress', parseFloat(e.target.value) || 0)
-          }
-          className="w-full accent-purple-500 cursor-pointer"
-        />
-      </div>
 
-      {/* Click Cadence & Color */}
-      <div className="grid grid-cols-2 gap-2">
+        {/* Quick Click Scale Presets */}
+        <div className="flex items-center gap-1 pt-0.5">
+          {[
+            { label: 'Deep (0.7x)', val: 0.7 },
+            { label: 'Normal (0.8x)', val: 0.8 },
+            { label: 'Subtle (0.9x)', val: 0.9 },
+            { label: 'Pop (1.2x)', val: 1.2 },
+          ].map((preset) => (
+            <button
+              key={preset.label}
+              type="button"
+              onClick={() => updateLayer(selectedLayer.id, { cursorClickScale: preset.val })}
+              className={`flex-1 py-0.5 text-[9px] rounded font-mono border transition cursor-pointer text-center ${
+                Math.abs(clickScale - preset.val) < 0.04
+                  ? 'bg-purple-600/30 text-purple-200 border-purple-500 font-bold'
+                  : 'bg-[#141418] text-zinc-400 border-[#2a2a32] hover:text-white'
+              }`}
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Auto Click Interval */}
         <div>
-          <label className="text-[11px] text-zinc-400 block mb-1">Auto Click: {clickInterval}s</label>
+          <label className="text-[11px] text-zinc-400 block mb-1">Auto Click Interval: {clickInterval}s</label>
           <input
             type="range"
             min="0.5"
@@ -333,55 +462,20 @@ export function CursorInspectorSection() {
             className="w-full accent-purple-500 cursor-pointer"
           />
         </div>
-        <div className="col-span-2">
-          <ColorPickerWithAlpha
-            label="Cursor Color"
-            color={color}
-            onChange={(val) => updateLayer(selectedLayer.id, { cursorColor: val, fill: val })}
+
+        {/* Click Timestamps String */}
+        <div>
+          <label className="text-[11px] text-zinc-400 block mb-1">
+            Explicit Click Timestamps (seconds, e.g. "0.8, 1.8, 2.8")
+          </label>
+          <input
+            type="text"
+            value={selectedLayer.cursorClickTimes || ''}
+            placeholder="0.8, 1.8, 2.8"
+            onChange={(e) => updateLayer(selectedLayer.id, { cursorClickTimes: e.target.value })}
+            className="w-full bg-[#121216] border border-[#2c2c36] rounded px-2 py-1 text-xs text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-purple-500 font-mono"
           />
         </div>
-      </div>
-
-      {/* Keyframeable Flight Progress */}
-      <div className="bg-[#141418] p-2 rounded border border-[#2a2a32] space-y-1.5">
-        <div className="flex items-center justify-between text-[11px] text-zinc-400">
-          <div className="flex items-center gap-1.5">
-            <span>Flight Progress</span>
-            <button
-              type="button"
-              onClick={() => toggleKeyframe(selectedLayer.id, 'cursorProgress')}
-              title={hasKf ? 'Remove keyframe at playhead' : 'Add keyframe at playhead'}
-              className={`p-1 rounded transition cursor-pointer ${
-                hasKf
-                  ? 'text-purple-400 bg-purple-950/60 hover:bg-purple-900/60'
-                  : 'text-zinc-600 hover:text-zinc-300'
-              }`}
-            >
-              <Diamond className={`w-3 h-3 ${hasKf ? 'fill-purple-400' : ''}`} />
-            </button>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="font-mono text-purple-300 font-semibold">{Math.round(progress)}%</span>
-            <button
-              type="button"
-              onClick={() => addStartAndEndKeyframes(selectedLayer.id, 'cursorProgress', 0, 100, duration)}
-              className="text-[9px] px-1.5 py-0.5 rounded bg-[#1e1e24] hover:bg-purple-950 text-zinc-300 hover:text-purple-300 border border-[#303038] hover:border-purple-600 transition"
-              title="Add 0% start and 100% end keyframes"
-            >
-              0%→100%
-            </button>
-          </div>
-        </div>
-        <input
-          type="range"
-          min="0"
-          max="100"
-          value={progress}
-          onChange={(e) =>
-            setAnimPropValue(selectedLayer.id, 'cursorProgress', parseFloat(e.target.value) || 0)
-          }
-          className="w-full accent-purple-500 cursor-pointer"
-        />
       </div>
 
       {/* Flight & Motion Toggles */}
@@ -406,7 +500,7 @@ export function CursorInspectorSection() {
         </label>
       </div>
 
-      {/* Blink Mode & Motion Trail */}
+      {/* Blink Mode & Motion Trail (trail is OFF by default) */}
       <div className="grid grid-cols-2 gap-2 pt-1 border-t border-[#28282e]">
         <label className="flex items-center gap-2 cursor-pointer text-xs text-zinc-300">
           <input
